@@ -1,0 +1,170 @@
+.oldmaid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.oldmaid .onecard-kit-seat {
+  background: var(--felt-2);
+  color: #f4f1ea;
+}
+.oldmaid-table.felt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 10px;
+  min-height: 210px;
+}
+.oldmaid-status {
+  font-size: 1rem;
+}
+.oldmaid-status.mine {
+  color: #ffe38a;
+}
+.oldmaid-target {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.oldmaid-target-name {
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+.oldmaid-shuffle-in .onecard-kit-slot {
+  animation: oldmaid-deal 0.5s ease-out both;
+}
+.oldmaid-shuffle-in .onecard-kit-slot:nth-child(odd) {
+  animation-name: oldmaid-deal-alt;
+}
+@keyframes oldmaid-deal {
+  0% {
+    transform: translateX(40px) rotate(8deg);
+  }
+  60% {
+    transform: translateX(-6px) rotate(-2deg);
+  }
+}
+@keyframes oldmaid-deal-alt {
+  0% {
+    transform: translateX(-40px) rotate(-8deg);
+  }
+  60% {
+    transform: translateX(6px) rotate(2deg);
+  }
+}
+.oldmaid-target .pc-clickable:hover {
+  transform: translateY(-8px);
+}
+.oldmaid-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  min-height: 110px;
+}
+.oldmaid-pairs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  opacity: 0.95;
+}
+.oldmaid-pair {
+  display: flex;
+  animation: pop 0.35s ease-out;
+}
+.oldmaid-pair .pc + .pc {
+  margin-left: -18px;
+  transform: rotate(8deg);
+}
+.oldmaid-pair-empty {
+  width: 46px;
+  height: 64px;
+  border-radius: 6px;
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+}
+.oldmaid-drawn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  animation: oldmaid-reveal 0.5s ease-out;
+}
+.oldmaid-drawn.lost {
+  opacity: 0.9;
+}
+@keyframes oldmaid-reveal {
+  from {
+    transform: rotateY(90deg) scale(0.8);
+  }
+}
+.oldmaid-me {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 8px;
+}
+.oldmaid-me-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  padding: 0 4px;
+}
+.oldmaid-tools {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+.oldmaid-tools .btn {
+  min-height: 36px;
+}
+.oldmaid-alert {
+  color: var(--danger);
+  font-weight: 800;
+  font-size: 0.85rem;
+  animation: flash 0.8s infinite;
+}
+.oldmaid-wiggle .onecard-kit-slot {
+  animation: oldmaid-wiggle 0.28s ease-in-out infinite;
+}
+.oldmaid-wiggle .onecard-kit-slot:nth-child(even) {
+  animation-direction: reverse;
+}
+@keyframes oldmaid-wiggle {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0);
+  }
+  33% {
+    transform: translate(-5px, -4px) rotate(-5deg);
+  }
+  66% {
+    transform: translate(5px, 2px) rotate(4deg);
+  }
+}
+.oldmaid-escaped {
+  margin: 0;
+  font-weight: 700;
+}
+.oldmaid-wait {
+  margin: 12px 0;
+}
+.oldmaid-joker {
+  animation: pop 0.4s ease-out;
+}
+.oldmaid-rank {
+  list-style: none;
+  text-align: left;
+  margin: 0;
+  padding: 0;
+}
+.oldmaid-rank li {
+  padding: 3px 0;
+}

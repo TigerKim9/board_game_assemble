@@ -1,0 +1,187 @@
+.onecard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.onecard .onecard-kit-seat {
+  background: var(--felt-2);
+  color: #f4f1ea;
+}
+.onecard-table.felt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 10px 12px;
+  min-height: 190px;
+}
+.onecard-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.onecard-pile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.onecard-pile .pc {
+  box-shadow:
+    2px 2px 0 rgba(255, 255, 255, 0.5),
+    4px 4px 0 rgba(0, 0, 0, 0.25);
+}
+.onecard-count {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+.onecard-discard.flip {
+  animation: onecard-drop 0.3s ease-out;
+}
+@keyframes onecard-drop {
+  from {
+    transform: translateY(40px) rotate(-8deg) scale(0.9);
+    opacity: 0.2;
+  }
+}
+.onecard-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 52px;
+}
+.onecard-suit {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #fffdf8;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.onecard-suit svg.red .pc-ink {
+  fill: #d0271d;
+}
+.onecard-suit svg.black .pc-ink {
+  fill: #1d1f24;
+}
+.onecard-free {
+  color: #1d1f24;
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+.onecard-dir {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.onecard-attack {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-weight: 900;
+  animation: flash 1s infinite;
+}
+.onecard-status {
+  font-size: 1rem;
+}
+.onecard-status.mine {
+  color: #ffe38a;
+}
+.onecard-calls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+.onecard-call {
+  min-height: 46px;
+  font-size: 1.05rem;
+  animation: onecard-wiggle 0.6s ease-in-out infinite;
+}
+@keyframes onecard-wiggle {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-2deg) scale(1.03);
+  }
+  75% {
+    transform: rotate(2deg) scale(1.03);
+  }
+}
+.onecard-me {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 8px;
+  position: sticky;
+  bottom: 6px;
+  z-index: 5;
+}
+.onecard-me-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  padding: 0 4px;
+}
+.onecard-warn {
+  color: var(--danger);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.onecard-ready {
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+.onecard-wait {
+  margin: 12px 0;
+}
+.onecard-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
+  gap: 6px;
+}
+.onecard-actions .btn {
+  min-height: 46px;
+  padding: 8px 4px;
+  font-size: 0.92rem;
+}
+.onecard-suits {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  font-weight: 700;
+}
+.onecard-suit-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+.onecard-suit-btn {
+  min-height: 46px;
+  padding: 6px 2px;
+  font-size: 0.85rem;
+}
+.onecard-suit-btn.red {
+  color: #d0271d;
+}
+.onecard-rank {
+  text-align: left;
+  margin: 0;
+  padding-left: 4px;
+  list-style: none;
+}
+.onecard-rank li {
+  padding: 3px 0;
+}

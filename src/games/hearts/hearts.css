@@ -1,0 +1,199 @@
+.hearts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hearts-table.felt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 8px;
+}
+.hearts-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 156px minmax(0, 1fr);
+  grid-template-rows: auto 168px auto;
+  grid-template-areas:
+    '. top .'
+    'left trick right'
+    '. bottom .';
+  gap: 6px 4px;
+  align-items: center;
+  justify-items: center;
+}
+.hearts-seat {
+  width: 100%;
+  max-width: 150px;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 10px;
+  border-top: 4px solid;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.78rem;
+}
+.hearts-seat.top {
+  grid-area: top;
+}
+.hearts-seat.left {
+  grid-area: left;
+}
+.hearts-seat.right {
+  grid-area: right;
+}
+.hearts-seat.bottom {
+  grid-area: bottom;
+}
+.hearts-seat.active {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 2px rgba(255, 220, 90, 0.95);
+}
+.hearts-seat-name {
+  font-weight: 800;
+  line-height: 1.2;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.hearts-seat-stats {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.hearts-pts {
+  font-weight: 800;
+  color: #ff8a80;
+}
+.hearts-me .hearts-pts {
+  color: var(--danger);
+}
+.hearts-total {
+  font-weight: 800;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.hearts-trick {
+  grid-area: trick;
+  position: relative;
+  width: 156px;
+  height: 168px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.12);
+}
+.hearts-tcard {
+  position: absolute;
+  animation: hearts-in 0.25s ease-out;
+  transition: transform 0.3s;
+}
+.hearts-tcard.bottom {
+  left: 54px;
+  bottom: 0;
+  --from: translateY(40px);
+}
+.hearts-tcard.top {
+  left: 54px;
+  top: 0;
+  --from: translateY(-40px);
+}
+.hearts-tcard.left {
+  left: 0;
+  top: 50px;
+  --from: translateX(-40px);
+}
+.hearts-tcard.right {
+  right: 0;
+  top: 50px;
+  --from: translateX(40px);
+}
+.hearts-tcard.win .pc {
+  box-shadow:
+    0 0 0 3px #ffd54a,
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+@keyframes hearts-in {
+  from {
+    transform: var(--from);
+    opacity: 0;
+  }
+}
+.hearts-center-info {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  opacity: 0.9;
+  text-align: center;
+}
+.hearts-center-info b {
+  font-size: 1.1rem;
+}
+.hearts-status {
+  font-size: 0.98rem;
+}
+.hearts-status.mine {
+  color: #ffe38a;
+}
+.hearts-me {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 8px;
+  position: sticky;
+  bottom: 6px;
+  z-index: 5;
+}
+.hearts-me-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  padding: 0 4px;
+}
+.hearts-recv {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+.hearts-actions {
+  display: grid;
+}
+.hearts-actions .btn {
+  min-height: 46px;
+}
+.hearts-wait {
+  margin: 12px 0;
+}
+.hearts-scores {
+  width: 100%;
+  border-collapse: collapse;
+}
+.hearts-scores th,
+.hearts-scores td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.hearts-scores th {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.hearts-scores tr.win td {
+  color: var(--success);
+  font-weight: 700;
+}
+.hearts-moon {
+  margin: 0;
+  font-weight: 800;
+}
+.hearts-note {
+  margin: 0;
+  font-size: 0.85rem;
+}
