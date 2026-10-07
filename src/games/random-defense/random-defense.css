@@ -1,0 +1,242 @@
+.rd-roster p {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+}
+.rd-roster ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 4px 10px;
+  font-size: 0.85rem;
+}
+.rd-roster li {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  column-gap: 4px;
+  align-items: center;
+}
+.rd-roster li .muted {
+  grid-column: 2;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+.rd-roster-emoji {
+  grid-row: span 2;
+  font-size: 1.3rem;
+}
+
+.rd-arena {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: calc(100dvh - 92px);
+  min-height: 440px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.rd-arena.solo {
+  /* hug the 7:5 field instead of stretching to the full viewport */
+  height: min(calc(100dvh - 92px), calc(min(100vw - 24px, 868px) * 0.714 + 220px));
+  min-height: 400px;
+}
+.rd-arena.versus {
+  gap: 4px;
+  min-height: 520px;
+}
+
+.rd-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  min-height: 40px;
+  padding: 0 4px;
+}
+.rd-strip-btns {
+  display: flex;
+  gap: 4px;
+}
+.rd-strip-btns .btn {
+  min-height: 40px;
+  min-width: 44px;
+}
+.rd-boss-soon {
+  color: var(--danger);
+  animation: flash 1s infinite;
+}
+
+.rd-side {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rd-side.rotated {
+  transform: rotate(180deg);
+}
+.rd-side.ai {
+  flex: 0.85;
+}
+
+.rd-hud {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.rd-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rd-count {
+  position: relative;
+  overflow: hidden;
+  padding: 2px 10px 4px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.rd-count i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--primary);
+  transition: width 0.2s;
+}
+.rd-count.warn i {
+  background: var(--gold);
+}
+.rd-count.danger {
+  color: var(--danger);
+}
+.rd-count.danger i {
+  background: var(--danger);
+}
+.rd-bosst {
+  color: #fff;
+  background: var(--danger);
+  padding: 2px 8px;
+  border-radius: 999px;
+  animation: flash 1s infinite;
+}
+.rd-coins {
+  min-width: 64px;
+  text-align: right;
+}
+
+.rd-canvas-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rd-canvas {
+  display: block;
+  touch-action: none;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.rd-controls {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr 1fr;
+  gap: 6px;
+}
+.rd-controls .btn {
+  min-height: 52px;
+  padding: 4px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.15;
+  touch-action: none;
+  border-width: 2px;
+}
+.rd-controls .btn b {
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+.rd-controls .btn small {
+  font-size: 0.78rem;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+.rd-summon b {
+  font-size: 1.1rem !important;
+}
+.rd-lv {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+.rd-side.compact .rd-controls .btn {
+  min-height: 44px;
+}
+.rd-side.compact .rd-hud {
+  font-size: 0.85rem;
+}
+
+.rd-info {
+  margin: 0;
+  min-height: 2.6em;
+  font-size: 0.85rem;
+  text-align: center;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.rd-info b {
+  color: var(--text);
+}
+.rd-ai-note {
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.rd-pause {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.rd-pause .card-panel {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+  animation: pop 0.2s ease-out;
+}
+.rd-pause p {
+  margin: 0;
+}
+
+@media (max-width: 380px) {
+  .rd-controls .btn b {
+    font-size: 0.82rem;
+  }
+  .rd-hud {
+    gap: 5px;
+    font-size: 0.82rem;
+  }
+  .rd-coins {
+    min-width: 54px;
+  }
+}
