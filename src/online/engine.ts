@@ -11,6 +11,8 @@ export interface GameResult {
   summary?: string
   /** Optional per-seat score line. */
   scores?: number[]
+  /** Scores are penalties (lower ranks higher). */
+  lowerIsBetter?: boolean
 }
 
 export interface OnlineGame<S = unknown, A = unknown, V = unknown> {

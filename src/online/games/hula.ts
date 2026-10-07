@@ -134,8 +134,9 @@ export const hula: OnlineGame<HulaOnline, HulaOnlineAction, HulaView> = {
     const low = Math.min(...s.scores)
     return {
       winners: s.scores.map((v, i) => (v === low ? i : -1)).filter((i) => i >= 0),
-      // scores는 생략: 결과 화면이 높은 점수를 위로 정렬하는데 훌라는 벌점(낮을수록 좋음). 합계는 라운드 결과 표에 나옴.
-      summary: `${s.totalRounds}라운드 끝 — 벌점 합계 ${[...s.scores].sort((x, y) => x - y).join(' · ')}점, 가장 적은 사람이 우승`,
+      scores: s.scores,
+      lowerIsBetter: true,
+      summary: `${s.totalRounds}라운드 끝 — 벌점이 가장 적은 사람이 우승`,
     }
   },
   bot(o, seat, rng) {

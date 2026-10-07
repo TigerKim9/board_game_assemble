@@ -336,7 +336,7 @@ function Playing({ o }: { o: OnlineState }) {
             <ol className="online-scores">
               {room.seats
                 .map((s) => ({ s, score: result.scores![s.seat] ?? 0 }))
-                .sort((a, b) => b.score - a.score)
+                .sort((a, b) => (result.lowerIsBetter ? a.score - b.score : b.score - a.score))
                 .map(({ s, score }) => (
                   <li key={s.seat} className={result.winners.includes(s.seat) ? 'win' : ''}>
                     <span>{s.name}{s.seat === o.you && ' (나)'}</span>
