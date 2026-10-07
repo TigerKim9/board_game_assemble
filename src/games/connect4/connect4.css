@@ -1,0 +1,99 @@
+.connect4-note {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.connect4-wrap {
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+}
+.connect4-preview {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 0 8px;
+  height: 28px;
+}
+.connect4-slot {
+  display: grid;
+  place-items: center;
+}
+.connect4-slot .connect4-mini {
+  width: 60% !important;
+  height: auto !important;
+  aspect-ratio: 1;
+  opacity: 0.6;
+}
+.connect4-board {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  padding: 8px;
+  background: linear-gradient(180deg, #2f62c9, #234ea8);
+  border-radius: 14px;
+  box-shadow: var(--shadow), inset 0 -4px 0 rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+.connect4-cell {
+  position: relative;
+  aspect-ratio: 1;
+  border: none;
+  padding: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bg) 90%, #000);
+  box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  touch-action: manipulation;
+}
+.connect4-cell.can {
+  cursor: pointer;
+}
+.connect4-cell.hover {
+  background: color-mix(in srgb, var(--bg) 75%, #fff);
+}
+.connect4-disc,
+.connect4-mini {
+  display: inline-block;
+  border-radius: 50%;
+}
+.connect4-disc {
+  width: 92%;
+  height: 92%;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2), inset 0 0 0 4px rgba(255, 255, 255, 0.15);
+}
+.connect4-disc.p0,
+.connect4-mini.p0 {
+  background: radial-gradient(circle at 35% 30%, #ff7b6b, #d8342a 65%);
+}
+.connect4-disc.p1,
+.connect4-mini.p1 {
+  background: radial-gradient(circle at 35% 30%, #ffe27a, #e6a817 65%);
+}
+.connect4-mini {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+  vertical-align: middle;
+}
+.connect4-disc.drop {
+  animation: connect4-drop calc(0.12s + var(--r) * 0.06s) cubic-bezier(0.5, 0, 1, 1);
+}
+@keyframes connect4-drop {
+  from { transform: translateY(calc(var(--r) * -108%)); }
+  to { transform: translateY(0); }
+}
+.connect4-disc.win {
+  animation: connect4-win 0.9s ease-in-out infinite;
+  box-shadow: 0 0 0 3px #fff, 0 0 12px 4px rgba(255, 255, 255, 0.8);
+}
+@keyframes connect4-win {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.86); }
+}
+.connect4-lastmark {
+  position: absolute;
+  width: 16%;
+  height: 16%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+}

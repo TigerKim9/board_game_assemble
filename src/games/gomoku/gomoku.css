@@ -1,0 +1,95 @@
+.gomoku-note {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.gomoku-status {
+  font-size: 1rem;
+}
+.gomoku-wrap {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.gomoku-board {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  box-shadow: var(--shadow), 0 0 0 3px #a87b35;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.gomoku-board.live {
+  cursor: pointer;
+}
+.gomoku-wood {
+  fill: #ddb468;
+}
+.gomoku-line line {
+  stroke: #5b4120;
+  stroke-width: 0.04;
+}
+.gomoku-star {
+  fill: #5b4120;
+}
+.gomoku-stone {
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 0.03;
+}
+.gomoku-stone.placed {
+  animation: gomoku-place 0.22s ease-out;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes gomoku-place {
+  from { transform: scale(0.6); opacity: 0.5; }
+  to { transform: scale(1); opacity: 1; }
+}
+.gomoku-stone.win {
+  stroke: #e8463a;
+  stroke-width: 0.1;
+}
+.gomoku-ghost {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.gomoku-cross line {
+  stroke: #e8463a;
+  stroke-width: 0.05;
+  stroke-dasharray: 0.2 0.15;
+  opacity: 0.7;
+}
+.gomoku-lastdot {
+  fill: #e8463a;
+}
+.gomoku-forbid {
+  fill: #c0392b;
+  font-size: 0.5px;
+  font-weight: 800;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.gomoku-mini {
+  display: inline-block;
+  border-radius: 50%;
+  vertical-align: middle;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.gomoku-mini.black {
+  background: radial-gradient(circle at 35% 30%, #555, #111 60%);
+}
+.gomoku-mini.white {
+  background: radial-gradient(circle at 35% 30%, #fff, #d6d2c6 75%);
+}
+.gomoku-place {
+  align-self: center;
+  min-width: 200px;
+  animation: pop 0.2s ease-out;
+}
+.gomoku-count {
+  align-self: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+}

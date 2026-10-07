@@ -1,0 +1,104 @@
+.othello-note {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.othello-status.pass {
+  color: var(--accent);
+  animation: pop 0.3s ease-out;
+}
+.othello-board {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  gap: 2px;
+  padding: 6px;
+  background: #0f3d2c;
+  border-radius: 12px;
+  box-shadow: var(--shadow), inset 0 0 0 2px rgba(0, 0, 0, 0.3);
+}
+.othello-cell {
+  position: relative;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: #2a8a5f;
+  border-radius: 3px;
+  display: grid;
+  place-items: center;
+  cursor: default;
+  min-width: 0;
+  min-height: 0;
+  touch-action: manipulation;
+}
+.othello-cell:disabled {
+  opacity: 1;
+}
+.othello-cell.can {
+  cursor: pointer;
+}
+.othello-cell.can:hover {
+  background: #35a070;
+}
+.othello-disc {
+  width: 84%;
+  height: 84%;
+  border-radius: 50%;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.45);
+}
+.othello-disc.black,
+.othello-mini.black {
+  background: radial-gradient(circle at 35% 30%, #555, #111 60%);
+}
+.othello-disc.white,
+.othello-mini.white {
+  background: radial-gradient(circle at 35% 30%, #fff, #d9d6cc 70%);
+}
+.othello-mini {
+  display: inline-block;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  vertical-align: middle;
+}
+.othello-disc.flip {
+  animation: othello-flip 0.45s ease-in-out;
+}
+.othello-disc.placed {
+  animation: othello-place 0.25s ease-out;
+}
+@keyframes othello-flip {
+  0% { transform: rotateY(0deg) scale(1); filter: brightness(1.6); }
+  50% { transform: rotateY(90deg) scale(1.08); }
+  100% { transform: rotateY(0deg) scale(1); }
+}
+@keyframes othello-place {
+  0% { transform: scale(0.4); opacity: 0.4; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.othello-last {
+  position: absolute;
+  width: 18%;
+  height: 18%;
+  border-radius: 50%;
+  background: #e8463a;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+}
+.othello-hint {
+  width: 28%;
+  height: 28%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+.othello-final {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

@@ -1,0 +1,125 @@
+.dots-boxes-bar {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.dots-boxes-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  font-weight: 700;
+  font-size: 0.88rem;
+  min-height: 40px;
+  min-width: 0;
+  flex: 1 1 140px;
+  max-width: 220px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.dots-boxes-chip.active {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 16%, var(--surface));
+}
+.dots-boxes-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--c);
+  color: #fff;
+  font-size: 0.72rem;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 800;
+  flex: none;
+  vertical-align: middle;
+}
+.dots-boxes-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dots-boxes-status {
+  font-size: 1rem;
+}
+.dots-boxes-wrap {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+}
+.dots-boxes-board {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.dots-boxes-dot {
+  fill: var(--text);
+}
+.dots-boxes-edge {
+  stroke: var(--border);
+  stroke-width: 0.05;
+  stroke-dasharray: 0.08 0.1;
+  stroke-linecap: round;
+  transition: stroke 0.15s;
+}
+.dots-boxes-edge.hover {
+  stroke: var(--muted);
+  stroke-dasharray: none;
+  stroke-width: 0.1;
+}
+.dots-boxes-edge.drawn {
+  stroke-dasharray: none;
+  stroke-width: 0.12;
+}
+.dots-boxes-edge.last {
+  stroke-width: 0.17;
+  animation: dots-boxes-flash 0.9s ease-in-out 2;
+}
+@keyframes dots-boxes-flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.dots-boxes-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+.dots-boxes-box rect {
+  opacity: 0.35;
+}
+.dots-boxes-box text {
+  font-size: 0.4px;
+  font-weight: 800;
+  text-anchor: middle;
+  fill: var(--text);
+  opacity: 0.8;
+}
+.dots-boxes-box.new rect {
+  animation: dots-boxes-fill 0.4s ease-out;
+}
+@keyframes dots-boxes-fill {
+  from { opacity: 0.9; }
+  to { opacity: 0.35; }
+}
+.dots-boxes-ranking {
+  text-align: left;
+  margin: 0;
+  padding-left: 24px;
+}
+.dots-boxes-ranking li {
+  margin: 4px 0;
+}

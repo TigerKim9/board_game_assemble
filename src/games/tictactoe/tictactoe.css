@@ -1,0 +1,81 @@
+.tictactoe-note {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.tictactoe-board {
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 8px;
+  padding: 8px;
+  background: var(--border);
+  border-radius: 18px;
+}
+.tictactoe-cell {
+  border: none;
+  border-radius: 12px;
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  min-width: 0;
+  transition: background 0.15s, transform 0.1s;
+  touch-action: manipulation;
+}
+.tictactoe-cell:disabled {
+  cursor: default;
+}
+.tictactoe-cell:not(:disabled):hover {
+  background: var(--surface-2);
+}
+.tictactoe-cell:not(:disabled):active {
+  transform: scale(0.96);
+}
+.tictactoe-cell .tictactoe-mark {
+  width: 72%;
+  height: 72%;
+}
+.tictactoe-cell.last {
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+.tictactoe-board.won .tictactoe-cell:not(.win) .tictactoe-mark {
+  opacity: 0.35;
+}
+.tictactoe-cell.win {
+  background: color-mix(in srgb, var(--gold) 30%, var(--surface));
+  animation: pop 0.35s ease-out;
+}
+.tictactoe-mark {
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: round;
+  vertical-align: middle;
+}
+.tictactoe-mark.p0 {
+  stroke: var(--p2);
+}
+.tictactoe-mark.p1 {
+  stroke: var(--p1);
+}
+.tictactoe-cell .tictactoe-mark circle,
+.tictactoe-cell .tictactoe-mark line {
+  stroke-dasharray: 100;
+  animation: tictactoe-draw 0.3s ease-out both;
+}
+.tictactoe-cell .tictactoe-mark line.second {
+  animation-delay: 0.15s;
+}
+@keyframes tictactoe-draw {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: 0; }
+}
+.tictactoe-tally {
+  text-align: center;
+  margin: 0;
+  font-size: 0.9rem;
+}

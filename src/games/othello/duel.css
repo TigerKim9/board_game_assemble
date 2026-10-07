@@ -1,0 +1,76 @@
+.othello-duel-bar {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.othello-duel-chip {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 230px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  font-weight: 700;
+  font-size: 0.9rem;
+  min-height: 40px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.othello-duel-chip.active {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 15%, var(--surface));
+}
+.othello-duel-icon {
+  display: inline-flex;
+  line-height: 0;
+}
+.othello-duel-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+.othello-duel-score {
+  font-size: 1.05rem;
+  min-width: 1.4em;
+  text-align: right;
+}
+.othello-duel-dots {
+  display: inline-block;
+  width: 22px;
+  height: 8px;
+  background:
+    radial-gradient(circle, var(--primary) 3px, transparent 3.5px) 0 50% / 8px 8px no-repeat,
+    radial-gradient(circle, var(--primary) 3px, transparent 3.5px) 7px 50% / 8px 8px no-repeat,
+    radial-gradient(circle, var(--primary) 3px, transparent 3.5px) 14px 50% / 8px 8px no-repeat;
+  position: absolute;
+  top: -5px;
+  right: 10px;
+  padding: 0 3px;
+  box-sizing: content-box;
+  border-radius: 6px;
+  background-color: var(--surface);
+  visibility: hidden;
+}
+.othello-duel-dots.on {
+  visibility: visible;
+  animation: othello-duel-blink 1s infinite;
+}
+@keyframes othello-duel-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+.othello-duel-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.othello-duel-actions .btn {
+  min-height: 40px;
+}

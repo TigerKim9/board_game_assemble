@@ -1,0 +1,117 @@
+.checkers-note {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.checkers-status.must {
+  color: var(--accent);
+}
+.checkers-board {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  border: 6px solid #5a3b22;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.checkers-sq {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  position: relative;
+  touch-action: manipulation;
+}
+.checkers-sq.light {
+  background: #ecd9b4;
+}
+.checkers-sq.dark {
+  background: #9a6a43;
+  cursor: pointer;
+}
+.checkers-sq:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.checkers-sq.last {
+  background: #b8853f;
+}
+.checkers-sq.captured::after {
+  content: '✕';
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+.checkers-sq.movable {
+  box-shadow: inset 0 0 0 3px rgba(255, 230, 120, 0.9);
+}
+.checkers-sq.selected {
+  background: #c99a3c;
+}
+.checkers-sq.via {
+  background: #b88c45;
+}
+.checkers-sq.target {
+  background: #6f8f4a;
+}
+.checkers-dot {
+  width: 30%;
+  height: 30%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.75);
+  z-index: 3;
+  pointer-events: none;
+}
+.checkers-piece {
+  position: absolute;
+  width: 12.5%;
+  height: 12.5%;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  transition: left 0.35s ease, top 0.35s ease, opacity 0.3s;
+  z-index: 2;
+}
+.checkers-disc {
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: clamp(0.9rem, 4.2vw, 1.6rem);
+  line-height: 1;
+  color: #f2c94c;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+.checkers-piece.p0 .checkers-disc,
+.checkers-mini.p0 {
+  background: radial-gradient(circle at 35% 30%, #5a5a5a, #161616 65%);
+  box-shadow: 0 3px 0 #000, 0 4px 6px rgba(0, 0, 0, 0.4), inset 0 0 0 3px rgba(255, 255, 255, 0.12);
+}
+.checkers-piece.p1 .checkers-disc,
+.checkers-mini.p1 {
+  background: radial-gradient(circle at 35% 30%, #ff8a73, #c0392b 65%);
+  box-shadow: 0 3px 0 #7d2016, 0 4px 6px rgba(0, 0, 0, 0.4), inset 0 0 0 3px rgba(255, 255, 255, 0.15);
+}
+.checkers-mini {
+  display: inline-block;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+.checkers-piece.lifted .checkers-disc {
+  transform: translateY(-3px) scale(1.06);
+}
+.checkers-piece.fading {
+  opacity: 0.35;
+}
+.checkers-piece.king .checkers-disc {
+  animation: pop 0.3s ease-out;
+}
