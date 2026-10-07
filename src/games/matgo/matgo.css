@@ -1,0 +1,4 @@
+/* 맞고 전용: 상대가 한 명이라 상대 패널을 조금 더 강조 */
+.gostop-matgo .gostop-opps .gostop-player-head {
+  min-height: 46px;
+}

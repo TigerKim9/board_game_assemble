@@ -1,0 +1,466 @@
+/* 맞고·고스톱 공용 스타일 (접두사 gostop-) */
+.gostop {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gostop-opps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ---------- 플레이어 패널 ---------- */
+.gostop-player {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.gostop-player.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.gostop-player-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  min-height: 42px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  flex-wrap: wrap;
+}
+.gostop-player-name {
+  flex: 1 1 auto;
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gostop-backs {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.gostop-score {
+  font-weight: 800;
+  font-size: 1.05rem;
+  min-width: 2.6em;
+  text-align: right;
+}
+.gostop-score.ready {
+  color: var(--accent);
+}
+.gostop-toggle {
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+.gostop-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #2a1e05;
+  white-space: nowrap;
+  margin-left: 2px;
+}
+.gostop-badge.go {
+  background: var(--accent);
+  color: #fff;
+}
+.gostop-badge.hot {
+  background: var(--danger);
+  color: #fff;
+}
+.gostop-badge.dim {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.gostop-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  padding: 0 10px 8px;
+  align-items: center;
+}
+.gostop-count {
+  font-size: 0.78rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.gostop-count b {
+  color: var(--text);
+}
+.gostop-items {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.gostop-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 10px 10px;
+}
+.gostop-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.gostop-kind {
+  flex: none;
+  width: 30px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.gostop-stack {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 4px;
+  min-width: 0;
+  padding-left: 10px;
+}
+.gostop-stack > .hw-card {
+  margin-left: -10px;
+  animation: gostop-in 0.35s ease-out both;
+}
+.gostop-none {
+  font-size: 0.85rem;
+}
+
+/* ---------- 판 ---------- */
+.gostop-table {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 8px;
+}
+.gostop-floor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 6px;
+  justify-content: center;
+  align-items: flex-end;
+  min-height: 72px;
+}
+.gostop-floor-empty {
+  align-items: center;
+  opacity: 0.75;
+}
+.gostop-group {
+  position: relative;
+  display: flex;
+  padding-left: 22px;
+}
+.gostop-group > .hw-card {
+  margin-left: -22px;
+}
+.gostop-group.spread {
+  padding-left: 0;
+  gap: 4px;
+}
+.gostop-group.spread > .hw-card {
+  margin-left: 0;
+}
+.gostop-group.ppeok {
+  padding-top: 4px;
+}
+.gostop-ppeok {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-30%);
+  z-index: 2;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+}
+.gostop-center {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.2);
+  padding-top: 8px;
+}
+.gostop-flip {
+  width: 42px;
+  min-height: 64px;
+  flex: none;
+  perspective: 300px;
+}
+.gostop-msg {
+  flex: 1;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  min-width: 0;
+}
+.gostop-msg .gostop-badge {
+  margin: 0 6px 0 0;
+}
+.gostop-status {
+  font-size: 1rem;
+}
+
+/* ---------- 토스트 ---------- */
+.gostop-toasts {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  pointer-events: none;
+  z-index: 5;
+}
+.gostop-toast {
+  background: rgba(20, 16, 10, 0.88);
+  color: #fff8e6;
+  font-size: 1.6rem;
+  font-weight: 900;
+  padding: 6px 18px;
+  border-radius: 14px;
+  border: 2px solid var(--gold);
+  text-align: center;
+  line-height: 1.15;
+  animation: gostop-toast 1.9s ease-out both;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+}
+.gostop-toast small {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+.gostop-toast-steal,
+.gostop-toast-shake {
+  font-size: 1.1rem;
+}
+.gostop-toast-ppeok,
+.gostop-toast-nagari {
+  border-color: var(--danger);
+}
+.gostop-toast-go,
+.gostop-toast-stop,
+.gostop-toast-chongtong,
+.gostop-toast-bomb {
+  background: var(--accent);
+  color: #fff;
+  font-size: 2rem;
+}
+@keyframes gostop-toast {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  12% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  20% {
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+@keyframes gostop-in {
+  0% {
+    transform: translateY(-10px) scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* ---------- 손패 / 행동 ---------- */
+.gostop-hand {
+  padding: 10px;
+}
+.gostop-hand-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.gostop-hand-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  padding-top: 8px;
+}
+.gostop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 10px;
+}
+.gostop-actions .btn {
+  min-height: 44px;
+}
+.gostop-decide {
+  text-align: center;
+  padding: 12px;
+  border: 2px solid var(--accent);
+  animation: pop 0.25s ease-out;
+}
+.gostop-decide p {
+  margin: 0 0 10px;
+}
+.gostop-decide .btn-row {
+  display: flex;
+  gap: 10px;
+}
+.gostop-decide .btn-row .btn {
+  flex: 1;
+}
+.gostop-decide small {
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+.gostop-hint {
+  font-size: 0.8rem;
+  margin: 8px 0 0 !important;
+}
+.gostop-cover {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.gostop-cover-emoji {
+  font-size: 2.6rem;
+}
+
+/* ---------- 지갑 / 결과 ---------- */
+.gostop-wallet {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.gostop-wallet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.gostop-wallet-empty {
+  font-size: 0.85rem;
+  margin: 6px 0 0;
+}
+.gostop-wallet-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  width: 100%;
+}
+.gostop-wallet-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 0.9rem;
+}
+.gostop .plus,
+.gostop-wallet .plus,
+.gostop-wallet-now .plus {
+  color: var(--success);
+}
+.gostop .minus,
+.gostop-wallet .minus,
+.gostop-wallet-now .minus {
+  color: var(--danger);
+}
+.gostop-break {
+  width: 100%;
+}
+.gostop-break-note {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+}
+.gostop-break table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.gostop-break th,
+.gostop-break td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.gostop-break th {
+  text-align: left;
+  font-weight: 600;
+}
+.gostop-break td {
+  text-align: right;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.gostop-break tr.sum {
+  background: var(--surface-2);
+}
+.gostop-break tr.sum td {
+  font-size: 1.1rem;
+}
+.gostop-break tr.mult td {
+  color: var(--accent);
+}
+.gostop-pay {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  text-align: left;
+}
+.gostop-pay li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 8px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.gostop-pay small {
+  width: 100%;
+}
+.gostop-wallet-now {
+  max-width: 360px;
+}
+.gostop-wallet-now small {
+  font-weight: 700;
+}
+
+@media (min-width: 700px) {
+  .gostop-floor {
+    gap: 10px 10px;
+  }
+}

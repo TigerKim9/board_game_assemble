@@ -1,0 +1,10 @@
+/* 고스톱 전용: 상대 두 명을 넓은 화면에선 나란히 */
+@media (min-width: 640px) {
+  .gostop-gostop .gostop-opps {
+    flex-direction: row;
+  }
+  .gostop-gostop .gostop-opps > * {
+    flex: 1;
+    min-width: 0;
+  }
+}
