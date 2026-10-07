@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 
-export type Category = 'board' | 'hwatu' | 'cards' | 'dice' | 'coop' | 'party'
+export type Category = 'board' | 'hwatu' | 'cards' | 'dice' | 'coop' | 'party' | 'defense' | 'arcade' | 'puzzle'
 
 export const CATEGORIES: { id: Category; name: string; emoji: string }[] = [
   { id: 'party', name: '파티 도구', emoji: '🎉' },
@@ -9,6 +9,9 @@ export const CATEGORIES: { id: Category; name: string; emoji: string }[] = [
   { id: 'cards', name: '트럼프 카드', emoji: '🃏' },
   { id: 'hwatu', name: '화투', emoji: '🌸' },
   { id: 'coop', name: '협력·눈치', emoji: '🧠' },
+  { id: 'defense', name: '디펜스', emoji: '🛡️' },
+  { id: 'arcade', name: '아케이드', emoji: '🕹️' },
+  { id: 'puzzle', name: '퍼즐', emoji: '🧩' },
 ]
 
 export interface GameMeta {
