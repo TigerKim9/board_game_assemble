@@ -1,0 +1,82 @@
+.klondike {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.klondike-note {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.klondike-board.felt {
+  padding: 10px 8px 14px;
+}
+@media (max-width: 480px) {
+  .klondike-board.felt {
+    margin: 0 -6px;
+    padding: 8px 4px 12px;
+  }
+}
+.klondike-measure {
+  width: 100%;
+  height: 0;
+}
+.klondike-inner {
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.klondike-top,
+.klondike-tab {
+  position: relative;
+}
+.klondike-pos,
+.klondike-col {
+  position: absolute;
+  top: 0;
+}
+.klondike-abs {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.klondike-pos:has(.klondike-dragged),
+.klondike-abs:has(.klondike-dragged) {
+  z-index: 1000 !important;
+}
+.klondike .pc {
+  touch-action: none;
+}
+.klondike-dragging .pc {
+  transition: none;
+}
+.klondike-dragged {
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+}
+.klondike-stock {
+  position: relative;
+  cursor: pointer;
+}
+.klondike-count {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+.klondike-recycle {
+  cursor: pointer;
+}
+.klondike-actions {
+  align-items: center;
+}
+.klondike-tip {
+  font-size: 0.8rem;
+  text-align: center;
+}

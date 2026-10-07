@@ -1,0 +1,132 @@
+.highlow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.highlow-setup-note {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.highlow-pot {
+  color: var(--accent);
+}
+.highlow-table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.highlow-streak {
+  font-size: 1.5rem;
+  color: var(--gold);
+}
+.highlow-best {
+  font-weight: 500;
+  opacity: 0.8;
+}
+.highlow-cards {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 166px;
+}
+.highlow-prev {
+  position: relative;
+  width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.highlow-prev-empty {
+  width: 64px;
+  height: 90px;
+}
+.highlow-arrow {
+  font-size: 1.1rem;
+  font-weight: 900;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.highlow-arrow.right {
+  color: #8ff0a4;
+}
+.highlow-arrow.wrong {
+  color: #ffb3a7;
+}
+.highlow-arrow.same {
+  color: #ddd;
+}
+.highlow-current {
+  perspective: 600px;
+}
+.highlow-current.flip .pc {
+  animation: highlow-flip 0.5s ease-out;
+}
+@keyframes highlow-flip {
+  0% {
+    transform: rotateY(90deg) translateX(-20px);
+  }
+  100% {
+    transform: rotateY(0) translateX(0);
+  }
+}
+.highlow-note {
+  min-height: 2.6em;
+  text-align: center;
+  font-weight: 600;
+  max-width: 340px;
+}
+.highlow-note.right {
+  color: #b9f5c6;
+}
+.highlow-note.wrong {
+  color: #ffc9c0;
+}
+.highlow-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  max-width: 400px;
+}
+.highlow-bank {
+  max-width: 400px;
+}
+.highlow-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.highlow-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  flex-wrap: wrap;
+}
+.highlow-info .toggle input {
+  width: 20px;
+  height: 20px;
+}
+.highlow-odds {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.highlow-history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.highlow-ranking {
+  text-align: left;
+  margin: 0;
+}
+.highlow-low {
+  background: var(--p2);
+  border-color: var(--p2);
+  color: #fff;
+}

@@ -1,0 +1,91 @@
+.freecell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.freecell-board.felt {
+  padding: 10px 8px 14px;
+}
+@media (max-width: 480px) {
+  .freecell-board.felt {
+    margin: 0 -6px;
+    padding: 8px 4px 12px;
+  }
+}
+.freecell-measure {
+  width: 100%;
+  height: 0;
+}
+.freecell-inner {
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.freecell-top,
+.freecell-tab {
+  position: relative;
+}
+.freecell-pos,
+.freecell-col {
+  position: absolute;
+  top: 0;
+}
+.freecell-abs {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.freecell-pos:has(.freecell-dragged),
+.freecell-abs:has(.freecell-dragged) {
+  z-index: 1000 !important;
+}
+.freecell .pc {
+  touch-action: none;
+}
+.freecell-dragging .pc {
+  transition: none;
+}
+.freecell-dragged {
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+}
+.freecell-info {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: -4px;
+}
+.freecell-input {
+  max-width: 160px;
+  text-align: center;
+}
+.freecell-cell {
+  cursor: pointer;
+}
+.freecell-notice {
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+.freecell-actions {
+  align-items: center;
+}
+.freecell-tip {
+  margin: 0;
+  font-size: 0.8rem;
+  text-align: center;
+}
+.freecell-tip {
+  margin: 0;
+  font-size: 0.8rem;
+  text-align: center;
+}
+.freecell-note {
+  margin: 0;
+  font-size: 0.9rem;
+}

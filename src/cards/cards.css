@@ -1,0 +1,230 @@
+/* Shared playing-card styles (prefix pc-). Colours are tokens so games can override them. */
+.pc,
+.pc-slot {
+  --pc-face: #fffdf8;
+  --pc-edge: #b9b2a3;
+  --pc-red: #d0271d;
+  --pc-black: #1d1f24;
+  --pc-sel: #f5b301;
+  --pc-back-blue-a: #234a8a;
+  --pc-back-blue-b: #2f5fa8;
+  --pc-back-red-a: #8f1f2c;
+  --pc-back-red-b: #b02a3a;
+  --pc-back-green-a: #1d5b44;
+  --pc-back-green-b: #277255;
+}
+@media (prefers-color-scheme: dark) {
+  .pc,
+  .pc-slot {
+    --pc-face: #eeebe3;
+    --pc-edge: #6e695f;
+    --pc-red: #c4241b;
+  }
+}
+
+.pc {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  aspect-ratio: 5 / 7;
+  line-height: 0;
+  border-radius: 7%/5%;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s,
+    filter 0.12s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+.pc-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.pc-bg {
+  fill: var(--pc-face);
+  stroke: var(--pc-edge);
+  stroke-width: 1.5;
+}
+.pc-red .pc-ink {
+  fill: var(--pc-red);
+}
+.pc-black .pc-ink {
+  fill: var(--pc-black);
+}
+.pc-rank {
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+.pc-face-letter {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 30px;
+  font-weight: 700;
+}
+.pc-frame {
+  stroke: var(--pc-edge);
+  stroke-width: 1.2;
+}
+
+/* back */
+.pc-back-edge {
+  fill: var(--pc-face);
+  stroke: var(--pc-edge);
+  stroke-width: 1.5;
+}
+.pc-back-blue {
+  --a: var(--pc-back-blue-a);
+  --b: var(--pc-back-blue-b);
+}
+.pc-back-red {
+  --a: var(--pc-back-red-a);
+  --b: var(--pc-back-red-b);
+}
+.pc-back-green {
+  --a: var(--pc-back-green-a);
+  --b: var(--pc-back-green-b);
+}
+.pc-back-a {
+  fill: var(--a);
+}
+.pc-back-b {
+  fill: var(--b);
+}
+.pc-back-line {
+  fill-opacity: 1;
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 1.5;
+}
+rect.pc-back-line {
+  fill: none;
+}
+.pc-back-emblem {
+  fill: rgba(255, 255, 255, 0.85);
+}
+
+/* states */
+.pc-clickable {
+  cursor: pointer;
+}
+.pc-clickable:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+.pc-selected {
+  transform: translateY(-4px);
+  box-shadow:
+    0 0 0 2px var(--pc-sel),
+    0 4px 10px rgba(0, 0, 0, 0.35);
+}
+.pc-disabled {
+  filter: grayscale(0.4) brightness(0.8);
+  cursor: default;
+}
+.pc-highlight {
+  animation: pc-glow 1.1s ease-in-out infinite;
+}
+@keyframes pc-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(255, 220, 90, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(255, 220, 90, 0.95),
+      0 0 12px rgba(255, 220, 90, 0.7);
+  }
+}
+
+/* empty pile placeholder */
+.pc-slot {
+  flex: none;
+  aspect-ratio: 5 / 7;
+  border-radius: 7%/5%;
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.12);
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 800;
+  line-height: 1;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pc-slot svg {
+  fill: rgba(255, 255, 255, 0.3);
+}
+.pc-slot .pc-ink {
+  fill: rgba(255, 255, 255, 0.3);
+}
+.pc-slot.pc-slot-active {
+  border-color: var(--pc-sel);
+  background: rgba(255, 220, 90, 0.15);
+}
+
+/* ---------- solitaire chrome (shared by klondike / spider / freecell) ---------- */
+.pc-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.pc-stats {
+  display: flex;
+  gap: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+}
+.pc-stats .pc-stat-best {
+  color: var(--muted);
+  font-weight: 600;
+}
+.pc-bar-buttons {
+  display: flex;
+  gap: 6px;
+}
+.pc-bar-buttons .btn {
+  min-height: 40px;
+}
+
+/* win celebration */
+.pc-celebrate {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 50;
+}
+.pc-celebrate span {
+  position: absolute;
+  top: -60px;
+  font-size: 28px;
+  line-height: 1;
+  animation: pc-fall linear forwards;
+}
+@keyframes pc-fall {
+  0% {
+    transform: translateY(0) rotate(0);
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(540deg);
+    opacity: 0;
+  }
+}
