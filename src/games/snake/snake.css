@@ -1,0 +1,137 @@
+.snake-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.snake-hud {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+.snake-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.snake-chip i {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  display: inline-block;
+}
+.snake-chip strong {
+  font-variant-numeric: tabular-nums;
+  min-width: 2ch;
+}
+.snake-best {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.snake-pause {
+  min-width: 44px;
+  min-height: 40px;
+}
+.snake-board-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.snake-canvas {
+  display: block;
+  border-radius: 10px;
+  touch-action: none;
+  box-shadow: var(--shadow);
+}
+.snake-result {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+.snake-pads {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+}
+.snake-pads.two {
+  justify-content: space-between;
+  max-width: 420px;
+}
+.snake-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  grid-template-rows: repeat(3, 46px);
+  gap: 4px;
+  touch-action: none;
+}
+.snake-pads.two .snake-pad {
+  grid-template-columns: repeat(3, 46px);
+  grid-template-rows: repeat(3, 44px);
+}
+.snake-pad-btn {
+  appearance: none;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 12px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  touch-action: none;
+  box-shadow: var(--shadow);
+}
+.snake-pad-btn:active {
+  background: var(--surface-2);
+  transform: scale(0.95);
+}
+.snake-pad-btn.up {
+  grid-column: 2;
+  grid-row: 1;
+}
+.snake-pad-btn.left {
+  grid-column: 1;
+  grid-row: 2;
+}
+.snake-pad-btn.right {
+  grid-column: 3;
+  grid-row: 2;
+}
+.snake-pad-btn.down {
+  grid-column: 2;
+  grid-row: 3;
+}
+.snake-pad-mid {
+  grid-column: 2;
+  grid-row: 2;
+  border-radius: 50%;
+  margin: 8px;
+  opacity: 0.8;
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  overflow: hidden;
+}
+.snake-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}

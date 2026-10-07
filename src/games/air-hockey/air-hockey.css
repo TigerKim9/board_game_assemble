@@ -1,0 +1,70 @@
+.airh-note {
+  font-size: 0.85rem;
+  word-break: keep-all;
+  max-width: 440px;
+  margin: 0 auto;
+}
+.airh-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.airh-hud {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 520px;
+}
+.airh-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.airh-name:first-child {
+  text-align: right;
+}
+.airh-score {
+  font-weight: 900;
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.airh-icon {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 4px 8px;
+}
+.airh-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.airh-canvas {
+  display: block;
+  touch-action: none;
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  border: 3px solid #5b6776;
+}
+.airh-result {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+.airh-final {
+  font-size: 2rem;
+  font-weight: 900;
+  margin: 0;
+}
+.airh-final-names { margin: -8px 0 0; font-size: 0.85rem; }

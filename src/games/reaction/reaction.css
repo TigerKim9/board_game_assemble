@@ -1,0 +1,277 @@
+.react-note {
+  font-size: 0.85rem;
+  word-break: keep-all;
+  max-width: 440px;
+  margin: 0 auto;
+}
+.react-arena {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 16px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  transition: background 0.08s;
+  overflow: hidden;
+}
+.react-arena.bg-idle,
+.react-solo.bg-idle {
+  background: #2b2f3a;
+}
+.react-arena.bg-wait,
+.react-solo.bg-wait {
+  background: #b33a3a;
+}
+.react-arena.bg-go,
+.react-solo.bg-go {
+  background: #1fbf5b;
+}
+.react-solo.bg-foul {
+  background: #6b4a8a;
+}
+.react-row {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  min-height: 0;
+}
+.react-divider {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 2px 0;
+}
+.react-zone {
+  flex: 1;
+  min-width: 0;
+  border-radius: 12px;
+  border: 3px solid var(--zc);
+  background: color-mix(in srgb, var(--zc) 22%, rgba(0, 0, 0, 0.25));
+  color: #fff;
+  cursor: pointer;
+  touch-action: none;
+  display: flex;
+  transition: transform 0.08s, background 0.15s;
+}
+.react-zone:active:not(.ai) {
+  transform: scale(0.98);
+}
+.react-zone.ai {
+  cursor: default;
+}
+.react-zone.fouled {
+  filter: grayscale(0.7);
+  opacity: 0.7;
+}
+.react-zone.won {
+  background: color-mix(in srgb, var(--zc) 70%, transparent);
+  animation: pop 0.3s ease-out;
+}
+.react-zone-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  position: relative;
+  min-width: 0;
+}
+.react-zone-inner.flip {
+  transform: rotate(180deg);
+}
+.react-zone-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+.react-zone-head strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.react-dots {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.react-dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+.react-dots i.on {
+  background: #ffd23f;
+  border-color: #ffd23f;
+}
+.react-zone-body {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.react-msg {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+.react-msg.go {
+  font-size: 2.2rem;
+}
+.react-msg.foul {
+  color: #ffd0d0;
+}
+.react-msg.win {
+  color: #fff6c8;
+}
+.react-key {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  font-size: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  padding: 0 5px;
+  opacity: 0.7;
+}
+@media (hover: none) {
+  .react-key {
+    display: none;
+  }
+}
+.react-card {
+  display: inline-block;
+  background: #fff;
+  border-radius: 14px;
+  padding: 10px 22px;
+  font-size: 2.6rem;
+  font-weight: 900;
+  line-height: 1.2;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  animation: pop 0.15s ease-out;
+}
+.react-card.small {
+  font-size: 1.6rem;
+  padding: 4px 12px;
+  border-radius: 10px;
+}
+.react-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.react-ranking {
+  text-align: left;
+  margin: 0;
+}
+.react-solo {
+  position: relative;
+  border-radius: 16px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 16px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  word-break: keep-all;
+  transition: background 0.08s;
+}
+.react-solo p {
+  margin: 0;
+  opacity: 0.92;
+}
+.react-solo.flash-hit {
+  background: #1f8f4a;
+}
+.react-solo.flash-foul,
+.react-solo.flash-miss {
+  background: #8f2f2f;
+}
+.react-progress {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.react-solo:not(.color-mode) .react-progress {
+  justify-content: center;
+}
+.react-progress i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+.react-progress i.on {
+  background: #fff;
+}
+.react-big {
+  font-size: 3.5rem;
+  line-height: 1;
+}
+.react-title {
+  font-size: 2rem;
+  font-weight: 900;
+}
+.react-title.huge {
+  font-size: 3.4rem;
+}
+.react-sub {
+  font-size: 0.9rem;
+}
+.react-green {
+  color: #5cf08f;
+}
+.react-feedback {
+  position: absolute;
+  bottom: 18%;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #c8ffd8;
+  animation: pop 0.2s ease-out;
+}
+.react-feedback.bad {
+  color: #ffd0d0;
+}
+.react-rating {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+.react-times {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.react-times li {
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+}
+.react-times li.best {
+  outline: 2px solid var(--success);
+}
