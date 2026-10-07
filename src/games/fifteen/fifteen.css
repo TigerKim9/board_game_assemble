@@ -1,0 +1,125 @@
+.fifteen-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+.fifteen-top {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.fifteen-top .segmented button {
+  min-height: 40px;
+}
+.fifteen-board {
+  --gap: 6px;
+  --tile: calc((100cqw - (var(--n) + 1) * var(--gap)) / var(--n));
+  container-type: inline-size;
+  position: relative;
+  width: min(100%, 440px);
+  aspect-ratio: 1;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text) 22%, var(--surface-2));
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.25);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+}
+.fifteen-board.s5 {
+  --gap: 5px;
+}
+.fifteen-tile {
+  position: absolute;
+  left: var(--gap);
+  top: var(--gap);
+  width: var(--tile);
+  height: var(--tile);
+  transform: translate(calc(var(--c) * (var(--tile) + var(--gap))), calc(var(--r) * (var(--tile) + var(--gap))));
+  transition: transform 0.12s ease-out;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: calc(var(--tile) * 0.42);
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(150deg, #fbe7c0, #e9bf7d);
+  color: #5b3a12;
+  box-shadow:
+    inset 0 -4px 0 rgba(0, 0, 0, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.2);
+  cursor: default;
+}
+.fifteen-tile.home {
+  background: linear-gradient(150deg, #c9ecd9, #87c9a6);
+  color: #1d4d36;
+}
+.fifteen-tile.can {
+  cursor: pointer;
+}
+.fifteen-board.pic .fifteen-tile {
+  background-image: var(--img);
+  background-size: calc(var(--n) * 100%) calc(var(--n) * 100%);
+  background-position: calc(var(--hc) / (var(--n) - 1) * 100%) calc(var(--hr) / (var(--n) - 1) * 100%);
+  color: #fff;
+}
+.fifteen-board.pic .fifteen-num {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  font-size: max(11px, calc(var(--tile) * 0.2));
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.45);
+}
+.fifteen-board.won .fifteen-tile.last {
+  animation: g15-in 0.5s ease-out both;
+}
+.fifteen-board.won.pic .fifteen-num {
+  opacity: 0;
+  transition: opacity 0.6s 0.3s;
+}
+.fifteen-board.won.pic .fifteen-tile {
+  border-radius: 0;
+  box-shadow: none;
+}
+.fifteen-board.won:not(.pic) .fifteen-tile {
+  animation: pop 0.4s ease-out;
+}
+.fifteen-board.won.pic .fifteen-tile.last {
+  animation: g15-in 0.5s ease-out both;
+}
+.fifteen-peek {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background-image: var(--img);
+  background-size: 100% 100%;
+  animation: g15-in 0.15s ease-out;
+}
+.fifteen-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.85rem;
+}
+@keyframes g15-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .fifteen-tile {
+    background: linear-gradient(150deg, #d8b97f, #a87f3f);
+    color: #2c1a05;
+  }
+  .fifteen-tile.home {
+    background: linear-gradient(150deg, #8fd0ae, #4e9c76);
+    color: #0f2d1f;
+  }
+}
