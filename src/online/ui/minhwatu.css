@@ -1,0 +1,13 @@
+/* 민화투 온라인 화면 추가 스타일 */
+.minhwatu-online-round {
+  text-align: center;
+  font-size: 0.8rem;
+}
+.minhwatu-online-end h3 {
+  margin: 0 0 6px;
+  text-align: center;
+}
+.minhwatu-online-end .btn.big {
+  width: 100%;
+  margin-top: 8px;
+}

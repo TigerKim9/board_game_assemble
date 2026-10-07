@@ -1,4 +1,4 @@
-import { CHEONGDAN_IDS, CHODAN_IDS, HONGDAN_IDS, getCard, monthOf, newDeckIds } from '../../hwatu'
+import { CHEONGDAN_IDS, CHODAN_IDS, HONGDAN_IDS, getCard, monthOf, newDeckIds } from '../../hwatu/deck'
 import type { Difficulty } from '../../lib/types'
 
 // ---------- 점수 ----------

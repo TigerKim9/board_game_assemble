@@ -17,7 +17,8 @@
  * - 더미가 떨어지면 스톱: 손패 점수가 가장 낮은 사람이 승리, 나머지는 자기 손패 점수만큼 벌점.
  * - 정해진 라운드를 마치면 벌점 합계가 가장 낮은 사람이 우승.
  */
-import { createDeck, shuffleDeck, type Card } from '../../cards'
+// 서버(온라인)에서도 쓰므로 CSS를 끌어오는 '../../cards' 대신 deck를 직접 import
+import { createDeck, shuffleDeck, type Card } from '../../cards/deck'
 import type { Difficulty } from '../../lib/types'
 
 export interface HulaPlayer {

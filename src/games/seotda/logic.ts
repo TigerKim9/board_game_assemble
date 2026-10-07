@@ -1,4 +1,4 @@
-import { getCard } from '../../hwatu'
+import { getCard } from '../../hwatu/deck'
 import { shuffle } from '../../lib/random'
 import type { Difficulty } from '../../lib/types'
 

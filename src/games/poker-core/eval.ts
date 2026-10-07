@@ -5,7 +5,8 @@
  * 점수: category(0..8) << 20 | 타이브레이크 5개(4비트씩). 로열 스트레이트 플러시는 8(스트레이트 플러시 A 하이).
  * `handScore(bestHand(cards))`와 `score(codes)`는 항상 같은 값을 낸다(테스트로 확인).
  */
-import { rankValue, type Card, type HandResult, type Suit } from '../../cards'
+import { rankValue, type Card, type Suit } from '../../cards/deck'
+import type { HandResult } from '../../cards/poker'
 
 const SUIT_INDEX: Record<Suit, number> = { S: 0, H: 1, D: 2, C: 3 }
 

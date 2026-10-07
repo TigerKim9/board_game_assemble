@@ -1,0 +1,19 @@
+/* 온라인 포커·훌라 공통: 최근 행동 기록 */
+.holdem-ol-log {
+  list-style: none;
+  margin: 0;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.holdem-ol-log li:last-child {
+  color: var(--text);
+  font-weight: 600;
+}
+.holdem-ol-wait {
+  text-align: center;
+  margin: 0;
+}

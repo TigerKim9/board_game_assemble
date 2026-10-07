@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { CardSlot, PlayingCard, sortCards, useElementWidth, type Card } from '../../cards'
+import { useEffect, useState } from 'react'
+import { sortCards, type Card } from '../../cards'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
 import { useStored } from '../../lib/storage'
@@ -28,6 +28,7 @@ import {
   topDiscard,
   type HulaState,
 } from './logic'
+import { Hand, HulaPlayers, HulaTable, RoundSummary } from './parts'
 import './hula.css'
 
 interface Session {
@@ -221,87 +222,27 @@ function Game({ session, onExit, onAgain }: { session: Session; onExit: () => vo
 
   return (
     <div className="hula">
-      <ul className="hula-players">
-        {players.map((p, i) => (
-          <li
-            key={i}
-            className={`hula-player ${i === active && phase !== 'roundEnd' ? 'active' : ''}`}
-            style={{ ['--seat' as string]: `var(--p${i + 1})` }}
-          >
-            <span className="hula-pname">
-              {p.isAI ? '🤖' : ''}
-              {p.name}
-            </span>
-            <span className="hula-pinfo">
-              🂠 {s.hands[i].length} · 벌점 {s.scores[i]}
-              {s.registered[i] && <span className="hula-reg">등록</span>}
-            </span>
-          </li>
-        ))}
-      </ul>
+      <HulaPlayers s={s} active={phase !== 'roundEnd' ? [active] : []} />
 
-      <div className="hula-table felt">
-        <div className="hula-piles">
-          <button className="hula-pile" disabled={!myTurn || phase !== 'draw'} onClick={doDraw} aria-label="더미에서 뽑기">
-            {s.deck.length ? <PlayingCard faceDown width={54} back="red" /> : <CardSlot width={54} label="없음" />}
-            <span>더미 {s.deck.length}</span>
-          </button>
-          <button className="hula-pile" disabled={!myTurn || phase !== 'draw' || !top} onClick={doTake} aria-label="버린 카드 가져오기">
-            {top ? (
-              <PlayingCard card={top} width={54} highlight={myTurn && phase === 'draw' && canTakeDiscard(s)} />
-            ) : (
-              <CardSlot width={54} />
-            )}
-            <span>버린 카드</span>
-          </button>
-          <div className="hula-round">
-            <strong>
-              {s.round} / {s.totalRounds}
-            </strong>
-            <span>라운드</span>
-          </div>
-        </div>
-        <div className="status hula-status">{statusText}</div>
-        {s.melds.length > 0 ? (
-          <div className="hula-melds">
-            {s.melds.map((m) => (
-              <button
-                key={m.id}
-                className={`hula-meld ${attachable.has(m.id) ? 'target' : ''}`}
-                style={{ ['--seat' as string]: `var(--p${m.owner + 1})` }}
-                disabled={!attachable.has(m.id)}
-                onClick={() => doAttach(m.id)}
-                aria-label={`${players[m.owner].name}의 등록 카드`}
-              >
-                {m.cards.map((c) => (
-                  <PlayingCard key={c.id} card={c} width={32} className="hula-meld-card" />
-                ))}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="hula-empty">아직 등록된 카드가 없어요</p>
-        )}
-        <ul className="hula-log">
-          {s.log.slice(-3).map((l, k) => (
-            <li key={`${s.log.length}-${k}`}>{l}</li>
-          ))}
-        </ul>
-      </div>
+      <HulaTable s={s} canDraw={myTurn && phase === 'draw'} onDraw={doDraw} onTake={doTake} status={statusText} attachable={attachable} onAttach={doAttach} />
 
       {toast && <div className="hula-toast">{toast}</div>}
 
       {phase === 'roundEnd' ? (
-        <RoundSummary
-          s={s}
-          onNext={() => {
-            if (isGameOver(s)) setFinished(true)
-            else {
-              setRevealed(null)
-              setS(nextRound(s))
-            }
-          }}
-        />
+        <RoundSummary s={s}>
+          <button
+            className="btn primary big"
+            onClick={() => {
+              if (isGameOver(s)) setFinished(true)
+              else {
+                setRevealed(null)
+                setS(nextRound(s))
+              }
+            }}
+          >
+            {isGameOver(s) ? '최종 결과 보기' : '다음 라운드'}
+          </button>
+        </RoundSummary>
       ) : coverFor != null ? (
         <PassCover
           name={players[coverFor].name}
@@ -373,69 +314,6 @@ function Game({ session, onExit, onAgain }: { session: Session; onExit: () => vo
         )
       )}
       <p className="muted hula-foot">{n}명 · 덱이 떨어지면 스톱</p>
-    </div>
-  )
-}
-
-function Hand({ cards, sel, mustUse, onTap }: { cards: Card[]; sel: string[]; mustUse: string | null; onTap?: (id: string) => void }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const width = useElementWidth(ref, 320)
-  const cw = 54
-  const step = cards.length > 1 ? Math.min(cw + 6, (width - cw) / (cards.length - 1)) : 0
-  return (
-    <div className="hula-hand" ref={ref} style={{ height: cw * 1.4 + 14 }}>
-      {cards.map((c, k) => (
-        <PlayingCard
-          key={c.id}
-          card={c}
-          width={cw}
-          selected={sel.includes(c.id)}
-          highlight={c.id === mustUse}
-          onClick={onTap ? () => onTap(c.id) : undefined}
-          className="hula-hand-card"
-          style={{ left: k * step }}
-        />
-      ))}
-    </div>
-  )
-}
-
-function RoundSummary({ s, onNext }: { s: HulaState; onNext: () => void }) {
-  const r = s.result!
-  const title =
-    r.reason === 'stop'
-      ? `스톱! ${r.winners.map((w) => s.players[w].name).join(', ')} 승리`
-      : r.hula
-        ? `🌺 훌라! ${s.players[r.winner!].name} 승리 (벌점 2배)`
-        : `🎉 ${s.players[r.winner!].name} 승리!`
-  return (
-    <div className="hula-summary card-panel">
-      <h3>{title}</h3>
-      <ul>
-        {s.players.map((p, i) => (
-          <li key={i}>
-            <div className="hula-sum-head">
-              <span>
-                {p.isAI ? '🤖 ' : ''}
-                {p.name}
-              </span>
-              <span>
-                {r.penalties[i] > 0 ? <strong className="hula-pen">+{r.penalties[i]}</strong> : <strong className="hula-win">0</strong>}
-                <span className="muted"> (합계 {s.scores[i]})</span>
-              </span>
-            </div>
-            <div className="hula-sum-cards">
-              {sortCards(s.hands[i]).map((c) => (
-                <PlayingCard key={c.id} card={c} width={28} />
-              ))}
-              {s.hands[i].length === 0 && <span className="muted">다 털었어요!</span>}
-            </div>
-          </li>
-        ))}
-      </ul>
-      <button className="btn primary big" onClick={onNext}>
-        {isGameOver(s) ? '최종 결과 보기' : '다음 라운드'}
-      </button>
     </div>
   )
 }

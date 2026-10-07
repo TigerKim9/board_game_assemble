@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
-import { CaptureRows, FloorGroups, HwatuCard, HwatuPile, HwatuStyleButton, HwatuStyleToggle, ProgressChips, getCard } from '../../hwatu'
+import { HwatuStyleToggle } from '../../hwatu'
 import { sleep } from '../../lib/random'
 import { useStored } from '../../lib/storage'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
@@ -16,26 +16,22 @@ import {
   clone,
   decideGo,
   finishWin,
-  goBonus,
   matchesOnFloor,
   newRound,
   play,
-  progressOf,
-  scoreOf,
-  type GEvent,
-  type GPlayer,
   type GState,
   type Mode,
   type PlayAction,
   type RoundResult,
 } from './logic'
+import { GoStopPanel, GostopTable, HandPanel, PlayerPanel, RoundBreakdown, moneyDelta, won, type Toast } from './parts'
 import './gostop.css'
+
+export { moneyDelta, won }
 
 type Wallet = Record<string, number>
 /** 맞고·고스톱이 함께 쓰는 가상 머니 지갑 */
 export const WALLET_KEY = 'gostop:money'
-
-export const won = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toLocaleString('ko-KR')}원`
 
 interface Session {
   players: PlayerConfig[]
@@ -109,13 +105,6 @@ export function GostopGame({ mode }: { mode: Mode }) {
       onReset={() => setSession(null)}
     />
   )
-}
-
-interface Toast {
-  id: number
-  text: string
-  type: GEvent['type']
-  who: string
 }
 
 const DELAY: Record<string, number> = { play: 850, chooseHand: 650, chooseFlip: 650, flip: 600, resolve: 700, goStop: 900 }
@@ -254,9 +243,6 @@ function Game({
   else status = `${current.name} 차례`
 
   const opponents = players.map((p, i) => ({ p, i })).filter(({ i }) => i !== viewer)
-  const ctx = s.ctx
-  const showFlip = ctx?.flipped != null && (phase.kind === 'chooseFlip' || phase.kind === 'resolve')
-  const fresh = new Set(ctx?.played ?? [])
   const pendingOptions = (phase.kind === 'chooseHand' || phase.kind === 'chooseFlip') ? phase.options : []
 
   return (
@@ -267,61 +253,20 @@ function Game({
         ))}
       </div>
 
-      <div className="gostop-table felt">
-        <div className="gostop-toasts" aria-live="polite">
-          {toasts.map((t) => (
-            <div key={t.id} className={`gostop-toast gostop-toast-${t.type}`}>
-              <small>{t.who}</small>
-              {t.text}
-            </div>
-          ))}
-        </div>
-        <FloorGroups
-          floor={s.floor}
-          width={44}
-          ppeok={s.ppeok}
-          highlight={[...choosing, ...selMatches, ...(myTurn ? [] : pendingOptions)]}
-          clickable={[...choosing, ...(canPlay ? selMatches : [])]}
-          fresh={fresh}
-          onPick={onFloor}
-        />
-        <div className="gostop-center">
-          <HwatuPile count={s.deck.length} width={40} />
-          <div className="gostop-flip">
-            {showFlip && <HwatuCard key={ctx!.flipped!} card={ctx!.flipped!} width={44} className="hw-flip" title="뒤집은 카드" />}
-          </div>
-          <div className="gostop-msg">
-            {s.nagariMult > 1 && <span className="gostop-badge hot">판돈 ×{s.nagariMult}</span>}
-            {s.message || (mode === 'matgo' ? `${s.cfg.threshold}점부터 고·스톱!` : `${s.cfg.threshold}점부터 고·스톱!`)}
-          </div>
-        </div>
-      </div>
+      <GostopTable
+        s={s}
+        deckCount={s.deck.length}
+        message={s.message}
+        toasts={toasts}
+        highlight={[...choosing, ...selMatches, ...(myTurn ? [] : pendingOptions)]}
+        clickable={[...choosing, ...(canPlay ? selMatches : [])]}
+        onPick={onFloor}
+      />
 
       <div className="status gostop-status">{status}</div>
 
       {myTurn && phase.kind === 'goStop' && (
-        <div className="gostop-decide card-panel">
-          <p>
-            지금 <strong>{phase.score}점</strong>
-            {current.goCount > 0 && ` · ${current.goCount}고 중`}
-            {stopPreview != null && (
-              <>
-                <br />
-                스톱하면 <strong>{stopPreview}점</strong> ({won(stopPreview * WON_PER_POINT)}) 획득
-              </>
-            )}
-          </p>
-          <div className="btn-row">
-            <button className="btn accent big" onClick={() => setS((st) => decideGo(st, true))}>
-              {current.goCount + 1}고!
-              <small> ({goLabel(current.goCount + 1)})</small>
-            </button>
-            <button className="btn primary big" onClick={() => setS((st) => decideGo(st, false))}>
-              스톱
-            </button>
-          </div>
-          <p className="muted gostop-hint">고를 하면 더 큰 점수를 노리지만, 상대가 먼저 나면 고박이에요.</p>
-        </div>
+        <GoStopPanel score={phase.score} goCount={current.goCount} stopPreview={stopPreview} onDecide={(go) => setS((st) => decideGo(st, go))} />
       )}
 
       {needCover ? (
@@ -338,150 +283,9 @@ function Game({
         viewer != null && (
           <>
             <PlayerPanel p={me} active={viewer === turn && !over} threshold={s.cfg.threshold} mine />
-            <div className="gostop-hand card-panel">
-              <div className="gostop-hand-head">
-                <strong>
-                  내 손패 <span className="muted">{me.hand.length}장</span>
-                </strong>
-                {canPlay && <span className="gostop-legend">✨ 짝 = 바닥에 같은 달 있음</span>}
-                <HwatuStyleButton />
-              </div>
-              <div className="gostop-hand-cards">
-                {me.hand.map((id) => {
-                  const canMatch = matchesOnFloor(s, id).length > 0
-                  const bomb = canPlay && canBomb(s, id)
-                  const shake = canPlay && canShake(s, id)
-                  return (
-                    <HwatuCard
-                      key={id}
-                      card={id}
-                      width={64}
-                      selected={selected === id}
-                      match={canPlay && canMatch}
-                      marker={!canPlay ? undefined : bomb ? '💣폭탄' : shake ? '흔들' : canMatch ? '짝' : undefined}
-                      onClick={canPlay ? () => onHand(id) : undefined}
-                    />
-                  )
-                })}
-                {me.hand.length === 0 && <span className="muted">손패가 없어요</span>}
-              </div>
-              {canPlay && (selected != null || me.dummies > 0) && (
-                <div className="gostop-actions">
-                  {selected != null && canBomb(s, selected) && (
-                    <button className="btn accent" onClick={() => doPlay({ type: 'card', card: selected, bomb: true })}>
-                      💣 폭탄 (3장 한꺼번에)
-                    </button>
-                  )}
-                  {selected != null && canShake(s, selected) && (
-                    <button className="btn accent" onClick={() => doPlay({ type: 'card', card: selected, shake: true })}>
-                      🫨 흔들고 내기 (×2)
-                    </button>
-                  )}
-                  {selected != null && (
-                    <button className="btn primary" onClick={() => doPlay({ type: 'card', card: selected })}>
-                      {canBomb(s, selected) || canShake(s, selected) ? '그냥 한 장 내기' : '이 카드 내기'}
-                    </button>
-                  )}
-                  {me.dummies > 0 && (
-                    <button className="btn ghost" onClick={() => doPlay({ type: 'dummy' })}>
-                      빈 차례 쓰기 (더미만 뒤집기 · {me.dummies}번 남음)
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+            <HandPanel s={s} me={me} canPlay={canPlay} selected={selected} onHand={onHand} onPlay={doPlay} />
           </>
         )
-      )}
-    </div>
-  )
-}
-
-function goLabel(n: number): string {
-  const { add, mult } = goBonus(n)
-  return mult > 1 ? `+${add}점 ×${mult}` : `+${add}점`
-}
-
-/** 플레이어별 돈 변화 (원) */
-export function moneyDelta(r: RoundResult, n: number): number[] {
-  const d = Array.from({ length: n }, () => 0)
-  if (r.winner == null) return d
-  for (const p of r.payments) {
-    const m = p.points * WON_PER_POINT
-    d[p.from] -= m
-    d[r.winner] += m
-  }
-  return d
-}
-
-function Badges({ p }: { p: GPlayer }) {
-  return (
-    <>
-      {p.goCount > 0 && <span className="gostop-badge go">{p.goCount}고</span>}
-      {p.shakes - p.bombs > 0 && <span className="gostop-badge">흔들 {p.shakes - p.bombs > 1 ? `×${p.shakes - p.bombs}` : ''}</span>}
-      {p.bombs > 0 && <span className="gostop-badge">💣{p.bombs > 1 ? `×${p.bombs}` : ''}</span>}
-      {p.ppeoks > 0 && <span className="gostop-badge dim">뻑 {p.ppeoks}</span>}
-    </>
-  )
-}
-
-function PlayerPanel({
-  p,
-  active,
-  threshold,
-  compact,
-  mine,
-  defaultOpen,
-}: {
-  p: GPlayer
-  active: boolean
-  threshold: number
-  compact?: boolean
-  mine?: boolean
-  defaultOpen?: boolean
-}) {
-  const [open, setOpen] = useState(mine || !!defaultOpen)
-  const sc = scoreOf(p.captured)
-  const g = { gwang: [] as number[], yeol: [] as number[], tti: [] as number[], pi: [] as number[] }
-  for (const id of p.captured.slice().sort((a, b) => a - b)) {
-    const c = getCard(id)
-    if (c.isGukjin && sc.gukjinAsPi) g.pi.push(id)
-    else g[c.kind].push(id)
-  }
-  const counts = { gwang: g.gwang.length, yeol: g.yeol.length, tti: g.tti.length, pi: sc.pi }
-  const prog = progressOf(p.captured)
-  // 고/스톱까지 남은 점수 (고를 했다면 지난 점수보다 올라야 함)
-  const target = Math.max(threshold, p.goCount > 0 ? p.lastGoScore + 1 : 0)
-  const left = target - sc.total
-  return (
-    <div className={`gostop-player ${active ? 'active' : ''} ${compact ? 'compact' : ''} ${mine ? 'mine' : ''}`}>
-      <button className="gostop-player-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <span className="gostop-player-name">
-          {p.isAI ? '🤖 ' : ''}
-          {mine ? `${p.name} (나)` : p.name}
-        </span>
-        {compact && (
-          <span className="gostop-backs" aria-label={`손패 ${p.hand.length}장`}>
-            <HwatuCard faceDown width={14} />
-            <b>{p.hand.length}</b>
-          </span>
-        )}
-        <Badges p={p} />
-        <span className="gostop-scorebox">
-          <span className={`gostop-score ${sc.total >= threshold ? 'ready' : ''}`}>{sc.total}점</span>
-          <small className={`gostop-goal ${left <= 0 ? 'ready' : ''}`}>{left <= 0 ? (p.goCount > 0 ? '다시 고/스톱!' : '고/스톱!') : `${p.goCount > 0 ? '다음 고' : '고'}까지 ${left}점`}</small>
-        </span>
-        <span className="gostop-toggle">{open ? '▲' : '▼'}</span>
-      </button>
-      {sc.items.length > 0 && <div className="gostop-items">{sc.items.map((it) => `${it.label} ${it.points}점`).join(' · ')}</div>}
-      <ProgressChips items={prog} hideZero={!mine || !open} className="gostop-prog" />
-      {open ? (
-        <div className="gostop-rows">
-          <CaptureRows groups={g} counts={counts} width={compact ? 26 : 30} hideEmpty={compact} />
-          {compact && p.captured.length === 0 && <span className="muted gostop-none">아직 먹은 패가 없어요</span>}
-        </div>
-      ) : (
-        p.captured.length === 0 && <div className="muted gostop-none gostop-rows">아직 먹은 패가 없어요</div>
       )}
     </div>
   )
@@ -507,62 +311,9 @@ function RoundEnd({
   if (r.kind === 'nagari') title = '🤝 나가리!'
   else if (viewer != null) title = r.winner === viewer ? `🎉 승리! ${won(delta[viewer])}` : `😢 ${players[r.winner!].name} 승리`
   else title = `🏆 ${players[r.winner!].name} 승리!`
-  const { add } = goBonus(r.goCount)
   return (
     <Result title={title} onAgain={onNext} againLabel={r.kind === 'nagari' ? `다음 판 (판돈 ×${r.nextMult})` : '다음 판'}>
-      {r.kind === 'nagari' ? (
-        <p>아무도 스톱하지 못하고 더미가 떨어졌어요. 다음 판 점수는 {r.nextMult}배!</p>
-      ) : (
-        <div className="gostop-break">
-          {r.kind === 'chongtong' && <p className="gostop-break-note">같은 달 네 장을 들고 시작해 바로 이겼어요!</p>}
-          {r.note && <p className="gostop-break-note">{r.note}</p>}
-          <table>
-            <tbody>
-              {r.items.map((it) => (
-                <tr key={it.key}>
-                  <th>{it.label}</th>
-                  <td>{it.points ? `${it.points}점` : ''}</td>
-                </tr>
-              ))}
-              {r.goCount > 0 && (
-                <tr>
-                  <th>{r.goCount}고 보너스</th>
-                  <td>+{add}점</td>
-                </tr>
-              )}
-              <tr className="sum">
-                <th>기본 점수</th>
-                <td>{r.base}점</td>
-              </tr>
-              {r.multipliers.map((m) => (
-                <tr key={m.label} className="mult">
-                  <th>{m.label}</th>
-                  <td>×{m.factor}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <ul className="gostop-pay">
-            {r.payments.map((p) => (
-              <li key={p.from}>
-                <span>
-                  {players[p.from].isAI ? '🤖 ' : ''}
-                  {players[p.from].name}
-                  {p.reasons.map((x) => (
-                    <span key={x} className="gostop-badge hot">
-                      {x} {x === '고박' && s.mode === 'gostop' ? '(독박)' : '×2'}
-                    </span>
-                  ))}
-                </span>
-                <strong>
-                  {p.points}점 → {won(-p.points * WON_PER_POINT)}
-                </strong>
-                {p.paysFor.length > 0 && <small className="muted">{p.paysFor.map((i) => players[i].name).join(', ')} 몫까지 대신 내요</small>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <RoundBreakdown r={r} mode={s.mode} names={players.map((p) => `${p.isAI ? '🤖 ' : ''}${p.name}`)} />
       <ul className="gostop-wallet-list gostop-wallet-now">
         {players.map((p, i) => (
           <li key={i}>

@@ -6,7 +6,7 @@
  * - flip / resolve: 자동 단계. UI는 잠깐 기다렸다가 `advance()`를 부름.
  * - resolve에서 뻑·쪽·따닥·뻑 먹기·폭탄·쓸 처리, 피 뺏기, 점수 확인.
  */
-import { CHEONGDAN_IDS, CHODAN_IDS, GODORI_IDS, HONGDAN_IDS, getCard, monthOf, newDeckIds } from '../../hwatu'
+import { CHEONGDAN_IDS, CHODAN_IDS, GODORI_IDS, HONGDAN_IDS, getCard, monthOf, newDeckIds } from '../../hwatu/deck'
 import type { Difficulty } from '../../lib/types'
 
 // ---------- 설정 ----------

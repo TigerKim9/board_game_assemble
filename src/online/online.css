@@ -172,3 +172,23 @@
 .online-entry {
   margin-top: 12px;
 }
+.online-scores {
+  width: 100%;
+  margin: 0;
+  padding-left: 1.4em;
+  text-align: left;
+}
+.online-scores li {
+  padding: 2px 0;
+}
+.online-scores li span {
+  display: inline-block;
+  min-width: 60%;
+}
+.online-scores li strong {
+  font-variant-numeric: tabular-nums;
+}
+.online-scores li.win {
+  font-weight: 800;
+  color: var(--accent);
+}

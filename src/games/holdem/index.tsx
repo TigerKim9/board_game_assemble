@@ -1,15 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
-import { CardSlot, PlayingCard, bestHand, describeHand, type Card } from '../../cards'
+import { useEffect, useState } from 'react'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
 import { useStored } from '../../lib/storage'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
-import { formatChips, legalActions, potTotal, toCall, type BetAction } from '../poker-core'
+import { formatChips, type BetAction } from '../poker-core'
 import { BankPanel, Chips, PassCover, type ChipBank } from '../poker-core/ui'
 import {
   CASH_BUYIN,
   HANDS_PER_LEVEL,
-  STREET_LABEL,
   TOURNEY_STACK,
   advance,
   aiAction,
@@ -17,12 +15,11 @@ import {
   applyAction,
   createTable,
   isRunout,
-  potSizedRaise,
-  preflopPercentile,
   startHand,
   type Mode,
   type Table,
 } from './logic'
+import { ActionBar, HoldemInfo, HoldemTable, MyHand, OutcomeDetail, outcomeHeadline } from './parts'
 import './holdem.css'
 
 interface Session {
@@ -117,13 +114,10 @@ function Game({
   const [startStacks] = useState(() => t.players.map((p) => p.stack))
   const [refills, setRefills] = useState<number[]>(() => t.players.map(() => 0))
   const [revealed, setRevealed] = useState<number | null>(null)
-  const [raiseOpen, setRaiseOpen] = useState(false)
-  const [raiseTo, setRaiseTo] = useState(0)
   const [stoodUp, setStoodUp] = useState(false)
   const [note, setNote] = useState<string | null>(null)
 
   const { players, bet, phase } = t
-  const n = players.length
   const turn = bet.turn
   const current = turn >= 0 ? players[turn] : null
   const humans = players.map((p, i) => (p.isAI ? -1 : i)).filter((i) => i >= 0)
@@ -161,7 +155,6 @@ function Game({
   }, [phase, t.handNo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const nextHand = () => {
-    setRaiseOpen(false)
     setRevealed(null)
     const re = mode === 'cash' ? t.players.filter((p) => p.isAI && p.stack <= 0).map((p) => p.name) : []
     setNote(re.length ? `🤖 ${re.join(', ')} 칩 재충전 (${formatChips(CASH_BUYIN)})` : null)
@@ -179,7 +172,6 @@ function Game({
   }
 
   const doAct = (a: BetAction) => {
-    setRaiseOpen(false)
     setT((x) => (x.phase === 'betting' && x.bet.turn === turn ? applyAction(x, a) : x))
   }
 
@@ -202,95 +194,19 @@ function Game({
   const isLive = (i: number) => !bet.seats[i].out && !bet.seats[i].folded
   const canSee = (i: number) => i === viewer || (runout && isLive(i))
 
-  const winCards = new Set<string>()
-  if (phase === 'done' && outcome?.showdown) {
-    for (const w of outcome.winners) outcome.hands[w]?.cards.forEach((c) => winCards.add(c.id))
-  }
-
   const myTurn = phase === 'betting' && current != null && !current.isAI && viewer === turn
-  const pot = potTotal(bet)
 
   return (
     <div className="holdem">
-      <div className="holdem-info">
-        <span>
-          블라인드 <strong>{t.sb}/{t.bb}</strong>
-        </span>
-        {mode === 'tournament' && t.blindsUp && (
-          <span>
-            레벨 {t.level + 1} · 다음까지 {HANDS_PER_LEVEL - ((t.handNo - 1) % HANDS_PER_LEVEL)}판
-          </span>
-        )}
-        <span>#{t.handNo}</span>
-      </div>
+      <HoldemInfo t={t} />
       {note && <div className="holdem-note center">{note}</div>}
 
-      <div className="holdem-table felt">
-        <ul className={`holdem-seats ${n <= 4 ? 'few' : ''}`}>
-          {players.map((p, i) => {
-            const s = bet.seats[i]
-            const won = phase === 'done' && (outcome?.winners.includes(i) ?? false)
-            const hand = phase === 'done' ? outcome?.hands[i] : null
-            return (
-              <li
-                key={i}
-                className={`holdem-seat ${i === turn && phase === 'betting' ? 'turn' : ''} ${s.folded || s.out ? 'folded' : ''} ${won ? 'won' : ''} ${i === viewer ? 'me' : ''}`}
-                style={{ ['--seat' as string]: `var(--p${(i % 6) + 1})` }}
-              >
-                <div className="holdem-seat-name">
-                  {i === t.dealer && <span className="holdem-btn" title="딜러 버튼">D</span>}
-                  <span className="holdem-name-text">
-                    {p.isAI ? '🤖' : ''}
-                    {p.name}
-                  </span>
-                </div>
-                <div className="holdem-seat-cards">
-                  {s.out ? (
-                    <span className="holdem-tag">{mode === 'tournament' ? '탈락' : '쉬는 중'}</span>
-                  ) : (
-                    t.holes[i].map((c) => (
-                      <PlayingCard key={c.id} card={c} faceDown={!canSee(i)} width={28} highlight={winCards.has(c.id)} back="red" />
-                    ))
-                  )}
-                </div>
-                <div className="holdem-seat-stack">
-                  <Chips amount={s.stack} />
-                </div>
-                <div className="holdem-seat-tag">
-                  {won ? (
-                    <span className="holdem-tag win">+{formatChips(outcome!.won[i])}</span>
-                  ) : hand ? (
-                    <span className="holdem-tag hand">{hand.name}</span>
-                  ) : i === turn && phase === 'betting' && p.isAI ? (
-                    <span className="holdem-tag thinking">…</span>
-                  ) : t.last[i] ? (
-                    <span className={`holdem-tag ${s.folded ? 'fold' : ''}`}>{t.last[i]}</span>
-                  ) : null}
-                </div>
-                {s.bet > 0 && phase !== 'done' && <div className="holdem-seat-bet">{formatChips(s.bet)}</div>}
-              </li>
-            )
-          })}
-        </ul>
-
-        <div className="holdem-center">
-          <div className="holdem-board">
-            {Array.from({ length: 5 }, (_, k) =>
-              t.board[k] ? (
-                <PlayingCard key={t.board[k].id} card={t.board[k]} width={50} highlight={winCards.has(t.board[k].id)} className="holdem-deal" />
-              ) : (
-                <CardSlot key={k} width={50} className="holdem-slot" />
-              ),
-            )}
-          </div>
-          <div className="holdem-pot">
-            팟 <Chips amount={pot} />
-            <span className="holdem-street">{STREET_LABEL[t.street]}</span>
-          </div>
-        </div>
-
-        <div className="status holdem-status">
-          {phase === 'done'
+      <HoldemTable
+        t={t}
+        viewer={viewer}
+        canSee={canSee}
+        status={
+          phase === 'done'
             ? outcomeHeadline(t)
             : phase === 'advance'
               ? isRunout(t)
@@ -298,9 +214,9 @@ function Game({
                 : '…'
               : current?.isAI
                 ? `🤖 ${current.name} 고민 중…`
-                : `${current?.name} 차례`}
-        </div>
-      </div>
+                : `${current?.name} 차례`
+        }
+      />
 
       {phase === 'done' && outcome && <OutcomeDetail t={t} />}
 
@@ -310,22 +226,7 @@ function Game({
         viewer != null && !bet.seats[viewer].out && <MyHand t={t} seat={viewer} />
       )}
 
-      {myTurn && (
-        <ActionBar
-          t={t}
-          raiseOpen={raiseOpen}
-          setRaiseOpen={(o) => {
-            if (o) {
-              const l = legalActions(bet)
-              setRaiseTo(l.raise ? Math.min(l.raise.max, Math.max(l.raise.min, potSizedRaise(t, 0.5))) : 0)
-            }
-            setRaiseOpen(o)
-          }}
-          raiseTo={raiseTo}
-          setRaiseTo={setRaiseTo}
-          onAct={doAct}
-        />
-      )}
+      {myTurn && <ActionBar t={t} onAct={doAct} />}
 
       {phase === 'done' && (
         <div className="holdem-after">
@@ -352,145 +253,6 @@ function Game({
       {mode === 'tournament' && phase !== 'done' && humans.every((i) => bet.seats[i].out || bet.seats[i].folded) && (
         <p className="muted center holdem-note">컴퓨터끼리 마무리하는 중…</p>
       )}
-    </div>
-  )
-}
-
-function outcomeHeadline(t: Table): string {
-  const o = t.outcome!
-  const names = o.winners.map((w) => t.players[w].name)
-  if (!o.showdown) return `🎉 ${names.join(', ')} 팟 획득!`
-  const main = o.awards[0]
-  if (main && main.winners.length > 1) return `🤝 ${main.winners.map((w) => t.players[w].name).join(', ')} 나눠 가짐`
-  const w = main?.winners[0] ?? o.winners[0]
-  const h = o.hands[w]
-  return `🎉 ${t.players[w].name} 승리${h ? ` — ${describeHand(h)}` : ''}`
-}
-
-function OutcomeDetail({ t }: { t: Table }) {
-  const o = t.outcome!
-  if (!o.showdown || o.awards.length <= 1) return null
-  return (
-    <ul className="holdem-pots card-panel">
-      {o.awards.map((a, k) => (
-        <li key={k}>
-          <span className="muted">{k === 0 ? '메인 팟' : `사이드 팟 ${k}`}</span> <Chips amount={a.amount} /> →{' '}
-          <strong>{a.winners.map((w) => t.players[w].name).join(', ')}</strong>
-          {a.winners.length > 1 && <span className="muted"> (나눔)</span>}
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function MyHand({ t, seat }: { t: Table; seat: number }) {
-  const hole = t.holes[seat]
-  const s = t.bet.seats[seat]
-  const hint = useMemo(() => {
-    if (hole.length < 2) return ''
-    if (t.board.length >= 3) return describeHand(bestHand([...hole, ...t.board]))
-    const pct = preflopPercentile(hole[0], hole[1])
-    const pair = hole[0].rank === hole[1].rank
-    const tier = pct < 0.05 ? '프리미엄' : pct < 0.15 ? '아주 좋음' : pct < 0.3 ? '좋음' : pct < 0.55 ? '보통' : '약함'
-    return `${pair ? '포켓 페어 · ' : hole[0].suit === hole[1].suit ? '수딧 · ' : ''}시작 패 ${tier}${pct < 0.5 ? ` (상위 ${Math.max(1, Math.round(pct * 100))}%)` : ''}`
-  }, [hole, t.board])
-  const win = new Set<string>()
-  if (t.phase === 'done' && t.outcome?.showdown && t.outcome.winners.includes(seat)) t.outcome.hands[seat]?.cards.forEach((c) => win.add(c.id))
-  return (
-    <div className={`holdem-me card-panel ${s.folded ? 'folded' : ''}`}>
-      <div className="holdem-me-cards">
-        {hole.map((c: Card) => (
-          <PlayingCard key={c.id} card={c} width={68} highlight={win.has(c.id)} />
-        ))}
-      </div>
-      <div className="holdem-me-info">
-        <span className="muted">{t.players[seat].name}님의 패</span>
-        <strong>{s.folded ? '폴드했어요' : hint}</strong>
-        <span className="holdem-me-stack">
-          칩 <Chips amount={s.stack} />
-          {s.bet > 0 && t.phase !== 'done' && <span className="muted"> · 베팅 {formatChips(s.bet)}</span>}
-        </span>
-      </div>
-    </div>
-  )
-}
-
-function ActionBar({
-  t,
-  raiseOpen,
-  setRaiseOpen,
-  raiseTo,
-  setRaiseTo,
-  onAct,
-}: {
-  t: Table
-  raiseOpen: boolean
-  setRaiseOpen: (o: boolean) => void
-  raiseTo: number
-  setRaiseTo: (v: number) => void
-  onAct: (a: BetAction) => void
-}) {
-  const l = legalActions(t.bet)
-  const seat = t.bet.seats[t.bet.turn]
-  const need = toCall(t.bet, t.bet.turn)
-  const callAll = need >= seat.stack
-  const betWord = t.bet.currentBet === 0 ? '베팅' : '레이즈'
-  const r = l.raise
-  const clamp = (v: number) => (r ? Math.max(r.min, Math.min(r.max, Math.round(v))) : 0)
-  const quick: [string, number][] = r
-    ? [
-        ['최소', r.min],
-        ['½팟', clamp(potSizedRaise(t, 0.5))],
-        ['팟', clamp(potSizedRaise(t, 1))],
-        ['올인', r.max],
-      ]
-    : []
-  return (
-    <div className="holdem-actions">
-      {raiseOpen && r && (
-        <div className="holdem-raise card-panel">
-          <div className="holdem-raise-amount">
-            {betWord} <strong>{formatChips(raiseTo)}</strong>
-            {raiseTo >= r.max && <span className="holdem-allin">올인</span>}
-          </div>
-          <input
-            type="range"
-            className="holdem-slider"
-            min={r.min}
-            max={r.max}
-            step={Math.max(1, Math.min(t.bb, r.max - r.min))}
-            value={raiseTo}
-            onChange={(e) => setRaiseTo(clamp(Number(e.target.value)))}
-            aria-label="레이즈 금액"
-          />
-          <div className="holdem-quick">
-            {quick.map(([label, v]) => (
-              <button key={label} className={`btn small ${raiseTo === v ? 'primary' : ''}`} onClick={() => setRaiseTo(v)}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="holdem-raise-go">
-            <button className="btn ghost" onClick={() => setRaiseOpen(false)}>
-              취소
-            </button>
-            <button className="btn accent" onClick={() => onAct({ kind: 'raise', to: raiseTo })}>
-              {raiseTo >= r.max ? '올인' : `${betWord} ${formatChips(raiseTo)}`}
-            </button>
-          </div>
-        </div>
-      )}
-      <div className="holdem-buttons">
-        <button className="btn danger" disabled={l.canCheck} onClick={() => onAct({ kind: 'fold' })}>
-          폴드
-        </button>
-        <button className="btn primary" onClick={() => onAct(l.canCheck ? { kind: 'check' } : { kind: 'call' })}>
-          {l.canCheck ? '체크' : callAll ? `올인 ${formatChips(l.callAmount)}` : `콜 ${formatChips(l.callAmount)}`}
-        </button>
-        <button className="btn accent" disabled={!r} onClick={() => setRaiseOpen(!raiseOpen)}>
-          {betWord}
-        </button>
-      </div>
     </div>
   )
 }

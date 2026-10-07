@@ -1,0 +1,15 @@
+/* 섯다 온라인 화면 추가 스타일 */
+.seotda-online-round {
+  text-align: center;
+  font-size: 0.8rem;
+}
+.seotda-online-log {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.seotda-online-log li:last-child {
+  color: var(--text);
+}

@@ -22,3 +22,7 @@ React 19 + TypeScript + Vite 웹앱(PWA). 폰/PC 브라우저에서 동작. UI �
 - 상용 게임 모작은 이름·아트를 바꿈 (예: 더 마인드 → 텔레파시). 상표명(Yahtzee 등) 사용 금지.
 - 모바일 우선: 360px 폭에서 가로 스크롤 없이, 터치 타깃 40px 이상. 다크 모드는 CSS 변수로 자동.
 - 외부 이미지/폰트 없이 SVG·CSS·이모지로 그림.
+
+## 온라인 대전 (`SERVER.md` 참고)
+- 서버(`server/`)는 `src/online/games/*` 어댑터와 각 게임의 `logic.ts`를 Node에서 직접 import함 → 로직 파일은 CSS·React·DOM을 import하면 안 됨 (예: 화투는 `../../hwatu/deck`처럼 순수 진입점 사용).
+- 어댑터의 `view()`는 숨김 정보 제거 필수, 랜덤은 전달받은 rng만 사용.

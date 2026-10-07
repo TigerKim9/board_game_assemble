@@ -5,7 +5,9 @@
  *       다음 스트리트(플랍·턴·리버) → … → 쇼다운/혼자 남음 → phase 'done' (정산 완료).
  * 베팅·사이드 팟은 poker-core 엔진이 처리.
  */
-import { bestHand, createDeck, describeHand, rankValue, shuffleDeck, type Card, type HandResult } from '../../cards'
+// 서버(온라인)에서도 쓰므로 CSS를 끌어오는 '../../cards' 대신 deck/poker를 직접 import
+import { createDeck, rankValue, shuffleDeck, type Card } from '../../cards/deck'
+import { bestHand, describeHand, type HandResult } from '../../cards/poker'
 import type { Difficulty } from '../../lib/types'
 import {
   ALL_CODES,

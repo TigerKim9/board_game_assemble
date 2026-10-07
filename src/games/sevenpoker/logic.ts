@@ -10,7 +10,9 @@
  * 베팅 이름: 삥(기본 베팅) · 체크 · 콜 · 따당(앞 베팅의 두 배) · 하프(콜 + 판돈의 절반) · 풀(콜 + 판돈 전체) · 다이(포기)
  * 카드가 모자라면(7명 등) 마지막 장은 가운데 공용 카드 한 장으로 대신함.
  */
-import { bestHand, createDeck, shuffleDeck, type Card, type HandResult } from '../../cards'
+// 서버(온라인)에서도 쓰므로 CSS를 끌어오는 '../../cards' 대신 deck/poker를 직접 import
+import { createDeck, shuffleDeck, type Card } from '../../cards/deck'
+import { bestHand, type HandResult } from '../../cards/poker'
 import type { Difficulty } from '../../lib/types'
 import {
   ALL_CODES,

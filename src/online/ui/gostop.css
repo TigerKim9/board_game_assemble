@@ -1,0 +1,29 @@
+/* 맞고·고스톱 온라인 화면 추가 스타일 */
+.gostop-online-round {
+  text-align: center;
+  font-size: 0.8rem;
+}
+.gostop-online-total.plus {
+  color: var(--accent);
+}
+.gostop-online-total.minus {
+  color: var(--danger, #d33);
+}
+.gostop-online-log {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+.gostop-online-log li:last-child {
+  color: var(--text);
+}
+.gostop-online-end h3 {
+  margin: 0 0 6px;
+  text-align: center;
+}
+.gostop-online-end .btn.big {
+  width: 100%;
+  margin-top: 8px;
+}

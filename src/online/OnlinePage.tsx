@@ -332,6 +332,19 @@ function Playing({ o }: { o: OnlineState }) {
                 : `🏆 ${result.winners.map((w) => room.seats[w]?.name).join(', ')} 승리`}
           </h2>
           {result.summary && <p>{result.summary}</p>}
+          {result.scores && (
+            <ol className="online-scores">
+              {room.seats
+                .map((s) => ({ s, score: result.scores![s.seat] ?? 0 }))
+                .sort((a, b) => b.score - a.score)
+                .map(({ s, score }) => (
+                  <li key={s.seat} className={result.winners.includes(s.seat) ? 'win' : ''}>
+                    <span>{s.name}{s.seat === o.you && ' (나)'}</span>
+                    <strong>{score.toLocaleString()}</strong>
+                  </li>
+                ))}
+            </ol>
+          )}
           {isHost ? (
             <button className="btn primary big" onClick={() => send({ t: 'rematch' })}>
               한 판 더
