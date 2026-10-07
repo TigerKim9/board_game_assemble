@@ -1,0 +1,175 @@
+.yut {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+.yut-board {
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 1;
+  touch-action: manipulation;
+}
+.yut-bg {
+  fill: #e9d3a6;
+  stroke: #9b7440;
+  stroke-width: 0.8;
+}
+.yut-lines {
+  fill: none;
+  stroke: #9b7440;
+  stroke-width: 0.6;
+  stroke-dasharray: 1.2 1.2;
+}
+.yut-node {
+  fill: #f8ecd2;
+  stroke: #7a5a2e;
+  stroke-width: 0.7;
+}
+.yut-node.big {
+  fill: #f3dcae;
+  stroke-width: 1;
+}
+.yut-node.target {
+  fill: #ffe066;
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  cursor: pointer;
+  animation: flash 0.9s infinite;
+}
+.yut-label {
+  font-size: 3px;
+  text-anchor: middle;
+  fill: #6b4a1e;
+  font-weight: 700;
+}
+.yut-finish {
+  cursor: pointer;
+}
+.yut-finish rect {
+  fill: var(--accent);
+}
+.yut-finish text {
+  font-size: 3.2px;
+  font-weight: 700;
+  fill: #fff;
+  text-anchor: middle;
+}
+.yut-piece {
+  transition: transform 0.35s ease;
+}
+.yut-piece circle:first-child {
+  stroke: #fff;
+  stroke-width: 0.7;
+}
+.yut-piece.movable {
+  cursor: pointer;
+}
+.yut-piece.movable circle:first-child {
+  stroke: #ffe066;
+  stroke-width: 1.1;
+}
+.yut-piece.selected circle:first-child {
+  stroke: #fff;
+  stroke-width: 1.6;
+}
+.yut-token {
+  font-size: 5px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.yut-badge {
+  fill: #22201c;
+  stroke: #fff;
+  stroke-width: 0.4;
+}
+.yut-badge-text {
+  font-size: 3px;
+  fill: #fff;
+  font-weight: 800;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.yut-panel {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.yut-sticks {
+  display: flex;
+  gap: 10px;
+  height: 84px;
+  align-items: center;
+}
+.yut-stick {
+  width: 18px;
+  height: 80px;
+  border-radius: 9px;
+  border: 2px solid #7a5a2e;
+  position: relative;
+  transition: background 0.2s;
+}
+.yut-stick.flat {
+  background: #f6e7c4;
+}
+.yut-stick.round {
+  background: linear-gradient(90deg, #8a5a26, #c48a46, #8a5a26);
+}
+.yut-stick.flat::before,
+.yut-stick.flat::after {
+  content: '✕';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: #7a5a2e;
+}
+.yut-stick.flat::before {
+  top: 14px;
+}
+.yut-stick.flat::after {
+  bottom: 14px;
+}
+.yut-stick.flat.marked::before {
+  content: '●';
+  color: var(--danger);
+}
+.yut-sticks.throwing .yut-stick {
+  animation: yut-toss 0.3s infinite alternate;
+}
+.yut-sticks.throwing .yut-stick:nth-child(2) {
+  animation-delay: 0.08s;
+}
+.yut-sticks.throwing .yut-stick:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.yut-sticks.throwing .yut-stick:nth-child(4) {
+  animation-delay: 0.22s;
+}
+.yut-result {
+  font-size: 1.6rem;
+  font-weight: 900;
+  min-height: 2.2rem;
+  color: var(--accent);
+}
+.yut-pending {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.yut-hint {
+  margin: 0;
+  font-size: 0.9rem;
+}
+@keyframes yut-toss {
+  from {
+    transform: translateY(0) rotate(-8deg);
+  }
+  to {
+    transform: translateY(-18px) rotate(10deg);
+  }
+}
