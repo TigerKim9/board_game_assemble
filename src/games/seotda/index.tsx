@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Modal } from '../../components/Modal'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
-import { HwatuCard } from '../../hwatu'
+import { HwatuCard, HwatuStyleButton, HwatuStyleToggle } from '../../hwatu'
 import { sleep } from '../../lib/random'
 import { useStored } from '../../lib/storage'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
@@ -70,6 +70,8 @@ export default function Seotda() {
         showDifficulty
         onStart={begin}
         extra={
+          <>
+          <HwatuStyleToggle />
           <div className="seotda-bank">
             <div className="seotda-bank-head">
               <span>💰 보유 칩 (가상)</span>
@@ -89,6 +91,7 @@ export default function Seotda() {
             </p>
             <p className="muted small-note">칩이 다 떨어진 사람은 다음 게임에서 {START_CHIPS}칩으로 다시 채워 드려요. 진짜 돈은 쓰지 않아요.</p>
           </div>
+          </>
         }
       />
     )
@@ -257,7 +260,7 @@ function Game({
                   {p.inHand ? (
                     [0, 1].map((k) =>
                       p.cards[k] != null ? (
-                        <HwatuCard key={k} card={p.cards[k]} faceDown={!canSee(i)} width={30} showMonth={false} className="hw-deal" />
+                        <HwatuCard key={k} card={p.cards[k]} faceDown={!canSee(i)} width={34} showMonth={false} className="hw-deal" />
                       ) : (
                         <span key={k} className="seotda-slot" />
                       ),
@@ -308,7 +311,7 @@ function Game({
           <div className="seotda-hand card-panel">
             <div className="seotda-hand-cards">
               {players[viewer].cards.map((id) => (
-                <HwatuCard key={id} card={id} width={78} className="hw-flip" />
+                <HwatuCard key={id} card={id} width={104} className="hw-flip" />
               ))}
               {players[viewer].cards.length < 2 && <span className="seotda-slot big">?</span>}
             </div>
@@ -317,6 +320,7 @@ function Game({
               <strong className="seotda-hand-name">
                 {players[viewer].cards.length === 2 ? evaluate(players[viewer].cards).name : `${(players[viewer].cards[0] >> 2) + 1}월 한 장`}
               </strong>
+              <span className="seotda-hand-months">{players[viewer].cards.map((id) => `${(id >> 2) + 1}월`).join(' + ')}</span>
               {players[viewer].folded && <span className="seotda-tag die">다이</span>}
             </div>
           </div>
@@ -348,9 +352,12 @@ function Game({
         </button>
       )}
 
-      <button className="btn ghost small seotda-chart-btn" onClick={() => setShowChart(true)}>
-        📜 족보표 보기
-      </button>
+      <div className="seotda-tools">
+        <button className="btn ghost small seotda-chart-btn" onClick={() => setShowChart(true)}>
+          📜 족보표 보기
+        </button>
+        <HwatuStyleButton />
+      </div>
       {showChart && (
         <Modal title="섯다 족보" onClose={() => setShowChart(false)}>
           <Chart />
@@ -385,7 +392,7 @@ function Chart() {
         <li key={name}>
           <span className="seotda-chart-cards">
             {ids.map((id) => (
-              <HwatuCard key={id} card={id} width={30} />
+              <HwatuCard key={id} card={id} width={34} />
             ))}
           </span>
           <span>

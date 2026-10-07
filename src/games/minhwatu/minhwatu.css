@@ -167,3 +167,76 @@
 .minhwatu-rank-detail {
   font-size: 0.8rem;
 }
+
+/* ---------- 새 디자인 ---------- */
+.minhwatu-opp-hand {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.minhwatu-opp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 10px 8px;
+}
+.minhwatu-opp-body:empty {
+  display: none;
+}
+.minhwatu-counts {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.minhwatu-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.minhwatu-count.k-gwang {
+  background: #f5b800;
+  color: #3d1600;
+}
+.minhwatu-count.k-yeol {
+  background: #37474f;
+  color: #fff;
+}
+.minhwatu-count.k-tti {
+  background: #d32f2f;
+  color: #fff;
+}
+.minhwatu-count.k-pi {
+  background: #e6e0d3;
+  color: #3d362b;
+}
+.minhwatu-captured .minhwatu-progress {
+  margin: 0 0 8px;
+}
+.minhwatu-pts {
+  font-size: 0.75rem;
+  margin: 6px 0 0;
+}
+.minhwatu-hand-head {
+  align-items: center;
+}
+.minhwatu-hand-head strong .muted {
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+.minhwatu-hand-cards {
+  gap: 10px 6px;
+  padding-top: 10px;
+}
+.minhwatu-hand-cards > .hw-card {
+  flex: 0 0 calc((100% - 4 * 6px) / 5);
+  max-width: 76px;
+}
+.minhwatu-hand-cards > .hw-card > svg {
+  width: 100%;
+  height: auto;
+}
+.minhwatu-last {
+  opacity: 0.8;
+}

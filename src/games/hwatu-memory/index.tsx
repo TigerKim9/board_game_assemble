@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
-import { HwatuCard } from '../../hwatu'
+import { HwatuCard, HwatuStyleButton, HwatuStyleToggle } from '../../hwatu'
 import { sleep } from '../../lib/random'
 import { useBestScore, useStored } from '../../lib/storage'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
@@ -27,6 +27,8 @@ export default function HwatuMemory() {
         defaultCount={1}
         showDifficulty
         extra={
+          <>
+          <HwatuStyleToggle />
           <div className="setup-row">
             <span>카드 수</span>
             <div className="segmented">
@@ -37,6 +39,7 @@ export default function HwatuMemory() {
               ))}
             </div>
           </div>
+          </>
         }
         onStart={(players, difficulty) => setSetup({ players, difficulty, size, round: 1 })}
       />
@@ -172,7 +175,7 @@ function Game({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void; 
               key={pos + (up ? 'u' : 'd')}
               card={id}
               faceDown={!up}
-              width={60}
+              width={size === 48 ? 46 : 60}
               highlight={up && s.up.length === 2 && isPair(s)}
               className={up ? 'hw-flip' : ''}
               onClick={humanTurn && !up ? () => doFlip(pos) : undefined}
@@ -180,7 +183,10 @@ function Game({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void; 
           )
         })}
       </div>
-      {solo && <p className="hwm-hint muted">같은 달(같은 그림의 꽃) 카드 두 장을 찾아요. 한 달에 4장씩 있어요.</p>}
+      <div className="hwm-foot">
+        <p className="hwm-hint muted">같은 달(같은 숫자·같은 꽃) 카드 두 장을 찾아요. 한 달에 4장씩 있어요.</p>
+        <HwatuStyleButton />
+      </div>
     </div>
   )
 }

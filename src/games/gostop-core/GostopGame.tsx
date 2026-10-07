@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
-import { HwatuCard, HwatuPile, KIND_NAMES, KIND_ORDER, getCard, monthOf } from '../../hwatu'
+import { CaptureRows, FloorGroups, HwatuCard, HwatuPile, HwatuStyleButton, HwatuStyleToggle, ProgressChips, getCard } from '../../hwatu'
 import { sleep } from '../../lib/random'
 import { useStored } from '../../lib/storage'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
@@ -20,6 +20,7 @@ import {
   matchesOnFloor,
   newRound,
   play,
+  progressOf,
   scoreOf,
   type GEvent,
   type GPlayer,
@@ -61,6 +62,8 @@ export function GostopGame({ mode }: { mode: Mode }) {
           setSession({ players, difficulty, round: 1, first: Math.floor(Math.random() * players.length), nagariMult: 1 })
         }
         extra={
+          <>
+          <HwatuStyleToggle />
           <div className="gostop-wallet">
             <div className="gostop-wallet-head">
               <span>💰 누적 손익 (가상 머니 · 점당 {WON_PER_POINT}원)</span>
@@ -83,6 +86,7 @@ export function GostopGame({ mode }: { mode: Mode }) {
               </ul>
             )}
           </div>
+          </>
         }
       />
     )
@@ -259,7 +263,7 @@ function Game({
     <div className={`gostop gostop-${mode}`}>
       <div className="gostop-opps">
         {opponents.map(({ p, i }) => (
-          <PlayerPanel key={i} p={p} active={i === turn && !over} threshold={s.cfg.threshold} compact />
+          <PlayerPanel key={i} p={p} active={i === turn && !over} threshold={s.cfg.threshold} compact defaultOpen={players.length === 2} />
         ))}
       </div>
 
@@ -272,8 +276,9 @@ function Game({
             </div>
           ))}
         </div>
-        <Floor
+        <FloorGroups
           floor={s.floor}
+          width={44}
           ppeok={s.ppeok}
           highlight={[...choosing, ...selMatches, ...(myTurn ? [] : pendingOptions)]}
           clickable={[...choosing, ...(canPlay ? selMatches : [])]}
@@ -281,9 +286,9 @@ function Game({
           onPick={onFloor}
         />
         <div className="gostop-center">
-          <HwatuPile count={s.deck.length} width={38} />
+          <HwatuPile count={s.deck.length} width={40} />
           <div className="gostop-flip">
-            {showFlip && <HwatuCard key={ctx!.flipped!} card={ctx!.flipped!} width={42} className="hw-flip" title="뒤집은 카드" />}
+            {showFlip && <HwatuCard key={ctx!.flipped!} card={ctx!.flipped!} width={44} className="hw-flip" title="뒤집은 카드" />}
           </div>
           <div className="gostop-msg">
             {s.nagariMult > 1 && <span className="gostop-badge hot">판돈 ×{s.nagariMult}</span>}
@@ -332,24 +337,28 @@ function Game({
         me &&
         viewer != null && (
           <>
-            <PlayerPanel p={me} active={viewer === turn && !over} threshold={s.cfg.threshold} />
+            <PlayerPanel p={me} active={viewer === turn && !over} threshold={s.cfg.threshold} mine />
             <div className="gostop-hand card-panel">
               <div className="gostop-hand-head">
-                <strong>내 손패</strong>
-                <span className="muted">{me.hand.length}장</span>
+                <strong>
+                  내 손패 <span className="muted">{me.hand.length}장</span>
+                </strong>
+                {canPlay && <span className="gostop-legend">✨ 짝 = 바닥에 같은 달 있음</span>}
+                <HwatuStyleButton />
               </div>
               <div className="gostop-hand-cards">
                 {me.hand.map((id) => {
                   const canMatch = matchesOnFloor(s, id).length > 0
-                  const triple = me.hand.filter((h) => monthOf(h) === monthOf(id)).length >= 3
+                  const bomb = canPlay && canBomb(s, id)
+                  const shake = canPlay && canShake(s, id)
                   return (
                     <HwatuCard
                       key={id}
                       card={id}
-                      width={54}
+                      width={64}
                       selected={selected === id}
-                      highlight={canPlay && triple && selected !== id}
-                      dim={canPlay && !canMatch && selected !== id}
+                      match={canPlay && canMatch}
+                      marker={!canPlay ? undefined : bomb ? '💣폭탄' : shake ? '흔들' : canMatch ? '짝' : undefined}
                       onClick={canPlay ? () => onHand(id) : undefined}
                     />
                   )
@@ -405,50 +414,6 @@ export function moneyDelta(r: RoundResult, n: number): number[] {
   return d
 }
 
-function Floor({
-  floor,
-  ppeok,
-  highlight,
-  clickable,
-  fresh,
-  onPick,
-}: {
-  floor: number[]
-  ppeok: Record<number, number>
-  highlight: number[]
-  clickable: number[]
-  fresh: Set<number>
-  onPick: (id: number) => void
-}) {
-  const groups = new Map<number, number[]>()
-  for (const id of floor.slice().sort((a, b) => a - b)) {
-    const m = monthOf(id)
-    groups.set(m, [...(groups.get(m) ?? []), id])
-  }
-  // 막 낸 카드는 그 달 묶음 맨 위에
-  for (const [m, ids] of groups) groups.set(m, [...ids.filter((i) => !fresh.has(i)), ...ids.filter((i) => fresh.has(i))])
-  if (!floor.length) return <div className="gostop-floor gostop-floor-empty">바닥이 비었어요</div>
-  return (
-    <div className="gostop-floor">
-      {[...groups.entries()].map(([m, ids]) => (
-        <div key={m} className={`gostop-group ${ppeok[m] != null ? 'ppeok' : ''} ${ids.some((i) => clickable.includes(i)) && ids.length > 1 ? 'spread' : ''}`}>
-          {ppeok[m] != null && <span className="gostop-ppeok">뻑</span>}
-          {ids.map((id) => (
-            <HwatuCard
-              key={id}
-              card={id}
-              width={40}
-              highlight={highlight.includes(id)}
-              className={fresh.has(id) ? 'hw-deal' : ''}
-              onClick={clickable.includes(id) ? () => onPick(id) : undefined}
-            />
-          ))}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 function Badges({ p }: { p: GPlayer }) {
   return (
     <>
@@ -460,8 +425,22 @@ function Badges({ p }: { p: GPlayer }) {
   )
 }
 
-function PlayerPanel({ p, active, threshold, compact }: { p: GPlayer; active: boolean; threshold: number; compact?: boolean }) {
-  const [open, setOpen] = useState(!compact)
+function PlayerPanel({
+  p,
+  active,
+  threshold,
+  compact,
+  mine,
+  defaultOpen,
+}: {
+  p: GPlayer
+  active: boolean
+  threshold: number
+  compact?: boolean
+  mine?: boolean
+  defaultOpen?: boolean
+}) {
+  const [open, setOpen] = useState(mine || !!defaultOpen)
   const sc = scoreOf(p.captured)
   const g = { gwang: [] as number[], yeol: [] as number[], tti: [] as number[], pi: [] as number[] }
   for (const id of p.captured.slice().sort((a, b) => a - b)) {
@@ -469,13 +448,17 @@ function PlayerPanel({ p, active, threshold, compact }: { p: GPlayer; active: bo
     if (c.isGukjin && sc.gukjinAsPi) g.pi.push(id)
     else g[c.kind].push(id)
   }
-  const counts: Record<string, number> = { gwang: g.gwang.length, yeol: g.yeol.length, tti: g.tti.length, pi: sc.pi }
+  const counts = { gwang: g.gwang.length, yeol: g.yeol.length, tti: g.tti.length, pi: sc.pi }
+  const prog = progressOf(p.captured)
+  // 고/스톱까지 남은 점수 (고를 했다면 지난 점수보다 올라야 함)
+  const target = Math.max(threshold, p.goCount > 0 ? p.lastGoScore + 1 : 0)
+  const left = target - sc.total
   return (
-    <div className={`gostop-player ${active ? 'active' : ''} ${compact ? 'compact' : ''}`}>
+    <div className={`gostop-player ${active ? 'active' : ''} ${compact ? 'compact' : ''} ${mine ? 'mine' : ''}`}>
       <button className="gostop-player-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className="gostop-player-name">
           {p.isAI ? '🤖 ' : ''}
-          {p.name}
+          {mine ? `${p.name} (나)` : p.name}
         </span>
         {compact && (
           <span className="gostop-backs" aria-label={`손패 ${p.hand.length}장`}>
@@ -484,33 +467,21 @@ function PlayerPanel({ p, active, threshold, compact }: { p: GPlayer; active: bo
           </span>
         )}
         <Badges p={p} />
-        <span className={`gostop-score ${sc.total >= threshold ? 'ready' : ''}`}>{sc.total}점</span>
+        <span className="gostop-scorebox">
+          <span className={`gostop-score ${sc.total >= threshold ? 'ready' : ''}`}>{sc.total}점</span>
+          <small className={`gostop-goal ${left <= 0 ? 'ready' : ''}`}>{left <= 0 ? (p.goCount > 0 ? '다시 고/스톱!' : '고/스톱!') : `${p.goCount > 0 ? '다음 고' : '고'}까지 ${left}점`}</small>
+        </span>
         <span className="gostop-toggle">{open ? '▲' : '▼'}</span>
       </button>
-      <div className="gostop-counts">
-        {KIND_ORDER.map((k) => (
-          <span key={k} className={`gostop-count k-${k}`}>
-            {KIND_NAMES[k]} <b>{counts[k]}</b>
-          </span>
-        ))}
-        {sc.items.length > 0 && <span className="gostop-items">{sc.items.map((it) => `${it.label} ${it.points}`).join(' · ')}</span>}
-      </div>
-      {open && (
+      {sc.items.length > 0 && <div className="gostop-items">{sc.items.map((it) => `${it.label} ${it.points}점`).join(' · ')}</div>}
+      <ProgressChips items={prog} hideZero={!mine || !open} className="gostop-prog" />
+      {open ? (
         <div className="gostop-rows">
-          {p.captured.length === 0 && <span className="muted gostop-none">아직 먹은 패가 없어요</span>}
-          {KIND_ORDER.map((k) =>
-            g[k].length ? (
-              <div key={k} className="gostop-row">
-                <span className="gostop-kind">{KIND_NAMES[k]}</span>
-                <span className="gostop-stack">
-                  {g[k].map((id) => (
-                    <HwatuCard key={id} card={id} width={compact ? 26 : 30} showMonth={false} />
-                  ))}
-                </span>
-              </div>
-            ) : null,
-          )}
+          <CaptureRows groups={g} counts={counts} width={compact ? 26 : 30} hideEmpty={compact} />
+          {compact && p.captured.length === 0 && <span className="muted gostop-none">아직 먹은 패가 없어요</span>}
         </div>
+      ) : (
+        p.captured.length === 0 && <div className="muted gostop-none gostop-rows">아직 먹은 패가 없어요</div>
       )}
     </div>
   )

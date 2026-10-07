@@ -510,3 +510,17 @@ describe('AI끼리 대국 시뮬레이션', () => {
     expect(hard).toBeGreaterThan(easy)
   })
 })
+
+describe('progressOf', () => {
+  it('족보 진행도를 센다 (쌍피는 2)', async () => {
+    const { progressOf } = await import('./logic')
+    // 1월 광, 3월 광, 2월 꾀꼬리, 1·2월 홍단, 11월 쌍피, 1월 피
+    const p = Object.fromEntries(progressOf([0, 8, 4, 1, 5, 41, 2]).map((x) => [x.key, x]))
+    expect(p.gwang.have).toBe(2)
+    expect(p.godori.have).toBe(1)
+    expect(p.hong.have).toBe(2)
+    expect(p.tti.have).toBe(2)
+    expect(p.pi.have).toBe(3)
+    expect(p.pi.need).toBe(10)
+  })
+})

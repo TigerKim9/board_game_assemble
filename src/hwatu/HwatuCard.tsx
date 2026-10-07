@@ -1,6 +1,8 @@
-import { useId, type CSSProperties } from 'react'
+import { useId, type CSSProperties, type ReactNode } from 'react'
 import { CardArt, H, W } from './art'
 import { getCard, type HwatuCard as CardData } from './deck'
+import { EasyFace, tierOf } from './easy'
+import { useHwatuStyle } from './style'
 import './hwatu.css'
 
 export interface HwatuCardProps {
@@ -17,6 +19,10 @@ export interface HwatuCardProps {
   highlight?: boolean
   /** 흐리게 */
   dim?: boolean
+  /** 바닥과 짝이 맞는 카드: 은은한 빛 테두리 */
+  match?: boolean
+  /** 카드 위 작은 표시 (예: '짝') */
+  marker?: ReactNode
   onClick?: () => void
   disabled?: boolean
   className?: string
@@ -33,13 +39,17 @@ export function HwatuCard({
   selected,
   highlight,
   dim,
+  match,
+  marker,
   onClick,
   disabled,
   className = '',
   style,
   title,
 }: HwatuCardProps) {
-  const uid = useId().replace(/:/g, '')
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
+  const [cardStyle] = useHwatuStyle()
+  const easy = cardStyle === 'easy'
   const data = card == null ? null : typeof card === 'number' ? getCard(card) : card
   const down = faceDown || !data
   const height = Math.round((width * H) / W)
@@ -52,9 +62,11 @@ export function HwatuCard({
           <rect x={2.6} y={2.6} width={W - 5.2} height={H - 5.2} rx={3.4} />
         </clipPath>
       </defs>
-      <rect x={0.5} y={0.5} width={W - 1} height={H - 1} rx={5} className={down ? 'hw-back-frame' : 'hw-frame'} />
+      {(down || !easy) && <rect x={0.5} y={0.5} width={W - 1} height={H - 1} rx={5} className={down ? 'hw-back-frame' : 'hw-frame'} />}
       {down ? (
         <CardBack uid={uid} />
+      ) : easy ? (
+        <EasyFace card={data!} tier={tierOf(width)} uid={uid} />
       ) : (
         <>
           <g clipPath={`url(#hwc${uid})`}>
@@ -89,19 +101,32 @@ export function HwatuCard({
     </svg>
   )
 
-  const cls = ['hw-card', selected && 'hw-selected', highlight && 'hw-highlight', dim && 'hw-dim', onClick && 'hw-clickable', className]
+  const cls = [
+    'hw-card',
+    easy && !down && 'hw-easy',
+    selected && 'hw-selected',
+    highlight && 'hw-highlight',
+    match && 'hw-match',
+    dim && 'hw-dim',
+    onClick && 'hw-clickable',
+    marker != null && 'hw-has-marker',
+    className,
+  ]
     .filter(Boolean)
     .join(' ')
+  const mk = marker != null ? <span className="hw-marker">{marker}</span> : null
   if (!onClick) {
     return (
       <span className={cls} style={style} title={title ?? label}>
         {svg}
+        {mk}
       </span>
     )
   }
   return (
     <button type="button" className={cls} style={style} onClick={onClick} disabled={disabled} title={title ?? label} aria-pressed={selected}>
       {svg}
+      {mk}
     </button>
   )
 }

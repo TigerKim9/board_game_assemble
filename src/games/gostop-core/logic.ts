@@ -103,6 +103,31 @@ export function scoreOf(captured: readonly number[]): ScoreInfo {
   return b.total > a.total ? b : a
 }
 
+export interface YakuProgress {
+  key: string
+  label: string
+  have: number
+  need: number
+  kind: 'gwang' | 'yeol' | 'tti' | 'pi' | 'hong' | 'cheong' | 'cho' | 'godori'
+}
+
+/** 족보까지 진행도 (화면 표시용): 광 n/3, 고도리 n/3, 홍·청·초단 n/3, 띠 n/5, 열끗 n/5, 피 n/10 */
+export function progressOf(captured: readonly number[]): YakuProgress[] {
+  const set = new Set(captured)
+  const cnt = (ids: readonly number[]) => ids.filter((id) => set.has(id)).length
+  const sc = scoreOf(captured)
+  return [
+    { key: 'gwang', label: '광', have: sc.gwang, need: 3, kind: 'gwang' },
+    { key: 'godori', label: '고도리', have: cnt(GODORI_IDS), need: 3, kind: 'godori' },
+    { key: 'hong', label: '홍단', have: cnt(HONGDAN_IDS), need: 3, kind: 'hong' },
+    { key: 'cheong', label: '청단', have: cnt(CHEONGDAN_IDS), need: 3, kind: 'cheong' },
+    { key: 'cho', label: '초단', have: cnt(CHODAN_IDS), need: 3, kind: 'cho' },
+    { key: 'tti', label: '띠', have: sc.tti, need: 5, kind: 'tti' },
+    { key: 'yeol', label: '열끗', have: sc.yeol, need: 5, kind: 'yeol' },
+    { key: 'pi', label: '피', have: sc.pi, need: 10, kind: 'pi' },
+  ]
+}
+
 /** 피 장수(쌍피 2장). 박 판정용으로 국진을 피로 셀 수 있음. */
 export function piOf(captured: readonly number[], gukjinAsPi = false): number {
   let n = 0

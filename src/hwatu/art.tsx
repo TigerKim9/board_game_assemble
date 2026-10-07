@@ -347,7 +347,7 @@ function Willow({ rain = true }: { rain?: boolean }) {
 
 // ---------- 열끗·광 그림 ----------
 
-function Crane() {
+export function Crane() {
   return (
     <g>
       <path d="M36 72 L 34 84 M42 72 L 44 84" stroke={C.ink} strokeWidth={1.2} />
@@ -361,7 +361,7 @@ function Crane() {
   )
 }
 
-function SongBird() {
+export function SongBird() {
   return (
     <g>
       <path d="M42 44 L 52 52 L 46 44Z" fill="#6f7a22" />
@@ -374,7 +374,7 @@ function SongBird() {
   )
 }
 
-function Curtain() {
+export function Curtain() {
   const stripes = Array.from({ length: 8 }, (_, i) => (
     <rect key={i} x={3 + i * 7} y={52} width={7} height={38} fill={i % 2 ? '#f4e2bf' : C.red} />
   ))
@@ -389,7 +389,7 @@ function Curtain() {
   )
 }
 
-function Cuckoo() {
+export function Cuckoo() {
   return (
     <g>
       <path d="M48 10 a 7 7 0 1 0 6 10 a 5.5 5.5 0 1 1 -6 -10Z" fill={C.gold} />
@@ -406,7 +406,7 @@ function Cuckoo() {
   )
 }
 
-function Bridge() {
+export function Bridge() {
   return (
     <g>
       {[
@@ -434,7 +434,7 @@ function Bridge() {
   )
 }
 
-function Butterfly({ x, y, s, c1, c2 }: { x: number; y: number; s: number; c1: string; c2: string }) {
+export function Butterfly({ x, y, s, c1, c2 }: { x: number; y: number; s: number; c1: string; c2: string }) {
   return (
     <g transform={`translate(${x} ${y}) scale(${s})`}>
       <ellipse cx={-5} cy={-3} rx={5} ry={4} fill={c1} transform="rotate(-25 -5 -3)" />
@@ -447,7 +447,7 @@ function Butterfly({ x, y, s, c1, c2 }: { x: number; y: number; s: number; c1: s
   )
 }
 
-function Boar() {
+export function Boar() {
   return (
     <g>
       <ellipse cx={32} cy={64} rx={16} ry={9} fill={C.brown} />
@@ -482,7 +482,7 @@ function Hill({ dark = '#2a2622' }: { dark?: string }) {
   )
 }
 
-function Geese() {
+export function Geese() {
   return (
     <g fill="#2a2622">
       {[
@@ -499,7 +499,7 @@ function Geese() {
   )
 }
 
-function Cup() {
+export function Cup() {
   return (
     <g>
       <ellipse cx={30} cy={84} rx={12} ry={2.4} fill="rgba(0,0,0,.18)" />
@@ -513,7 +513,7 @@ function Cup() {
   )
 }
 
-function Deer() {
+export function Deer() {
   return (
     <g>
       <path d="M22 58 l -4 -10 M22 58 l -1 -12 M20 52 l -4 -2 M26 58 l 2 -11 M27 52 l 4 -3" stroke="#5a341a" strokeWidth={1.2} fill="none" />
@@ -531,7 +531,7 @@ function Deer() {
   )
 }
 
-function Phoenix() {
+export function Phoenix() {
   return (
     <g>
       {[
@@ -552,7 +552,7 @@ function Phoenix() {
   )
 }
 
-function UmbrellaMan() {
+export function UmbrellaMan() {
   return (
     <g>
       <path d="M3 80 Q 20 74 40 80 T 57 78 V89 H3Z" fill="#5b8fbf" />
@@ -569,7 +569,7 @@ function UmbrellaMan() {
   )
 }
 
-function Swallow() {
+export function Swallow() {
   return (
     <g transform="rotate(-12 30 48)">
       <path d="M24 46 Q 30 30 44 34 Q 34 40 30 48Z" fill="#1c2a4a" />

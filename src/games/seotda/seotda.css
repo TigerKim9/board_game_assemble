@@ -228,3 +228,51 @@
   gap: 2px;
   flex: none;
 }
+
+/* ---------- 새 디자인: 큰 패 + 큰 족보 이름 ---------- */
+.seotda-hand {
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+.seotda-hand-cards {
+  gap: 12px;
+  justify-content: center;
+}
+.seotda-hand-info {
+  order: -1;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+}
+.seotda-hand-name {
+  font-size: 2.1rem;
+  line-height: 1.15;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+}
+.seotda-hand-months {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+.seotda-slot.big {
+  width: 104px;
+  height: 159px;
+}
+.seotda-slot {
+  width: 34px;
+  height: 52px;
+}
+.seotda-mini {
+  min-height: 52px;
+}
+.seotda-tools {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+.seotda-chart-cards {
+  gap: 3px;
+}

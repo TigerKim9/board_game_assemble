@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
-import { HwatuCard, HwatuPile, KIND_NAMES, KIND_ORDER, getCard } from '../../hwatu'
+import { CaptureRows, FloorGroups, HwatuCard, HwatuPile, HwatuStyleButton, HwatuStyleToggle, ProgressChips, getCard, groupByKind, type Progress } from '../../hwatu'
 import { sleep } from '../../lib/random'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
 import {
@@ -36,6 +36,7 @@ export default function Minhwatu() {
         max={3}
         defaultCount={2}
         showDifficulty
+        extra={<HwatuStyleToggle />}
         onStart={(players, difficulty) => setSetup({ players, difficulty, round: 1 })}
       />
     )
@@ -151,8 +152,6 @@ function Game({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void; 
     }
   }
 
-  // 바닥을 달 순서로 묶어 보여줌
-  const floorSorted = s.floor.slice().sort((a, b) => a - b)
   const pending = phase.kind === 'chooseHand' || phase.kind === 'chooseFlip' ? phase.card : null
 
   let status: string
@@ -177,28 +176,19 @@ function Game({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void; 
           <div className="minhwatu-flip">
             {pending != null && <HwatuCard card={pending} width={44} className="hw-deal" />}
             {pending == null && s.flipped != null && phase.kind === 'play' && (
-              <HwatuCard key={s.flipped} card={s.flipped} width={44} dim className="hw-flip" title="방금 뒤집은 카드" />
+              <HwatuCard key={s.flipped} card={s.flipped} width={44} className="hw-flip minhwatu-last" title="방금 뒤집은 카드" />
             )}
           </div>
           <div className="minhwatu-msg">{s.message || '같은 달 카드를 맞춰 가져오세요'}</div>
         </div>
-        <div className="minhwatu-floor">
-          {floorSorted.map((id) => {
-            const hl = choosing.includes(id) || selMatches.includes(id)
-            const clickable = choosing.includes(id) || (selMatches.includes(id) && myTurn)
-            return (
-              <HwatuCard
-                key={id}
-                card={id}
-                width={44}
-                highlight={hl}
-                className={id === s.played || id === s.flipped ? 'hw-deal' : ''}
-                onClick={clickable ? () => onFloor(id) : undefined}
-              />
-            )
-          })}
-          {floorSorted.length === 0 && <span className="minhwatu-empty">바닥이 비었어요</span>}
-        </div>
+        <FloorGroups
+          floor={s.floor}
+          width={44}
+          highlight={[...choosing, ...selMatches]}
+          clickable={[...choosing, ...(myTurn ? selMatches : [])]}
+          fresh={new Set([s.played, s.flipped].filter((x): x is number => x != null))}
+          onPick={onFloor}
+        />
       </div>
 
       <div className="status">{status}</div>
@@ -217,19 +207,23 @@ function Game({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void; 
           <>
             <div className="minhwatu-hand card-panel">
               <div className="minhwatu-hand-head">
-                <strong>{players[viewer].name}님의 손패</strong>
-                <span className="muted">{players[viewer].hand.length}장</span>
+                <strong>
+                  {players[viewer].name}님의 손패 <span className="muted">{players[viewer].hand.length}장</span>
+                </strong>
+                <HwatuStyleButton />
               </div>
               <div className="minhwatu-hand-cards">
                 {players[viewer].hand.map((id) => {
                   const canMatch = matchesOnFloor(s.floor, id).length > 0
+                  const live = myTurn && phase.kind === 'play'
                   return (
                     <HwatuCard
                       key={id}
                       card={id}
-                      width={54}
+                      width={64}
                       selected={selected === id}
-                      dim={myTurn && phase.kind === 'play' && !canMatch && selected !== id}
+                      match={live && canMatch}
+                      marker={live && canMatch ? '짝' : undefined}
                       onClick={myTurn && phase.kind === 'play' ? () => onHand(id) : undefined}
                     />
                   )
@@ -244,6 +238,14 @@ function Game({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void; 
   )
 }
 
+function yakProgress(captured: number[], all: boolean): Progress[] {
+  const set = new Set(captured)
+  const kindOf = (key: string): Progress['kind'] => (key === 'hong' || key === 'cheong' || key === 'cho' ? key : key === 'pung' ? 'gwang' : 'tti')
+  return YAKS.map((y) => ({ key: y.key, label: y.name, have: y.ids.filter((id) => set.has(id)).length, need: y.ids.length, kind: kindOf(y.key) })).filter(
+    (p) => p.have > 0 || (all && (p.key === 'hong' || p.key === 'cheong' || p.key === 'cho')),
+  )
+}
+
 function OpponentRow({ name, isAI, hand, captured, active }: { name: string; isAI: boolean; hand: number; captured: number[]; active: boolean }) {
   const sc = scoreOf(captured)
   const [open, setOpen] = useState(false)
@@ -254,13 +256,32 @@ function OpponentRow({ name, isAI, hand, captured, active }: { name: string; isA
           {isAI ? '🤖 ' : ''}
           {name}
         </span>
-        <span className="minhwatu-opp-hand">손패 {hand}</span>
+        <span className="minhwatu-opp-hand">
+          <HwatuCard faceDown width={14} /> {hand}
+        </span>
         <span className="minhwatu-opp-score">
           {sc.total}점{sc.yaks.length > 0 && <small> ({sc.yaks.map((y) => y.name).join('·')})</small>}
         </span>
         <span className="minhwatu-opp-toggle">{open ? '▲' : '▼'}</span>
       </button>
-      {open && <CapturedRows captured={captured} width={28} />}
+      <div className="minhwatu-opp-body">
+        <KindCounts captured={captured} />
+        <ProgressChips items={yakProgress(captured, false)} />
+        {open && <CapturedRows captured={captured} width={26} hideEmpty />}
+      </div>
+    </div>
+  )
+}
+
+function KindCounts({ captured }: { captured: number[] }) {
+  const g = groupByKind(captured.map(getCard))
+  return (
+    <div className="minhwatu-counts">
+      {(['gwang', 'yeol', 'tti', 'pi'] as const).map((k) => (
+        <span key={k} className={`minhwatu-count k-${k}`}>
+          {{ gwang: '광', yeol: '열끗', tti: '띠', pi: '피' }[k]} <b>{g[k].length}</b>
+        </span>
+      ))}
     </div>
   )
 }
@@ -276,51 +297,16 @@ function Captured({ name, captured }: { name: string; captured: number[] }) {
           {sc.yaks.length > 0 && <span className="minhwatu-yaks"> {sc.yaks.map((y) => `${y.name}+${y.bonus}`).join(' ')}</span>}
         </span>
       </div>
-      {captured.length === 0 ? <p className="muted minhwatu-none">아직 없어요</p> : <CapturedRows captured={captured} width={34} />}
-      <YakProgress captured={captured} />
+      <ProgressChips items={yakProgress(captured, true)} className="minhwatu-progress" />
+      <CapturedRows captured={captured} width={30} />
+      <p className="muted minhwatu-pts">광 20 · 열끗 10 · 띠 5점 · 피 0점</p>
     </div>
   )
 }
 
-function CapturedRows({ captured, width }: { captured: number[]; width: number }) {
+function CapturedRows({ captured, width, hideEmpty }: { captured: number[]; width: number; hideEmpty?: boolean }) {
   const sorted = captured.slice().sort((a, b) => a - b)
-  return (
-    <div className="minhwatu-rows">
-      {KIND_ORDER.map((k) => {
-        const cs = sorted.filter((id) => getCard(id).kind === k)
-        if (!cs.length) return null
-        return (
-          <div key={k} className="minhwatu-row">
-            <span className="minhwatu-kind">
-              {KIND_NAMES[k]} {cs.length}
-            </span>
-            <span className="hw-stack">
-              {cs.map((id) => (
-                <HwatuCard key={id} card={id} width={width} showMonth={false} />
-              ))}
-            </span>
-          </div>
-        )
-      })}
-    </div>
-  )
+  const g = { gwang: [] as number[], yeol: [] as number[], tti: [] as number[], pi: [] as number[] }
+  for (const id of sorted) g[getCard(id).kind].push(id)
+  return <CaptureRows groups={g} width={width} hideEmpty={hideEmpty} />
 }
-
-function YakProgress({ captured }: { captured: number[] }) {
-  const set = new Set(captured)
-  const near = YAKS.map((y) => ({ y, have: y.ids.filter((id) => set.has(id)).length }))
-    .filter(({ y, have }) => have > 0 && have < y.ids.length)
-    .sort((a, b) => b.have / b.y.ids.length - a.have / a.y.ids.length)
-    .slice(0, 3)
-  if (!near.length) return null
-  return (
-    <div className="minhwatu-progress">
-      {near.map(({ y, have }) => (
-        <span key={y.key} className="minhwatu-chip">
-          {y.name} {have}/{y.ids.length}
-        </span>
-      ))}
-    </div>
-  )
-}
-

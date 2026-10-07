@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Result } from '../../components/Result'
-import { HwatuCard, MONTH_NAMES, monthOf } from '../../hwatu'
+import { HwatuCard, HwatuStyleButton, HwatuStyleToggle, MONTH_NAMES, monthOf } from '../../hwatu'
 import { sleep } from '../../lib/random'
 import { useStored } from '../../lib/storage'
 import {
@@ -53,6 +53,7 @@ export default function HwatuFortune() {
             </span>
           </div>
         )}
+        <HwatuStyleToggle />
         <button className="btn primary big" onClick={() => setRound(1)}>
           {todays ? '한 번 더 떼어 보기' : '운수 떼기 시작'}
         </button>
@@ -211,6 +212,7 @@ function Play({ onAgain, onSave }: { onAgain: () => void; onSave: (s: Saved) => 
         <button className="btn ghost" onClick={() => setStopped(true)}>
           풀이 보기
         </button>
+        <HwatuStyleButton />
       </div>
     </div>
   )

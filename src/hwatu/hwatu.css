@@ -11,7 +11,7 @@
   transition: transform 0.15s, filter 0.15s, opacity 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
-.hw-card svg {
+.hw-card > svg {
   display: block;
 }
 .hw-frame {
@@ -133,4 +133,248 @@ button.hw-card:focus-visible {
 }
 .hw-stack > .hw-card + .hw-card {
   margin-left: -18px;
+}
+
+/* ---------- 쉬운 보기 / 짝 표시 ---------- */
+.hw-card {
+  position: relative;
+}
+.hw-card.hw-match {
+  filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 2.5px #ffcc33) drop-shadow(0 0 1px #ffcc33);
+}
+.hw-card.hw-match.hw-selected {
+  filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 3px var(--gold)) drop-shadow(0 0 2px var(--gold));
+}
+.hw-marker {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  min-width: 20px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: #ffcc33;
+  color: #3a2600;
+  border: 1.5px solid #fff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+/* 카드 모양 바꾸기 버튼 */
+.hw-style-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  flex: none;
+  touch-action: manipulation;
+}
+.hw-style-btn small {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.hw-style-btn:active {
+  transform: scale(0.95);
+}
+
+/* ---------- 먹은 패 줄 ---------- */
+.hw-caps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px 10px;
+  min-width: 0;
+}
+.hw-caps.one-col {
+  grid-template-columns: minmax(0, 1fr);
+}
+.hw-cap-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+}
+.hw-cap-label {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0;
+  width: 34px;
+  min-height: var(--hw-cap-h, 40px);
+  padding: 3px 2px;
+  text-align: center;
+  border-radius: 7px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.hw-cap-label b {
+  font-size: 1rem;
+  line-height: 1.1;
+}
+.hw-k-gwang .hw-cap-label {
+  background: #f5b800;
+  color: #3d1600;
+}
+.hw-k-yeol .hw-cap-label {
+  background: #37474f;
+  color: #fff;
+}
+.hw-k-tti .hw-cap-label {
+  background: #d32f2f;
+  color: #fff;
+}
+.hw-k-pi .hw-cap-label {
+  background: #e6e0d3;
+  color: #3d362b;
+}
+.hw-cap-cards {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 3px;
+  min-width: 0;
+  flex: 1;
+  min-height: var(--hw-cap-h, 40px);
+  padding-left: calc(var(--hw-cap-w, 28px) * 0.36);
+}
+.hw-cap-cards > .hw-card {
+  margin-left: calc(var(--hw-cap-w, 28px) * -0.36);
+  animation: hw-deal 0.3s ease-out both;
+}
+.hw-cap-empty {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-left: calc(var(--hw-cap-w, 28px) * -0.36);
+}
+
+/* ---------- 족보 진행 칩 ---------- */
+.hw-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.hw-prog {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px 2px 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  border-left: 4px solid var(--prog, var(--muted));
+  white-space: nowrap;
+  line-height: 1.35;
+}
+.hw-prog b {
+  font-weight: 900;
+}
+.hw-prog.zero {
+  opacity: 0.55;
+}
+.hw-prog.near {
+  box-shadow: 0 0 0 1.5px var(--prog, var(--accent)) inset;
+}
+.hw-prog.done {
+  background: #ffcc33;
+  color: #3a2600;
+  border-left-color: #b8860b;
+}
+.hw-prog-gwang {
+  --prog: #e0a800;
+}
+.hw-prog-yeol,
+.hw-prog-godori {
+  --prog: #546e7a;
+}
+.hw-prog-tti,
+.hw-prog-hong {
+  --prog: #d32f2f;
+}
+.hw-prog-cheong {
+  --prog: #1e5fbf;
+}
+.hw-prog-cho {
+  --prog: #3f8f3a;
+}
+.hw-prog-pi {
+  --prog: #a59c8a;
+}
+
+/* ---------- 달별 바닥 ---------- */
+.hw-floor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 8px;
+  justify-content: center;
+  align-items: flex-end;
+  min-height: 72px;
+  padding-top: 6px;
+}
+.hw-floor-empty {
+  align-items: center;
+  opacity: 0.75;
+}
+.hw-fgroup {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 3px 3px 5px;
+  border-radius: 8px;
+  border-bottom: 4px solid var(--mc);
+  background: rgba(0, 0, 0, 0.12);
+}
+.hw-fgroup.multi {
+  background: color-mix(in srgb, var(--mc) 28%, rgba(0, 0, 0, 0.2));
+}
+.hw-fgroup > .hw-card + .hw-card {
+  margin-left: var(--hw-overlap, -24px);
+}
+.hw-fgroup.spread {
+  gap: 4px;
+}
+.hw-fgroup.spread > .hw-card + .hw-card {
+  margin-left: 0;
+}
+.hw-fgroup.hot {
+  background: rgba(255, 204, 51, 0.28);
+}
+.hw-fcount {
+  position: absolute;
+  top: -9px;
+  right: -6px;
+  z-index: 3;
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--mc);
+  color: #fff;
+  border: 1.5px solid #fff;
+  line-height: 1.25;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+.hw-fcount.ppeok {
+  background: var(--danger);
 }

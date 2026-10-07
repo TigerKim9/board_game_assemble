@@ -464,3 +464,65 @@
     gap: 10px 10px;
   }
 }
+
+/* ---------- 새 디자인: 점수 · 진행 칩 · 손패 ---------- */
+.gostop-scorebox {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+.gostop-goal {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.gostop-goal.ready {
+  color: var(--accent);
+}
+.gostop-player > .gostop-items {
+  padding: 0 10px 4px;
+}
+.gostop-prog {
+  padding: 0 10px 8px;
+}
+.gostop-player.mine {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+}
+.gostop-player.mine.active {
+  border-color: var(--primary);
+}
+.gostop-hand-head {
+  align-items: center;
+  gap: 8px;
+}
+.gostop-hand-head strong .muted {
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+.gostop-legend {
+  flex: 1;
+  text-align: right;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.gostop-hand-cards {
+  gap: 10px 6px;
+  padding-top: 10px;
+}
+.gostop-hand-cards > .hw-card {
+  flex: 0 0 calc((100% - 4 * 6px) / 5);
+  max-width: 76px;
+}
+.gostop-hand-cards > .hw-card > svg {
+  width: 100%;
+  height: auto;
+}
+.gostop-center .hw-pile {
+  margin-right: 4px;
+}
+.gostop-flip {
+  width: 44px;
+  min-height: 68px;
+}
