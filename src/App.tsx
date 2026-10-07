@@ -5,6 +5,8 @@ import { navigate, useHashRoute } from './lib/router'
 import { useStored } from './lib/storage'
 import { CATEGORIES, type Category, type GameMeta } from './lib/types'
 
+const OnlinePage = lazy(() => import('./online/OnlinePage'))
+
 const lazyCache = new Map<string, LazyExoticComponent<ComponentType>>()
 function lazyGame(meta: GameMeta) {
   let c = lazyCache.get(meta.id)
@@ -17,6 +19,14 @@ function lazyGame(meta: GameMeta) {
 
 export default function App() {
   const route = useHashRoute()
+  const online = route.match(/^\/online(?:\/([A-Za-z0-9]{4}))?/)
+  if (online) {
+    return (
+      <Suspense fallback={<div className="loading">불러오는 중…</div>}>
+        <OnlinePage code={online[1]} />
+      </Suspense>
+    )
+  }
   const match = route.match(/^\/game\/([\w-]+)/)
   if (match) {
     const meta = findGame(match[1])
@@ -56,6 +66,9 @@ function Home() {
       <header className="home-header">
         <h1>🎲 보드게임 모음</h1>
         <p className="muted">혼자서도, 여럿이서도 · {GAMES.length}종</p>
+        <button className="btn primary online-entry" onClick={() => navigate('/online')}>
+          🌐 온라인으로 친구와 하기
+        </button>
       </header>
       <div className="home-controls">
         <input
