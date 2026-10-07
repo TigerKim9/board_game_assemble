@@ -550,3 +550,10 @@ button.die:disabled {
     font-size: 0.8rem;
   }
 }
+
+/* Primary buttons on felt tables: the green primary disappears on green felt. */
+.felt .btn.primary {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #2a1e05;
+}

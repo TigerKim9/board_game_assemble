@@ -1,0 +1,179 @@
+.zd-players {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 6px;
+}
+.zd-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 8px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  min-width: 0;
+}
+.zd-player.active {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, var(--surface));
+}
+.zd-pname {
+  font-size: 0.8rem;
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.zd-table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: radial-gradient(ellipse at center, #3b4a3a, #1e271e);
+}
+.zd-sub {
+  font-size: 0.82rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+.zd-hand {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  min-height: 96px;
+  padding: 8px 12px;
+  border-radius: 18px;
+}
+.zd-hand.bust {
+  background: rgba(198, 58, 46, 0.4);
+  animation: zd-shake 0.45s;
+}
+.zd-cup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 2.6rem;
+  line-height: 1.1;
+}
+.zd-cup small {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+.zd-die {
+  display: inline-block;
+  line-height: 0;
+  vertical-align: middle;
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.35));
+}
+.zd-die.rolling svg {
+  animation: shake 0.35s infinite;
+}
+.zd-die.dim {
+  opacity: 0.4;
+}
+.zd-log {
+  font-weight: 700;
+  text-align: center;
+  font-size: 0.95rem;
+}
+.zd-tally {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+}
+.zd-tally-box {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.zd-tally-box strong {
+  font-size: 1.5rem;
+}
+.zd-tally-box.danger {
+  background: rgba(198, 58, 46, 0.45);
+}
+.zd-tally-label {
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+.zd-shots {
+  display: flex;
+  gap: 4px;
+  font-size: 1.4rem;
+}
+.zd-shot {
+  filter: grayscale(1);
+  opacity: 0.3;
+}
+.zd-shot.hit {
+  filter: none;
+  opacity: 1;
+}
+.zd-cupinfo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+}
+.zd-cupcount {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+}
+.zd-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  vertical-align: middle;
+}
+.zd-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+}
+.zd-buttons .btn.big {
+  font-size: 1rem;
+}
+.zd-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px 12px;
+  font-size: 0.85rem;
+  align-items: center;
+}
+.zd-legend > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.zd-legend-colors {
+  flex-wrap: wrap;
+}
+@keyframes zd-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-9px); }
+  75% { transform: translateX(9px); }
+}
+.zd-buttons .btn.primary {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #2b1a05;
+}

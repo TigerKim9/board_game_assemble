@@ -1,0 +1,250 @@
+.ld-option input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--primary);
+}
+.ld-players {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 6px;
+}
+.ld-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  min-width: 0;
+  transition: border-color 0.2s, background 0.2s;
+}
+.ld-player.active {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, var(--surface));
+}
+.ld-player.loser {
+  border-color: var(--danger);
+  animation: ld-pulse 0.8s ease-in-out 2;
+}
+.ld-player.out {
+  opacity: 0.45;
+}
+.ld-pname {
+  font-size: 0.8rem;
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ld-count {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.ld-table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.ld-sub {
+  font-size: 0.82rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+.ld-current {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  min-width: 220px;
+  text-align: center;
+}
+.ld-current-label {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+.ld-current-hint {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+.ld-current .ld-bid strong {
+  font-size: 2.2rem;
+}
+.ld-bid {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+}
+.ld-bid strong {
+  font-size: 1.1rem;
+}
+.ld-x {
+  opacity: 0.7;
+}
+.ld-mine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.ld-mine-label {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+.ld-mine-dice {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 46px;
+  align-items: center;
+}
+.ld-cup {
+  font-size: 2rem;
+  line-height: 1;
+}
+.ld-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.3);
+}
+.ld-qty {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 1.1rem;
+}
+.ld-qty .btn {
+  width: 48px;
+  height: 44px;
+  font-size: 1.3rem;
+  padding: 0;
+}
+.ld-qty strong {
+  font-size: 1.8rem;
+  margin-right: 2px;
+}
+.ld-faces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.ld-actions {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+.ld-actions .btn.big {
+  font-size: 1rem;
+  padding: 14px 8px;
+}
+.ld-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 460px;
+}
+.ld-reveal-result {
+  text-align: center;
+  margin: 0;
+}
+.ld-reveal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ld-reveal-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  padding: 4px 8px;
+}
+.ld-reveal-name {
+  width: 76px;
+  flex: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ld-reveal-dice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.ld-reveal-dice .miss {
+  opacity: 0.35;
+}
+.ld-reveal-dice .hit {
+  filter: drop-shadow(0 0 4px #ffd54a);
+}
+.ld-log {
+  list-style: none;
+  margin: 0;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+.ld-log li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ld-log li:first-child {
+  font-weight: 700;
+}
+.ld-log li:not(:first-child) {
+  opacity: 0.65;
+}
+.ld-cover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  max-width: 440px;
+  width: 100%;
+  margin: 24px auto 0;
+}
+.ld-cover-emoji {
+  font-size: 3.5rem;
+}
+.ld-cover p {
+  margin: 0;
+}
+@keyframes ld-pulse {
+  0%, 100% { background: var(--surface); }
+  50% { background: color-mix(in srgb, var(--danger) 25%, var(--surface)); }
+}
+.ld-reveal .btn.primary {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #2b1a05;
+}

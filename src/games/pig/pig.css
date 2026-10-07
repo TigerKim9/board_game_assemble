@@ -1,0 +1,99 @@
+.pig-players {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+.pig-player {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.pig-player.active {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 12%, var(--surface));
+}
+.pig-player-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+.pig-name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pig-bar {
+  position: relative;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.pig-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--c);
+  transition: width 0.4s;
+}
+.pig-bar-pending {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--c) 40%, transparent);
+  transition: width 0.3s;
+}
+.pig-table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.pig-sub {
+  font-size: 0.85rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+.pig-die {
+  padding: 8px;
+  border-radius: 24px;
+  transition: background 0.2s;
+}
+.pig-die.bust {
+  background: rgba(192, 57, 43, 0.35);
+  animation: pig-wobble 0.4s;
+}
+.pig-turn-total {
+  font-size: 1.1rem;
+  text-align: center;
+}
+.pig-turn-total strong {
+  font-size: 1.8rem;
+  margin: 0 2px;
+}
+.pig-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
+}
+@keyframes pig-wobble {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+.pig-buttons .btn.primary {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #2b1a05;
+}

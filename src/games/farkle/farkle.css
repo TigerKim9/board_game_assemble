@@ -1,0 +1,131 @@
+.farkle-players {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  gap: 6px;
+}
+.farkle-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  min-width: 0;
+}
+.farkle-player.active {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, var(--surface));
+}
+.farkle-pname {
+  font-size: 0.82rem;
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.farkle-player strong {
+  font-size: 1.1rem;
+}
+.farkle-table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.farkle-sub {
+  font-size: 0.82rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+.farkle-turn {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.farkle-turn strong {
+  font-size: 2rem;
+}
+.farkle-turn em {
+  font-style: normal;
+  font-weight: 800;
+  color: #ffd27a;
+  font-size: 1.2rem;
+}
+.farkle-dice {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  min-height: 72px;
+  align-items: center;
+  padding: 6px;
+  border-radius: 16px;
+  max-width: 400px;
+}
+.farkle-dice.bust {
+  background: rgba(192, 57, 43, 0.35);
+  animation: farkle-wobble 0.4s;
+}
+.farkle-ready {
+  font-size: 1.6rem;
+  font-weight: 800;
+  opacity: 0.8;
+}
+.farkle-log {
+  font-weight: 700;
+  text-align: center;
+}
+.farkle-hint {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  text-align: center;
+}
+.farkle-kept {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  opacity: 0.9;
+}
+.farkle-kept-dice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: center;
+}
+.farkle-buttons {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 440px;
+}
+.farkle-buttons .btn.big {
+  font-size: 1rem;
+  padding: 14px 10px;
+}
+.farkle-ref summary {
+  cursor: pointer;
+  font-weight: 700;
+  min-height: 28px;
+}
+.farkle-ref ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 0.9rem;
+}
+@keyframes farkle-wobble {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+.farkle-buttons .btn.primary {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #2b1a05;
+}
