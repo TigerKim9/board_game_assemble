@@ -1,0 +1,120 @@
+.hwf-start {
+  max-width: 440px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  text-align: center;
+}
+.hwf-start p {
+  margin: 0;
+}
+.hwf-fan {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 6px;
+}
+.hwf-fan .hw-card + .hw-card {
+  margin-left: -14px;
+}
+.hwf-today {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  width: 100%;
+}
+.hwf-note {
+  font-size: 0.8rem;
+}
+.hwf {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+.hwf-top {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.hwf-stat {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.hwf-msg {
+  min-height: 2.8em;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.95rem;
+  display: grid;
+  place-items: center;
+}
+.hwf-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-width: 380px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: radial-gradient(ellipse at center, var(--felt), var(--felt-2));
+}
+.hwf-grid .hw-card {
+  width: 100%;
+}
+.hwf-grid .hw-card svg {
+  width: 100%;
+  height: auto;
+}
+.hwf-empty {
+  display: block;
+  aspect-ratio: 60 / 92;
+  border-radius: 6px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.25);
+}
+.hwf-shake {
+  animation: shake 0.35s;
+}
+.hwf-done {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.hwf-chip {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gold) 30%, var(--surface));
+}
+.hwf-readings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  width: 100%;
+}
+.hwf-readings li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.hwf-readings p {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}

@@ -1,0 +1,136 @@
+/* 화투 카드 공용 스타일 (접두사 hw-) */
+.hw-card {
+  display: inline-block;
+  line-height: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  border-radius: 9%/6%;
+  flex: none;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35));
+  transition: transform 0.15s, filter 0.15s, opacity 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.hw-card svg {
+  display: block;
+}
+.hw-frame {
+  fill: #9e1b22;
+  stroke: #5a0d12;
+  stroke-width: 1;
+}
+.hw-back-frame {
+  fill: #5a0d12;
+  stroke: #2a0508;
+  stroke-width: 1;
+}
+button.hw-card {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button.hw-card:disabled {
+  cursor: default;
+}
+button.hw-card:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+.hw-card.hw-clickable:not(:disabled):hover {
+  transform: translateY(-3px);
+}
+.hw-card.hw-selected {
+  transform: translateY(-8px);
+  filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 3px var(--gold)) drop-shadow(0 0 2px var(--gold));
+}
+.hw-card.hw-highlight {
+  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px var(--gold));
+  animation: hw-glow 1.2s ease-in-out infinite;
+}
+.hw-card.hw-dim {
+  opacity: 0.45;
+}
+@keyframes hw-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 3px var(--gold));
+  }
+  50% {
+    filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 7px var(--gold));
+  }
+}
+@keyframes hw-deal {
+  0% {
+    transform: translateY(-14px) scale(0.85);
+    opacity: 0;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+.hw-deal {
+  animation: hw-deal 0.28s ease-out both;
+}
+@keyframes hw-flip {
+  0% {
+    transform: rotateY(90deg);
+  }
+  100% {
+    transform: rotateY(0);
+  }
+}
+.hw-flip {
+  animation: hw-flip 0.3s ease-out both;
+}
+
+/* 덱 더미 */
+.hw-pile {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  flex: none;
+}
+.hw-pile .hw-pile-under2 {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+}
+.hw-pile .hw-pile-under {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+}
+.hw-pile .hw-pile-top {
+  position: relative;
+}
+.hw-pile-empty {
+  display: inline-block;
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+}
+.hw-pile-count {
+  position: absolute;
+  right: -2px;
+  bottom: -4px;
+  min-width: 22px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: #fff8e6;
+  color: #2a1e05;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* 따낸 카드 줄 (겹쳐 놓기) */
+.hw-stack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  row-gap: 4px;
+}
+.hw-stack > .hw-card + .hw-card {
+  margin-left: -18px;
+}

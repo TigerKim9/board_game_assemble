@@ -1,0 +1,230 @@
+.seotda {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.seotda-bank {
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.seotda-bank-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+}
+.seotda-bank p {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+}
+.seotda-bank .small-note {
+  font-size: 0.8rem;
+}
+.seotda-note {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.seotda-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.seotda-pot {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+.seotda-pot strong {
+  font-size: 1.6rem;
+  color: #ffe08a;
+}
+.seotda-pot-label {
+  opacity: 0.85;
+}
+.seotda-carry {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+.seotda-seats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.seotda-seat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 82px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+  border-left: 4px solid var(--seat);
+  transition: background 0.2s, opacity 0.2s;
+}
+.seotda-seat.turn {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 2px #ffe08a inset;
+}
+.seotda-seat.out {
+  opacity: 0.5;
+}
+.seotda-seat.won {
+  background: rgba(255, 224, 138, 0.25);
+}
+.seotda-who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.seotda-name {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.seotda-dealer {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: #ffe08a;
+  color: #3a2a00;
+  font-size: 0.7rem;
+  vertical-align: middle;
+}
+.seotda-chips {
+  font-size: 0.8rem;
+}
+.seotda-chips .muted {
+  color: rgba(255, 255, 255, 0.7);
+}
+.seotda-mini {
+  display: flex;
+  gap: 3px;
+  min-height: 46px;
+  align-items: center;
+}
+.seotda-slot {
+  display: inline-block;
+  width: 30px;
+  height: 46px;
+  border-radius: 4px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.3);
+}
+.seotda-slot.big {
+  width: 78px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  color: var(--muted);
+  border-color: var(--border);
+  border-radius: 8px;
+}
+.seotda-act {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.seotda-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #222;
+  white-space: nowrap;
+}
+.seotda-tag.die {
+  background: #6b6b6b;
+  color: #fff;
+}
+.seotda-tag.hand {
+  background: #fff3cf;
+}
+.seotda-tag.win {
+  background: #ffcf3a;
+}
+.seotda-tag.thinking {
+  animation: flash 1s infinite;
+}
+.seotda-gain {
+  font-weight: 800;
+  color: #ffe08a;
+  font-size: 0.85rem;
+}
+.seotda-status {
+  font-size: 1rem;
+}
+.seotda-hand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  justify-content: center;
+}
+.seotda-hand-cards {
+  display: flex;
+  gap: 8px;
+}
+.seotda-hand-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.seotda-hand-name {
+  font-size: 1.4rem;
+}
+.seotda-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.seotda-actions .btn {
+  padding: 12px 4px;
+  min-height: 48px;
+}
+.seotda-actions small {
+  font-weight: 500;
+  font-size: 0.75rem;
+}
+.seotda-cover {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.seotda-cover-emoji {
+  font-size: 2.6rem;
+}
+.seotda-chart-btn {
+  align-self: center;
+}
+.seotda-chart {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.seotda-chart li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.seotda-chart-cards {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
