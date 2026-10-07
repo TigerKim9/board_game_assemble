@@ -1,0 +1,82 @@
+.yacht-table {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+}
+.yacht-table .best {
+  font-weight: 500;
+  opacity: 0.8;
+}
+.dice-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 6px 0;
+}
+.yacht-table .btn.big {
+  max-width: 360px;
+}
+.hint {
+  margin: -6px 0 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+.scoreboard-wrap {
+  overflow-x: auto;
+}
+.scoreboard {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  font-size: 0.95rem;
+}
+.scoreboard th,
+.scoreboard td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+.scoreboard tbody th {
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.scoreboard thead th {
+  background: var(--surface-2);
+  font-size: 0.85rem;
+}
+.scoreboard thead th.active {
+  background: var(--primary);
+  color: var(--primary-text);
+}
+.scoreboard .pick {
+  min-width: 44px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 2px dashed var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+.scoreboard .pick.good {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.scoreboard .bonus-row,
+.scoreboard .total-row {
+  background: var(--surface-2);
+}
+.scoreboard .total-row td {
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+.ranking {
+  text-align: left;
+  margin: 0;
+}
