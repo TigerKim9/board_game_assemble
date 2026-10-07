@@ -4,6 +4,7 @@ import { Result } from '../../components/Result'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
 import { DuelActions, DuelBar } from '../othello/duel'
 import { turnText, useDuel } from '../othello/useDuel'
+import { Mark, TttBoard } from './Board'
 import { aiMove, applyMove, initialState, winner, type TttState } from './logic'
 import './tictactoe.css'
 
@@ -46,21 +47,6 @@ export default function TicTacToe() {
   )
 }
 
-export function Mark({ p, size = 18 }: { p: number; size?: number }) {
-  return (
-    <svg viewBox="0 0 100 100" width={size} height={size} className={`tictactoe-mark p${p}`} aria-label={p === 0 ? '동그라미' : '가위표'}>
-      {p === 0 ? (
-        <circle cx="50" cy="50" r="32" pathLength={100} />
-      ) : (
-        <>
-          <line x1="22" y1="22" x2="78" y2="78" pathLength={100} />
-          <line x1="78" y1="22" x2="22" y2="78" pathLength={100} className="second" />
-        </>
-      )}
-    </svg>
-  )
-}
-
 function Game({
   setup,
   first,
@@ -96,7 +82,6 @@ function Game({
       onEnd(w)
     }
   }, [over]) // eslint-disable-line react-hooks/exhaustive-deps
-  const winSet = new Set(s.winLine ?? [])
 
   return (
     <>
@@ -111,19 +96,7 @@ function Game({
       <div className="status">
         {over ? (w! >= 0 ? `${players[w!].name} 승리!` : '비겼어요!') : turnText(duel.current, thinking)}
       </div>
-      <div className={`tictactoe-board ${s.winLine ? 'won' : ''}`}>
-        {s.board.map((c, i) => (
-          <button
-            key={i}
-            className={`tictactoe-cell ${winSet.has(i) ? 'win' : ''} ${s.last === i ? 'last' : ''}`}
-            disabled={!humanTurn || c !== 0}
-            aria-label={`${Math.floor(i / 3) + 1}행 ${(i % 3) + 1}열`}
-            onClick={() => duel.play(i)}
-          >
-            {c !== 0 && <Mark p={c - 1} size={0} />}
-          </button>
-        ))}
-      </div>
+      <TttBoard state={s} live={humanTurn} onPlay={(i) => duel.play(i)} />
       <p className="tictactoe-tally muted">
         전적 — {players[0].name} {tally[0]}승 · {players[1].name} {tally[1]}승 · 무승부 {tally[2]}
       </p>

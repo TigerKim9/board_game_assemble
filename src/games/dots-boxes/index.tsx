@@ -5,7 +5,8 @@ import { useStored } from '../../lib/storage'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
 import { DuelActions } from '../othello/duel'
 import { turnText, useDuel } from '../othello/useDuel'
-import { aiMove, applyMove, edgeCoords, geo, initialState, scores, type DbState } from './logic'
+import { DotsBar, DotsBoard } from './Board'
+import { aiMove, applyMove, initialState, scores, type DbState } from './logic'
 import './dots-boxes.css'
 
 interface Setup {
@@ -46,11 +47,8 @@ export default function DotsBoxes() {
   return <Game setup={setup} onSetup={() => setSetup(null)} />
 }
 
-const PAD = 0.35
-
 function Game({ setup, onSetup }: { setup: Setup; onSetup: () => void }) {
   const { players, difficulty, size: n } = setup
-  const [hover, setHover] = useState<number | null>(null)
   const duel = useDuel<DbState, number>({
     players,
     initial: () => initialState(n, players.length),
@@ -63,8 +61,6 @@ function Game({ setup, onSetup }: { setup: Setup; onSetup: () => void }) {
   })
   const { state: s, humanTurn, thinking, over } = duel
   const sc = scores(s)
-  const { E, H } = geo(n)
-  const view = n + PAD * 2
 
   const ranking = players.map((p, i) => ({ p, i, v: sc[i] })).sort((a, b) => b.v - a.v)
   const top = ranking[0].v
@@ -75,90 +71,11 @@ function Game({ setup, onSetup }: { setup: Setup; onSetup: () => void }) {
     status = `${players[s.turn].name} 상자 완성! 한 번 더 그어요`
   }
 
-  // Diamond hit areas tile the board so every tap maps to the nearest edge.
-  const hitShape = (e: number) => {
-    const [x1, y1, x2, y2] = edgeCoords(n, e)
-    const mx = (x1 + x2) / 2
-    const my = (y1 + y2) / 2
-    const pts =
-      e < H
-        ? [[x1, y1], [mx, my - 0.5], [x2, y2], [mx, my + 0.5]]
-        : [[x1, y1], [mx + 0.5, my], [x2, y2], [mx - 0.5, my]]
-    return pts.map(([x, y]) => `${x + PAD},${y + PAD}`).join(' ')
-  }
-
   return (
     <>
-      <div className="dots-boxes-bar">
-        {players.map((p, i) => (
-          <div key={i} className={`dots-boxes-chip ${i === s.turn && !over ? 'active' : ''}`} style={{ '--c': `var(--p${i + 1})` } as React.CSSProperties}>
-            <span className="dots-boxes-swatch">{i + 1}</span>
-            <span className="dots-boxes-name">
-              {p.isAI ? '🤖 ' : ''}
-              {p.name}
-            </span>
-            <strong>{sc[i]}</strong>
-            {p.isAI && <span className={`othello-duel-dots ${i === s.turn && thinking ? 'on' : ''}`} aria-hidden />}
-          </div>
-        ))}
-      </div>
+      <DotsBar players={players} state={s} thinking={thinking} />
       <div className="status dots-boxes-status">{over ? '게임 끝!' : status}</div>
-      <div className="dots-boxes-wrap">
-        <svg
-          className={`dots-boxes-board ${humanTurn ? 'live' : ''}`}
-          viewBox={`0 0 ${view} ${view}`}
-          onPointerLeave={() => setHover(null)}
-          role="grid"
-          aria-label="도트 앤 박스 판"
-        >
-          {s.boxes.map((o, b) => {
-            const r = Math.floor(b / n)
-            const c = b % n
-            if (o < 0) return null
-            return (
-              <g key={b} className={`dots-boxes-box ${s.lastBoxes.includes(b) ? 'new' : ''}`}>
-                <rect x={c + PAD + 0.04} y={r + PAD + 0.04} width={0.92} height={0.92} rx={0.08} style={{ fill: `var(--p${o + 1})` }} />
-                <text x={c + PAD + 0.5} y={r + PAD + 0.62}>
-                  {o + 1}
-                </text>
-              </g>
-            )
-          })}
-          {Array.from({ length: E }, (_, e) => {
-            const [x1, y1, x2, y2] = edgeCoords(n, e)
-            const owner = s.edges[e]
-            const drawn = owner >= 0
-            return (
-              <line
-                key={e}
-                x1={x1 + PAD}
-                y1={y1 + PAD}
-                x2={x2 + PAD}
-                y2={y2 + PAD}
-                className={`dots-boxes-edge ${drawn ? 'drawn' : ''} ${s.last === e ? 'last' : ''} ${
-                  !drawn && hover === e && humanTurn ? 'hover' : ''
-                }`}
-                style={drawn ? { stroke: `var(--p${owner + 1})` } : undefined}
-              />
-            )
-          })}
-          {Array.from({ length: (n + 1) * (n + 1) }, (_, k) => (
-            <circle key={k} cx={(k % (n + 1)) + PAD} cy={Math.floor(k / (n + 1)) + PAD} r={0.09} className="dots-boxes-dot" />
-          ))}
-          {humanTurn &&
-            Array.from({ length: E }, (_, e) =>
-              s.edges[e] < 0 ? (
-                <polygon
-                  key={e}
-                  points={hitShape(e)}
-                  className="dots-boxes-hit"
-                  onPointerEnter={(ev) => ev.pointerType === 'mouse' && setHover(e)}
-                  onClick={() => duel.play(e)}
-                />
-              ) : null,
-            )}
-        </svg>
-      </div>
+      <DotsBoard state={s} live={humanTurn} onPlay={(e) => duel.play(e)} />
       <DuelActions canUndo={duel.canUndo} onUndo={duel.undo} onRestart={duel.restart} onSetup={onSetup} />
       {over && (
         <Result

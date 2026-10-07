@@ -148,6 +148,8 @@ function onMessage(msg: ServerMsg) {
       save('online:lastRoom', msg.room.code)
       break
     case 'state':
+      // Reconnects resend the same state; skip it so in-progress selections on screen survive.
+      if (state.game && state.game.version === msg.version && state.game.seat === msg.seat) break
       set({ game: { view: msg.view, seat: msg.seat, toAct: msg.toAct, result: msg.result, version: msg.version } })
       break
     case 'left':

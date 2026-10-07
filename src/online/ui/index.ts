@@ -5,4 +5,10 @@ import type { OnlineGameProps } from './types'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const ONLINE_UI: Record<string, LazyExoticComponent<ComponentType<OnlineGameProps<any, any>>>> = {
   gomoku: lazy(() => import('./gomoku')),
+  connect4: lazy(() => import('./connect4')),
+  othello: lazy(() => import('./othello')),
+  tictactoe: lazy(() => import('./tictactoe')),
+  checkers: lazy(() => import('./checkers')),
+  'dots-boxes': lazy(() => import('./dots-boxes')),
+  yut: lazy(() => import('./yut')),
 }
