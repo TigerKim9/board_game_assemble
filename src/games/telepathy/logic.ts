@@ -100,7 +100,7 @@ export function play(s: TState, player: number): { state: TState; mistake: Mista
 }
 
 /** Everyone agrees to throw a star: each player discards their lowest card. */
-export function useStar(s: TState): { state: TState; thrown: { player: number; card: number }[] } {
+export function throwStar(s: TState): { state: TState; thrown: { player: number; card: number }[] } {
   if (s.status !== 'playing' || s.stars <= 0) return { state: s, thrown: [] }
   const thrown: { player: number; card: number }[] = []
   const hands = s.hands.map((h, p) => {

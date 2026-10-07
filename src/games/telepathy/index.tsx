@@ -12,7 +12,7 @@ import {
   nextLevel,
   play,
   topCard,
-  useStar,
+  throwStar,
   type TState,
 } from './logic'
 import './telepathy.css'
@@ -109,7 +109,7 @@ function Table({ game, onAgain, onReset }: { game: Game; onAgain: () => void; on
       setEvent({ kind: 'refuse', by: refuser })
       return
     }
-    const r = useStar(cur)
+    const r = throwStar(cur)
     setEvent({ kind: 'star', thrown: r.thrown })
     if (r.state.status === 'playing') setPhase('pause')
     commit(r.state)

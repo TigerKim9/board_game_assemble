@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mulberry32 } from '../../lib/random'
-import { aiAgreesStar, aiDelay, dealHands, maxLevel, newGame, nextLevel, play, topCard, useStar, type TState } from './logic'
+import { aiAgreesStar, aiDelay, dealHands, maxLevel, newGame, nextLevel, play, topCard, throwStar, type TState } from './logic'
 
 const at = (hands: number[][], over: Partial<TState> = {}): TState => ({
   ...newGame(hands.length, mulberry32(1)),
@@ -60,11 +60,11 @@ describe('telepathy rules', () => {
   })
   it('a star discards everyone’s lowest card', () => {
     const s = at([[10, 50], [20], []], { level: 2, stars: 1 })
-    const r = useStar(s)
+    const r = throwStar(s)
     expect(r.thrown.map((t) => t.card)).toEqual([10, 20])
     expect(r.state.hands).toEqual([[50], [], []])
     expect(r.state.stars).toBe(0)
-    expect(useStar(r.state).state).toBe(r.state)
+    expect(throwStar(r.state).state).toBe(r.state)
   })
 })
 
