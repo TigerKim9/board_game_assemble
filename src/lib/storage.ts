@@ -40,17 +40,11 @@ export function useBestScore(gameId: string, lowerIsBetter = false) {
   const [best, setBest] = useStored<number | null>(`best:${gameId}`, null)
   const submit = useCallback(
     (score: number) => {
-      let isNew = false
-      setBest((prev) => {
-        if (prev == null || (lowerIsBetter ? score < prev : score > prev)) {
-          isNew = true
-          return score
-        }
-        return prev
-      })
+      const isNew = best == null || (lowerIsBetter ? score < best : score > best)
+      if (isNew) setBest(score)
       return isNew
     },
-    [lowerIsBetter, setBest],
+    [best, lowerIsBetter, setBest],
   )
   return { best, submit }
 }

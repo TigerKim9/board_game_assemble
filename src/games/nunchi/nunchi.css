@@ -1,0 +1,226 @@
+.nunchi {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.nunchi-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  flex-wrap: wrap;
+}
+.nunchi-top .muted {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.nunchi-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 10px 16px;
+  transition: background 0.3s;
+}
+.nunchi-stage.ended {
+  background: radial-gradient(ellipse at center, #7a2f25, #4a1a14);
+}
+.nunchi-big {
+  font-size: 2rem;
+  font-weight: 900;
+  min-height: 1.4em;
+  text-align: center;
+  animation: nunchi-pop 0.3s ease-out;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.nunchi-big.count {
+  font-size: 3rem;
+}
+.nunchi-people {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
+  gap: 8px 4px;
+}
+.nunchi-person {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-top: 22px;
+  min-width: 0;
+}
+.nunchi-face {
+  font-size: 2.2rem;
+  line-height: 1.1;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.2s, background 0.2s;
+}
+.nunchi-person.safe .nunchi-face {
+  background: rgba(46, 139, 87, 0.45);
+  border-color: #7ee2a8;
+}
+.nunchi-person.pending .nunchi-face {
+  transform: scale(1.12);
+  border-color: var(--gold);
+}
+.nunchi-person.lost .nunchi-face {
+  background: rgba(192, 57, 43, 0.6);
+  border-color: #ff9b8f;
+  animation: shake 0.4s 3;
+}
+.nunchi-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nunchi-pen {
+  font-size: 0.6rem;
+  min-height: 1em;
+  letter-spacing: -1px;
+}
+.nunchi-bubble {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  color: #22201c;
+  font-weight: 900;
+  font-size: 0.85rem;
+  border-radius: 10px;
+  padding: 0 7px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  animation: nunchi-bubble 0.25s ease-out;
+  white-space: nowrap;
+  z-index: 1;
+}
+.nunchi-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #fff;
+  border-bottom: none;
+}
+.nunchi-person.lost .nunchi-bubble {
+  background: #ffd5cf;
+}
+.nunchi-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+  max-width: 440px;
+  width: 100%;
+  margin: 0 auto;
+  animation: pop 0.25s ease-out;
+}
+.nunchi-intro p {
+  margin: 0;
+}
+.nunchi-buttons {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0;
+}
+.nunchi-buttons.multi {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.nunchi-call {
+  --pc: var(--accent);
+  appearance: none;
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  border: 6px solid color-mix(in srgb, var(--pc) 55%, #fff);
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--pc) 60%, #fff), var(--pc));
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 8px 0 color-mix(in srgb, var(--pc) 60%, #000), 0 10px 20px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.06s, box-shadow 0.06s;
+  margin: 0 auto;
+}
+.nunchi-buttons.multi .nunchi-call {
+  width: 100%;
+  max-width: 150px;
+  height: auto;
+  aspect-ratio: 1;
+}
+.nunchi-call:active:not(:disabled) {
+  transform: translateY(6px);
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--pc) 60%, #000), 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+.nunchi-call:disabled {
+  cursor: default;
+  filter: grayscale(0.6);
+  opacity: 0.6;
+}
+.nunchi-call.done {
+  filter: none;
+  opacity: 0.85;
+  background: radial-gradient(circle at 35% 30%, #8fe0b0, var(--success));
+  border-color: #c5f0d6;
+  box-shadow: 0 2px 0 #1d5e3a;
+  transform: translateY(6px);
+}
+.nunchi-call-num {
+  font-size: 3rem;
+  line-height: 1;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+.nunchi-buttons.multi .nunchi-call-num {
+  font-size: 2.2rem;
+}
+.nunchi-call-name {
+  font-size: 0.85rem;
+  margin-top: 4px;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nunchi-tip {
+  text-align: center;
+  margin: 0;
+  font-size: 0.85rem;
+}
+.nunchi-ranking {
+  text-align: left;
+  margin: 0;
+}
+@keyframes nunchi-pop {
+  0% { transform: scale(1.4); opacity: 0.2; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes nunchi-bubble {
+  0% { transform: translateX(-50%) scale(0.3); }
+  70% { transform: translateX(-50%) scale(1.2); }
+  100% { transform: translateX(-50%) scale(1); }
+}

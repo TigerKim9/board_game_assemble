@@ -1,0 +1,312 @@
+.cd-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cd-goal {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.cd-board {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 10px;
+}
+.cd-status {
+  font-size: 1rem;
+}
+.cd-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 460px;
+}
+.cd-row {
+  appearance: none;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background: rgba(0, 0, 0, 0.15);
+  color: inherit;
+  cursor: default;
+  transition: border-color 0.2s, background 0.2s;
+}
+.cd-row:disabled {
+  opacity: 1;
+}
+.cd-row.pickable {
+  cursor: pointer;
+  border-color: var(--gold);
+  animation: cd-glow 1s ease-in-out infinite alternate;
+}
+.cd-row.hit {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+.cd-row-tag {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--gold);
+  color: #2a1f00;
+  font-weight: 800;
+  font-size: 0.85rem;
+  border-radius: 999px;
+  padding: 2px 8px;
+  box-shadow: var(--shadow);
+}
+.cd-slot {
+  aspect-ratio: 5 / 7;
+  border-radius: 7px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.25);
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+}
+.cd-slot.six {
+  border-color: rgba(255, 120, 100, 0.55);
+  opacity: 0.55;
+}
+.cd-slot.warn {
+  opacity: 1;
+  animation: flash 1s infinite;
+}
+.cd-card {
+  appearance: none;
+  aspect-ratio: 5 / 7;
+  border-radius: 7px;
+  border: 2px solid #c9c2b0;
+  background: #fffdf6;
+  color: #2a241b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  line-height: 1;
+  min-width: 0;
+  overflow: hidden;
+  animation: pop 0.25s ease-out;
+}
+button.cd-card {
+  cursor: pointer;
+  font: inherit;
+  touch-action: manipulation;
+}
+.cd-num {
+  font-weight: 900;
+  font-size: clamp(0.95rem, 4.6vw, 1.35rem);
+}
+.cd-heads {
+  font-size: 0.55rem;
+  letter-spacing: -2px;
+  white-space: nowrap;
+}
+.cd-card.h2 {
+  background: #e6f1ff;
+  border-color: #6c9bd8;
+}
+.cd-card.h3 {
+  background: #fff3c9;
+  border-color: #d9a520;
+}
+.cd-card.h5 {
+  background: #ffe0dc;
+  border-color: #d2503f;
+}
+.cd-card.h5 .cd-heads,
+.cd-card.h7 .cd-heads {
+  letter-spacing: 0;
+  font-weight: 800;
+  font-size: 0.6rem;
+}
+.cd-card.h7 {
+  background: linear-gradient(160deg, #f1ddff, #d7b4ff);
+  border-color: #7c3fbf;
+}
+.cd-card.small {
+  width: 40px;
+}
+.cd-card.small .cd-num {
+  font-size: 1rem;
+}
+.cd-card.flip {
+  animation: cd-flip 0.5s ease-out;
+}
+.cd-card.selected {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+  transform: translateY(-6px);
+}
+.cd-reveal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.cd-reveal-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 52px;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.cd-reveal-item.now {
+  transform: translateY(-4px) scale(1.08);
+}
+.cd-reveal-item.done {
+  opacity: 0.35;
+}
+.cd-reveal-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  max-width: 52px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  filter: brightness(1.5);
+}
+.cd-take {
+  background: rgba(192, 57, 43, 0.85);
+  color: #fff;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 6px 14px;
+  animation: pop 0.25s ease-out;
+  text-align: center;
+}
+.cd-hand-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+}
+.cd-hand-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.cd-hand {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  max-width: 340px;
+}
+.cd-hand .cd-card {
+  transition: transform 0.12s;
+}
+.cd-hand-wrap .btn.big {
+  max-width: 340px;
+}
+.cd-scores {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+}
+.cd-scores li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 4px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--pc);
+  border-radius: 10px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+}
+.cd-scores li.ouch {
+  animation: shake 0.4s 2;
+  background: color-mix(in srgb, var(--danger) 15%, var(--surface));
+}
+.cd-sname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.cd-bar {
+  grid-column: 1 / -1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.cd-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--success), var(--gold), var(--danger));
+  transition: width 0.4s;
+}
+.cd-round-end {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 440px;
+  width: 100%;
+  margin: 0 auto;
+  animation: pop 0.3s ease-out;
+}
+.cd-round-end ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.cd-round-end li {
+  display: grid;
+  grid-template-columns: 1fr 50px 70px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.cd-round-end li span:nth-child(2) {
+  color: var(--danger);
+  text-align: right;
+}
+.cd-round-end li strong {
+  text-align: right;
+}
+.cd-cover {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  max-width: 440px;
+  width: 100%;
+  margin: 24px auto;
+}
+.cd-cover-emoji {
+  font-size: 3rem;
+}
+.cd-ranking {
+  text-align: left;
+  margin: 0;
+}
+.cd-ranking .cd-bust {
+  color: var(--danger);
+}
+@keyframes cd-flip {
+  0% { transform: rotateY(90deg); }
+  100% { transform: rotateY(0); }
+}
+@keyframes cd-glow {
+  from { box-shadow: 0 0 0 0 rgba(224, 165, 38, 0.2); }
+  to { box-shadow: 0 0 0 4px rgba(224, 165, 38, 0.45); }
+}

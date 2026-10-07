@@ -1,0 +1,219 @@
+.nt-table {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+.nt-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  width: 100%;
+}
+.nt-deck {
+  position: relative;
+  width: 52px;
+  height: 72px;
+}
+.nt-deck-card {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background:
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.15) 0 5px, transparent 5px 10px),
+    linear-gradient(160deg, #5b3fa0, #2d1e5c);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.25), 6px 6px 0 rgba(0, 0, 0, 0.15);
+}
+.nt-deck-count {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.nt-offer {
+  animation: nt-flip 0.45s ease-out;
+}
+.nt-card {
+  --hue: 0;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 46px;
+  border-radius: 7px;
+  font-weight: 800;
+  font-size: 1rem;
+  color: hsl(var(--hue) 65% 30%);
+  background: linear-gradient(170deg, #fff, hsl(var(--hue) 70% 90%));
+  border: 2px solid hsl(var(--hue) 55% 55%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  flex: none;
+}
+.nt-card.big {
+  width: 96px;
+  height: 132px;
+  font-size: 3rem;
+  border-width: 3px;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  position: relative;
+}
+.nt-card.big::before,
+.nt-card.big::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--hue) 55% 55%);
+  opacity: 0.6;
+}
+.nt-card.big::before {
+  top: 8px;
+  left: 8px;
+}
+.nt-card.big::after {
+  bottom: 8px;
+  right: 8px;
+}
+.nt-pot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 56px;
+}
+.nt-chipstack {
+  position: relative;
+  width: 40px;
+  height: 64px;
+}
+.nt-chip {
+  position: absolute;
+  width: 34px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 35%, #ffe08a, #d39b12);
+  border: 1px solid #8a6200;
+  animation: nt-drop 0.3s ease-out;
+}
+.nt-pot-count {
+  font-weight: 800;
+}
+.nt-log {
+  min-height: 1.6em;
+  font-size: 0.95rem;
+  text-align: center;
+  animation: pop 0.25s ease-out;
+}
+.nt-hint {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+  text-align: center;
+}
+.nt-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
+}
+.nt-actions .btn.big {
+  padding: 14px 8px;
+  font-size: 1.05rem;
+}
+.nt-actions small {
+  font-weight: 500;
+  opacity: 0.85;
+}
+.nt-seats {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+.nt-seat {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-left: 6px solid var(--pc);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.nt-seat.active {
+  border-color: var(--pc);
+  background: color-mix(in srgb, var(--pc) 10%, var(--surface));
+}
+.nt-seat-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 700;
+}
+.nt-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nt-chips {
+  font-size: 0.9rem;
+}
+.nt-score {
+  min-width: 48px;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.nt-hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 46px;
+  align-items: center;
+}
+.nt-run {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 9px;
+}
+.nt-run:has(.nt-card + .nt-card) {
+  background: color-mix(in srgb, var(--pc) 22%, transparent);
+}
+.nt-card.dim {
+  opacity: 0.55;
+  width: 28px;
+  font-size: 0.85rem;
+}
+.nt-empty {
+  font-size: 0.85rem;
+}
+.nt-removed {
+  text-align: center;
+  font-size: 0.85rem;
+  margin: 0;
+}
+.nt-ranking {
+  text-align: left;
+  margin: 0;
+}
+@keyframes nt-flip {
+  0% { transform: rotateY(90deg) scale(0.9); }
+  100% { transform: rotateY(0) scale(1); }
+}
+@keyframes nt-drop {
+  0% { transform: translateY(-14px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
