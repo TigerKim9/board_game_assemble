@@ -1,0 +1,177 @@
+.roulette-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.roulette-wheel-wrap {
+  position: relative;
+  width: min(100%, 340px);
+  aspect-ratio: 1;
+}
+.roulette-wheel {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+}
+.roulette-wheel g {
+  transform-origin: 0 0;
+}
+.roulette-rim {
+  fill: #3b2a1e;
+  stroke: var(--gold);
+  stroke-width: 3;
+}
+.roulette-seg {
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 1.2;
+}
+.roulette-label {
+  fill: #fff;
+  font-weight: 800;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 2px;
+}
+.roulette-bulb {
+  fill: #ffe9a8;
+}
+.roulette-pointer {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  transform-origin: 0 -110px;
+}
+.roulette-pointer.ticking {
+  animation: roulette-tick 0.12s ease-in-out infinite alternate;
+}
+.roulette-hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22%;
+  height: 22%;
+  min-width: 56px;
+  min-height: 56px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 4px solid var(--gold);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 900;
+  font-size: 1rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.roulette-hub:disabled {
+  cursor: default;
+}
+.roulette-result {
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.roulette-result-card {
+  font-size: 1.35rem;
+  padding: 8px 20px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 18%, var(--surface));
+  border: 3px solid var(--c);
+  animation: pop 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+  word-break: keep-all;
+}
+.roulette-spin {
+  max-width: 360px;
+}
+.roulette-note {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.roulette-history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.85rem;
+}
+.roulette-history .tag.latest {
+  background: var(--accent);
+  color: #fff;
+}
+.roulette-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.roulette-editor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.roulette-editor-head h3 {
+  font-size: 1rem;
+}
+.roulette-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.roulette-presets .btn {
+  min-height: 40px;
+}
+.roulette-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.roulette-items li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.roulette-items .seat-input {
+  min-height: 40px;
+}
+.roulette-items .btn.ghost {
+  min-width: 40px;
+  min-height: 40px;
+}
+.roulette-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  flex: none;
+}
+.roulette-add {
+  width: 100%;
+  min-height: 40px;
+}
+.roulette-item-preview {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  word-break: keep-all;
+}
+.roulette-toggle {
+  font-weight: 500;
+  white-space: normal;
+}
+
+@keyframes roulette-tick {
+  from {
+    transform: rotate(-9deg);
+  }
+  to {
+    transform: rotate(9deg);
+  }
+}

@@ -1,0 +1,223 @@
+.bingo-toggle,
+.bingo-auto {
+  font-weight: 500;
+  white-space: normal;
+}
+.bingo-caller {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+}
+.bingo-ball {
+  flex: none;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 1.35rem;
+  color: #222;
+  background: radial-gradient(circle at 35% 30%, #fff 0 18%, #ffe27a 40%, #e0a526 100%);
+  box-shadow: inset 0 -6px 10px rgba(0, 0, 0, 0.2), 0 4px 10px rgba(0, 0, 0, 0.25);
+  animation: bingo-roll 0.45s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.bingo-ball.empty {
+  background: radial-gradient(circle at 35% 30%, #fff 0 18%, var(--surface-2) 60%, var(--border) 100%);
+  color: var(--muted);
+  animation: none;
+}
+.bingo-caller-side {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bingo-count {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.bingo-recent {
+  display: flex;
+  gap: 4px;
+  min-height: 26px;
+  overflow: hidden;
+}
+.bingo-mini-ball {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.bingo-caller-btns {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bingo-caller-btns .btn {
+  flex: 1;
+  min-height: 44px;
+}
+.bingo-stalled {
+  text-align: center;
+  font-weight: 600;
+}
+.bingo-chip {
+  cursor: pointer;
+  color: var(--text);
+  min-height: 40px;
+}
+.bingo-chip:disabled {
+  cursor: default;
+}
+.bingo-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  align-items: flex-start;
+}
+.bingo-card {
+  width: min(100%, 420px);
+  padding: 10px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--c) 22%, var(--surface));
+  border: 3px solid var(--c);
+  box-shadow: var(--shadow);
+}
+.bingo-letters,
+.bingo-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+.bingo-letters span {
+  text-align: center;
+  font-weight: 900;
+  font-size: 1.2rem;
+  color: var(--c);
+}
+.bingo-cell {
+  aspect-ratio: 1;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 1.15rem;
+  cursor: pointer;
+  position: relative;
+  touch-action: manipulation;
+  padding: 0;
+}
+.bingo-cell:disabled {
+  cursor: default;
+}
+.bingo-cell.callable {
+  border: 2px dashed var(--accent);
+}
+.bingo-cell.marked {
+  background: var(--c);
+  color: #fff;
+  border-color: transparent;
+  animation: pop 0.2s ease-out;
+}
+.bingo-cell.marked::after {
+  content: '';
+  position: absolute;
+  inset: 16%;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.55);
+}
+.bingo-cell.line {
+  box-shadow: 0 0 0 3px var(--gold);
+}
+.bingo-cell.nope {
+  animation: shake 0.35s;
+}
+.bingo-hint {
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 8px;
+  min-height: 1.3em;
+}
+.bingo-others {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+.bingo-other {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.bingo-mini {
+  display: grid;
+  grid-template-columns: repeat(5, 12px);
+  gap: 2px;
+  padding: 5px;
+  border-radius: 8px;
+  border: 2px solid var(--c);
+  background: var(--surface);
+}
+.bingo-mini span {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--surface-2);
+}
+.bingo-mini span.on {
+  background: var(--c);
+}
+.bingo-board-toggle {
+  align-self: center;
+  min-height: 40px;
+}
+.bingo-board {
+  display: grid;
+  grid-template-columns: repeat(15, 1fr);
+  gap: 3px;
+  padding: 10px;
+}
+.bingo-board.mode-25 {
+  grid-template-columns: repeat(10, 1fr);
+}
+.bingo-board span {
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 0;
+  border-radius: 4px;
+  color: var(--muted);
+  background: var(--surface-2);
+}
+.bingo-board span.on {
+  background: var(--gold);
+  color: #222;
+}
+
+@keyframes bingo-roll {
+  0% {
+    transform: translateX(-60px) rotate(-200deg) scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) rotate(0) scale(1);
+    opacity: 1;
+  }
+}

@@ -1,0 +1,203 @@
+.ladder-setup .toggle {
+  font-weight: 500;
+  white-space: normal;
+  font-size: 0.92rem;
+}
+.ladder-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ladder-presets .btn {
+  flex: 1 1 auto;
+  min-height: 40px;
+}
+.ladder-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ladder-table-head,
+.ladder-table-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+.ladder-table-head {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+.ladder-table-head span:first-child {
+  grid-column: 2;
+}
+.ladder-table-row .seat-input {
+  min-height: 40px;
+}
+.ladder-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.ladder-board {
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ladder-names,
+.ladder-results {
+  display: grid;
+  grid-template-columns: repeat(var(--ladder-cols), minmax(0, 1fr));
+  gap: 3px;
+}
+.ladder-name {
+  min-height: 44px;
+  padding: 4px 2px;
+  border-radius: 10px;
+  border: 2px solid var(--c);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.8rem;
+  line-height: 1.15;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.1s;
+}
+.ladder-name:active:not(:disabled) {
+  transform: scale(0.95);
+}
+.ladder-name.used {
+  background: var(--c);
+  color: #fff;
+  cursor: default;
+}
+.ladder-canvas {
+  position: relative;
+  height: clamp(280px, 52vh, 440px);
+}
+.ladder-canvas svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.ladder-rail {
+  stroke: var(--muted);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.ladder-rung {
+  stroke: var(--muted);
+  stroke-width: 4;
+  stroke-linecap: round;
+  animation: ladder-fade 0.4s ease-out;
+}
+.ladder-path {
+  fill: none;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ladder-runner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 2;
+}
+.ladder-cover {
+  position: absolute;
+  inset: 22% 4%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 12px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface-2) 85%, transparent);
+  border: 2px dashed var(--border);
+  color: var(--muted);
+  font-weight: 700;
+  pointer-events: none;
+}
+.ladder-paths {
+  pointer-events: none;
+}
+.ladder-result {
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 4px 2px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-weight: 700;
+  font-size: 0.8rem;
+  line-height: 1.15;
+  text-align: center;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  transition: background 0.2s;
+}
+.ladder-result.reached {
+  background: var(--c);
+  color: #fff;
+  animation: pop 0.3s ease-out;
+}
+.ladder-hint {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin: 0;
+}
+.ladder-summary {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ladder-summary li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.ladder-summary-name {
+  flex: 1;
+  text-align: left;
+  font-weight: 600;
+}
+
+@keyframes ladder-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (min-width: 600px) {
+  .ladder-name,
+  .ladder-result {
+    font-size: 0.95rem;
+  }
+  .ladder-board {
+    padding: 14px 10px;
+  }
+}

@@ -1,0 +1,262 @@
+.horse-setup-note {
+  margin: 0;
+  font-size: 0.88rem;
+  word-break: keep-all;
+}
+.horse-wallet {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 1.05rem;
+}
+.horse-track {
+  border-radius: var(--radius);
+  padding: 10px 8px 12px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 39px, rgba(255, 255, 255, 0.06) 39px 40px),
+    linear-gradient(#7a5434, #5d3f25);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #fff;
+}
+.horse-commentary {
+  text-align: center;
+  font-weight: 800;
+  min-height: 1.6em;
+  margin-bottom: 4px;
+}
+.horse-commentary span {
+  padding: 0 6px;
+  border-radius: 6px;
+  background: #fff;
+}
+.horse-lane {
+  display: grid;
+  grid-template-columns: 26px 1fr 28px;
+  align-items: center;
+  gap: 4px;
+  height: 40px;
+  border-radius: 8px;
+  padding: 0 2px;
+  background: rgba(0, 0, 0, 0.12);
+}
+.horse-lane.chosen {
+  background: rgba(255, 213, 74, 0.25);
+  box-shadow: inset 0 0 0 2px rgba(255, 213, 74, 0.8);
+}
+.horse-gate {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.85rem;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  flex: none;
+}
+.horse-gate.small {
+  width: 20px;
+  height: 20px;
+  font-size: 0.75rem;
+  margin-right: 6px;
+}
+.horse-run {
+  position: relative;
+  height: 100%;
+  border-right: 6px solid transparent;
+  border-image: repeating-linear-gradient(#fff 0 6px, #222 6px 12px) 6;
+}
+.horse-runner {
+  position: absolute;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  margin-top: -17px;
+  display: grid;
+  place-items: center;
+}
+.horse-emoji {
+  font-size: 1.75rem;
+  line-height: 1;
+  transform: scaleX(-1);
+  display: inline-block;
+}
+.horse-runner.running .horse-emoji {
+  animation: horse-gallop 0.28s ease-in-out infinite alternate;
+}
+.horse-runner.sprint .horse-emoji {
+  animation-duration: 0.14s;
+}
+.horse-cloth {
+  position: absolute;
+  left: 13px;
+  top: 12px;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  border: 1px solid #fff;
+}
+.horse-dust {
+  position: absolute;
+  right: 100%;
+  top: 8px;
+  font-size: 0.9rem;
+  animation: horse-dust 0.3s linear infinite;
+}
+.horse-place {
+  text-align: center;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+.horse-bet {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.horse-bet h3 {
+  font-size: 1.05rem;
+}
+.horse-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+.horse-pick {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 6px;
+  padding: 8px 10px;
+  min-height: 52px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  touch-action: manipulation;
+}
+.horse-pick.active {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 16%, var(--surface));
+}
+.horse-pick-no {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--c);
+  color: #fff;
+  font-weight: 800;
+}
+.horse-pick-name {
+  font-weight: 700;
+}
+.horse-pick-meta {
+  grid-column: 2;
+  font-size: 0.7rem;
+  color: var(--gold);
+  letter-spacing: -1px;
+}
+.horse-odds {
+  grid-row: 1 / span 2;
+  grid-column: 3;
+  font-weight: 800;
+  color: var(--accent);
+}
+.horse-bets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+}
+.horse-bet-seg {
+  display: flex;
+  flex-wrap: wrap;
+}
+.horse-bet-seg button {
+  flex: 1 1 auto;
+  min-height: 40px;
+}
+.horse-expect {
+  margin: 0;
+  font-size: 0.88rem;
+}
+.horse-group-picks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.horse-group-picks li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.horse-player {
+  font-weight: 700;
+}
+.horse-mini-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.horse-mini-picks button {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 2px solid var(--c);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 800;
+  cursor: pointer;
+}
+.horse-mini-picks button.active {
+  background: var(--c);
+  color: #fff;
+}
+.horse-ranking {
+  text-align: left;
+  margin: 0;
+  padding-left: 22px;
+}
+.horse-ranking li {
+  margin-bottom: 4px;
+}
+.horse-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin: 0;
+}
+
+@keyframes horse-gallop {
+  from {
+    transform: scaleX(-1) translateY(1px) rotate(4deg);
+  }
+  to {
+    transform: scaleX(-1) translateY(-3px) rotate(-4deg);
+  }
+}
+@keyframes horse-dust {
+  from {
+    opacity: 0.9;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0.2;
+    transform: translateX(-8px);
+  }
+}

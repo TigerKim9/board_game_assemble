@@ -1,0 +1,152 @@
+.pirate-chip-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: 1px;
+}
+.pirate-tally {
+  color: var(--accent);
+  font-weight: 700;
+}
+.pirate-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 22px;
+  overflow: hidden;
+}
+.pirate-odds {
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+.pirate-barrel-wrap {
+  position: relative;
+  width: min(100%, 340px);
+  padding-top: 70px;
+}
+.pirate-barrel-wrap.shake .pirate-barrel {
+  animation: pirate-shake 0.12s linear infinite;
+}
+.pirate-head {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  margin-left: -48px;
+  z-index: 0;
+  transition: transform 0.2s;
+}
+.pirate-head.flying {
+  z-index: 3;
+  animation: pirate-fly 1.3s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+.pirate-hat {
+  fill: #222;
+}
+.pirate-skin {
+  fill: #f2c29b;
+}
+.pirate-barrel {
+  position: relative;
+  z-index: 1;
+  border-radius: 46% 46% 46% 46% / 12% 12% 12% 12%;
+  padding: 26px 22px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.35), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.35)),
+    repeating-linear-gradient(90deg, #a0632f 0 34px, #8a5226 34px 36px),
+    #9a5d2c;
+  box-shadow: inset 0 6px 0 rgba(255, 255, 255, 0.12), 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+.pirate-barrel::before,
+.pirate-barrel::after {
+  content: '';
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  height: 10px;
+  border-radius: 6px;
+  background: linear-gradient(#9aa3a8, #5d666b);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.pirate-barrel::before {
+  top: 10px;
+}
+.pirate-barrel::after {
+  bottom: 10px;
+}
+.pirate-slots {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+.pirate-slot {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid #5b3517;
+  background: radial-gradient(circle at 50% 40%, #1b0f06 55%, #3a2412);
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  touch-action: manipulation;
+  transition: transform 0.1s;
+}
+.pirate-slot:not(:disabled):hover {
+  border-color: var(--gold);
+}
+.pirate-slot:active:not(:disabled) {
+  transform: scale(0.92);
+}
+.pirate-slot:disabled {
+  cursor: default;
+}
+.pirate-slot.stabbed {
+  border-color: var(--c, #5b3517);
+  box-shadow: 0 0 0 2px var(--c, transparent);
+}
+.pirate-sword {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-size: 1.6rem;
+  line-height: 1;
+  transform: translate(-50%, -50%) rotate(45deg);
+  animation: pirate-insert 0.25s ease-out;
+}
+.pirate-ranking {
+  text-align: left;
+  margin: 0;
+}
+
+@keyframes pirate-shake {
+  0% { transform: translateX(0) rotate(0); }
+  25% { transform: translateX(-2px) rotate(-0.6deg); }
+  75% { transform: translateX(2px) rotate(0.6deg); }
+  100% { transform: translateX(0) rotate(0); }
+}
+@keyframes pirate-insert {
+  from { transform: translate(-90%, -110%) rotate(45deg) scale(1.4); opacity: 0; }
+  to { transform: translate(-50%, -50%) rotate(45deg) scale(1); opacity: 1; }
+}
+@keyframes pirate-fly {
+  0% { transform: translateY(0) rotate(0); }
+  45% { transform: translateY(-40px) rotate(540deg) scale(1.15); }
+  70% { transform: translateY(-10px) rotate(700deg) scale(1.1); }
+  85% { transform: translateY(-18px) rotate(720deg) scale(1.1); }
+  100% { transform: translateY(-22px) rotate(720deg) scale(1.1); }
+}
+
+@media (max-width: 440px) {
+  .pirate-barrel {
+    padding: 24px 12px;
+  }
+  .pirate-slot {
+    width: 40px;
+    height: 40px;
+  }
+  .pirate-slots {
+    gap: 6px;
+  }
+}

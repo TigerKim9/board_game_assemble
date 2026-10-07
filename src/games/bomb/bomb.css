@@ -1,0 +1,203 @@
+.bomb-setup-note {
+  margin: -6px 0 0;
+  font-size: 0.85rem;
+}
+.bomb-setup-topic {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 600;
+}
+.bomb-topics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+}
+.bomb-topics button {
+  min-height: 40px;
+}
+
+.bomb-stage {
+  --t: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 14px 22px;
+  border-radius: var(--radius);
+  color: #fff;
+  background: radial-gradient(
+    ellipse at 50% 55%,
+    color-mix(in srgb, #c0392b calc(var(--t) * 75%), #2c2f3a),
+    color-mix(in srgb, #5e0f0a calc(var(--t) * 80%), #16181f)
+  );
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: background 0.3s;
+}
+.bomb-stage.phase-boom {
+  animation: bomb-flash 0.5s ease-out;
+}
+.bomb-mute {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: #fff;
+}
+.bomb-mute:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.bomb-topic {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 18px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: center;
+  max-width: calc(100% - 80px);
+}
+.bomb-topic small {
+  opacity: 0.8;
+  font-size: 0.78rem;
+}
+.bomb-topic strong {
+  font-size: 1.6rem;
+  letter-spacing: 0.08em;
+  color: #ffe08a;
+}
+.bomb-holder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.bomb-holder small {
+  opacity: 0.75;
+}
+.bomb-holder strong {
+  font-size: 1.9rem;
+  line-height: 1.2;
+  animation: pop 0.25s ease-out;
+  word-break: keep-all;
+}
+.bomb-art {
+  width: min(62vw, 230px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+.phase-playing .bomb-art {
+  animation: bomb-shake var(--shake-speed, 400ms) linear infinite;
+}
+.bomb-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform: scale(calc(1 + var(--t) * 0.12));
+  transition: transform 0.3s;
+}
+.bomb-body {
+  fill: #23252b;
+  stroke: #0d0e11;
+  stroke-width: 2;
+}
+.bomb-shine {
+  fill: rgba(255, 255, 255, 0.28);
+}
+.bomb-cap {
+  fill: #8b8f99;
+  stroke: #4a4d55;
+  stroke-width: 1.5;
+}
+.bomb-fuse,
+.bomb-fuse-burnt {
+  fill: none;
+  stroke-linecap: round;
+  stroke-width: 3.5;
+}
+.bomb-fuse {
+  stroke: #d8b47a;
+  transition: stroke-dasharray 0.15s linear;
+}
+.bomb-fuse-burnt {
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-dasharray: 2 3;
+}
+.bomb-spark {
+  animation: bomb-spark 0.18s ease-in-out infinite alternate;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.bomb-explosion {
+  font-size: min(48vw, 190px);
+  line-height: 1;
+  animation: bomb-boom 0.6s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.bomb-boom-text {
+  margin: 0;
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #ffd54a;
+  text-shadow: 0 3px 0 #a5281b;
+  animation: pop 0.3s ease-out;
+}
+.bomb-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.9rem;
+  opacity: 0.85;
+  word-break: keep-all;
+}
+.bomb-main-btn {
+  max-width: 380px;
+  min-height: 64px;
+}
+.bomb-pass {
+  font-size: 1.3rem;
+  box-shadow: 0 6px 0 #7a1d14, 0 8px 16px rgba(0, 0, 0, 0.35);
+}
+.bomb-pass:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #7a1d14;
+}
+.bomb-next {
+  font-weight: 900;
+}
+.bomb-passes {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+.bomb-ranking {
+  text-align: left;
+  margin: 0;
+}
+
+@keyframes bomb-shake {
+  0% { transform: translate(0, 0) rotate(0); }
+  25% { transform: translate(calc(var(--t) * -5px), calc(var(--t) * 2px)) rotate(calc(var(--t) * -4deg)); }
+  50% { transform: translate(calc(var(--t) * 4px), calc(var(--t) * -2px)) rotate(calc(var(--t) * 3deg)); }
+  75% { transform: translate(calc(var(--t) * -3px), calc(var(--t) * -1px)) rotate(calc(var(--t) * -2deg)); }
+  100% { transform: translate(0, 0) rotate(0); }
+}
+@keyframes bomb-spark {
+  from { opacity: 0.75; transform: scale(0.8) rotate(0); }
+  to { opacity: 1; transform: scale(1.25) rotate(25deg); }
+}
+@keyframes bomb-boom {
+  0% { transform: scale(0.2); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes bomb-flash {
+  0% { background: #fff; }
+  100% { background: #8e1b10; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phase-playing .bomb-art {
+    animation: none;
+  }
+}
