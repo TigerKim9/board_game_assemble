@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PlayingCard, cardLabel, isJoker, type Card } from '../../cards'
+import { cardLabel, isJoker, type Card } from '../../cards'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
 import { useStored } from '../../lib/storage'
@@ -9,7 +9,6 @@ import { useHotSeat, useKeyedState } from '../onecard/kitHooks'
 import {
   TITLE_EMOJI,
   TITLE_KO,
-  TITLE_POINTS,
   aiMove,
   analyze,
   beats,
@@ -23,6 +22,7 @@ import {
   type Options,
   type PRState,
 } from './logic'
+import { PresidentTrick, ScoreTable as SharedScoreTable } from './parts'
 import './president.css'
 
 interface Config {
@@ -204,20 +204,12 @@ function Game({ cfg, onExit }: { cfg: Config; onExit: () => void }) {
           </span>
           {s.revolution && <span className="president-revo">✊ 혁명 중 — 3이 가장 세요</span>}
         </div>
-        <div className="president-trick">
-          {s.current ? (
-            <div className="president-play" key={s.plays}>
-              <div className="president-cards">
-                {s.current.cards.map((c) => (
-                  <PlayingCard key={c.id} card={c} width={58} />
-                ))}
-              </div>
-              <span className="president-by">{players[s.current.by].name}</span>
-            </div>
-          ) : (
-            <div className="president-empty">{s.phase === 'exchange' ? '카드 교환 중' : '새 판 — 자유롭게 내기'}</div>
-          )}
-        </div>
+        <PresidentTrick
+          current={s.current}
+          byName={s.current ? players[s.current.by].name : ''}
+          plays={s.plays}
+          emptyText={s.phase === 'exchange' ? '카드 교환 중' : '새 판 — 자유롭게 내기'}
+        />
         <div className={`status president-status ${myTurn ? 'mine' : ''}`}>{status}</div>
       </div>
 
@@ -287,30 +279,11 @@ function Game({ cfg, onExit }: { cfg: Config; onExit: () => void }) {
 
 function ScoreTable({ s, players, order }: { s: PRState; players: PlayerConfig[]; order: number[] }) {
   return (
-    <table className="president-scores">
-      <thead>
-        <tr>
-          <th>이름</th>
-          <th>이번 판</th>
-          <th>총점</th>
-        </tr>
-      </thead>
-      <tbody>
-        {order.map((p) => {
-          const t = s.titles[p]
-          return (
-            <tr key={p}>
-              <td>
-                {players[p].isAI ? '🤖' : '🙂'} {players[p].name}
-              </td>
-              <td>{t ? `${TITLE_EMOJI[t]} ${TITLE_KO[t]} +${TITLE_POINTS[t]}` : '-'}</td>
-              <td>
-                <strong>{s.scores[p]}</strong>
-              </td>
-            </tr>
-          )
-        })}
-      </tbody>
-    </table>
+    <SharedScoreTable
+      titles={s.titles}
+      scores={s.scores}
+      order={order}
+      label={(p) => `${players[p].isAI ? '🤖' : '🙂'} ${players[p].name}`}
+    />
   )
 }

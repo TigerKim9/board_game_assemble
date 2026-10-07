@@ -76,18 +76,24 @@ describe('othello AI', () => {
     expect(legalMoves(b, 2)).toContain(0)
     for (const d of ['normal', 'hard'] as const) expect(aiMove(s, d, mulberry32(1), 200)).toBe(0)
   })
-  it('hard beats easy', () => {
+  // 'hard' is purely time-limited, so its strength depends on machine load; 'normal' is depth-limited
+  // (depth 3 fits well inside its time budget), which keeps this test deterministic.
+  it('normal beats easy', () => {
     const rng = mulberry32(7)
     let wins = 0
+    let losses = 0
     for (let g = 0; g < 2; g++) {
       let s = initialState()
       while (!s.over) {
         const hardSide = g === 0 ? 0 : 1
-        const m = aiMove(s, s.turn === hardSide ? 'hard' : 'easy', rng, 40)
+        const m = aiMove(s, s.turn === hardSide ? 'normal' : 'easy', rng)
         s = applyMove(s, m!)
       }
-      if (winner(s) === (g === 0 ? 0 : 1)) wins++
+      const w = winner(s)
+      if (w === (g === 0 ? 0 : 1)) wins++
+      else if (w === (g === 0 ? 1 : 0)) losses++
     }
+    expect(losses).toBe(0)
     expect(wins).toBe(2)
   }, 30000)
 })

@@ -1,5 +1,10 @@
 import type { OnlineGame } from '../engine'
 import { gomoku } from './gomoku'
+import { onecard } from './onecard'
+import { oldmaid } from './oldmaid'
+import { president } from './president'
+import { hearts } from './hearts'
+import { blackjack } from './blackjack'
 import { holdem } from './holdem'
 import { sevenpoker } from './sevenpoker'
 import { hula } from './hula'
@@ -23,6 +28,11 @@ import { yut } from './yut'
 /** All games playable online. Add new adapters here. */
 export const ONLINE_GAMES: Record<string, OnlineGame<any, any, any>> = {
   [gomoku.id]: gomoku,
+  [onecard.id]: onecard,
+  [oldmaid.id]: oldmaid,
+  [president.id]: president,
+  [hearts.id]: hearts,
+  [blackjack.id]: blackjack,
   [holdem.id]: holdem,
   [sevenpoker.id]: sevenpoker,
   [hula.id]: hula,

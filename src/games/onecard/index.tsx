@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PlayingCard, SuitShape, sortCards, type Suit } from '../../cards'
+import { sortCards } from '../../cards'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
+import { OneCardCenter, SuitPicker } from './Center'
 import { HandFan, PassCover, Seats, Toasts, type SeatInfo } from './kit'
 import { useHotSeat, useKeyedState } from './kitHooks'
 import {
   BUST_LIMIT,
-  SUIT_KO,
   aiCatches,
   aiMove,
   canPlay,
@@ -187,30 +187,14 @@ function Game({ cfg, onExit }: { cfg: Config; onExit: () => void }) {
       <Seats seats={seats} />
       <div className="onecard-table felt">
         <Toasts log={s.log} />
-        <div className="onecard-center">
-          <div className="onecard-pile">
-            <PlayingCard faceDown width={58} back="red" />
-            <span className="onecard-count">{s.pile.length}장</span>
-          </div>
-          <div className={`onecard-discard ${s.last?.kind === 'play' ? 'flip' : ''}`} key={t.id}>
-            <PlayingCard card={t} width={74} />
-          </div>
-          <div className="onecard-info">
-            <div className="onecard-suit" title="따라낼 무늬">
-              {s.suit ? (
-                <svg viewBox="0 0 100 100" width="30" height="30" className={s.suit === 'H' || s.suit === 'D' ? 'red' : 'black'}>
-                  <SuitShape suit={s.suit} x={0} y={0} size={100} />
-                </svg>
-              ) : (
-                <span className="onecard-free">자유</span>
-              )}
-            </div>
-            <div className="onecard-dir" title="진행 방향">
-              {s.dir === 1 ? '↻' : '↺'}
-            </div>
-            {s.attack > 0 && <div className="onecard-attack">+{s.attack}</div>}
-          </div>
-        </div>
+        <OneCardCenter
+          top={t}
+          pileCount={s.pile.length}
+          suit={s.suit}
+          dir={s.dir}
+          attack={s.attack}
+          flip={s.last?.kind === 'play'}
+        />
         <div className={`status onecard-status ${myTurn ? 'mine' : ''}`}>{status}</div>
         {(humanVulnerable || showCatch) && (
           <div className="onecard-calls">
@@ -259,26 +243,13 @@ function Game({ cfg, onExit }: { cfg: Config; onExit: () => void }) {
               cardWidth={60}
             />
             {pick7 ? (
-              <div className="onecard-suits">
-                <span>7! 바꿀 무늬를 고르세요</span>
-                <div className="onecard-suit-row">
-                  {(['S', 'H', 'D', 'C'] as Suit[]).map((su) => (
-                    <button
-                      key={su}
-                      className={`btn onecard-suit-btn ${su === 'H' || su === 'D' ? 'red' : ''}`}
-                      onClick={() => {
-                        setS(play(s, me, pick7, su))
-                        setPick7(null)
-                      }}
-                    >
-                      {SUIT_KO[su]}
-                    </button>
-                  ))}
-                </div>
-                <button className="btn ghost small" onClick={() => setPick7(null)}>
-                  취소
-                </button>
-              </div>
+              <SuitPicker
+                onPick={(su) => {
+                  setS(play(s, me, pick7, su))
+                  setPick7(null)
+                }}
+                onCancel={() => setPick7(null)}
+              />
             ) : (
               <div className="onecard-actions">
                 <button

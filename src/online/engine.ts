@@ -31,6 +31,8 @@ export interface OnlineGame<S = unknown, A = unknown, V = unknown> {
   /** What `seat` may see. `null` = spectator. Must strip hidden information. */
   view(state: S, seat: number | null): V
   result(state: S): GameResult | null
+  /** Override the bot reaction time (ms) for the current state, e.g. to give humans a fair window. */
+  botDelay?(state: S): number | undefined
   /** Bot move for `seat` (required when `bots` is true). */
   bot?(state: S, seat: number, rng: Rng): A
 }

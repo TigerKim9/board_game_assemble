@@ -3,6 +3,7 @@ import { PlayingCard, cardLabel, sortCards } from '../../cards'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
 import type { PlayerConfig } from '../../lib/types'
+import { OldMaidCenter } from './Center'
 import { HandFan, PassCover, Seats, Toasts, type SeatInfo } from '../onecard/kit'
 import { useHotSeat } from '../onecard/kitHooks'
 import { aiPick, drawFrom, newGame, ranking, shuffleHand, targetOf, type OMState } from './logic'
@@ -140,39 +141,37 @@ function Game({ players, onExit }: { players: PlayerConfig[]; onExit: () => void
             />
           </div>
         ) : (
-          <div className="oldmaid-center">
-            <div className="oldmaid-pairs">
-              {s.lastPair ? (
-                <div className="oldmaid-pair" key={s.lastPair[1].id}>
-                  <PlayingCard card={s.lastPair[0]} width={46} />
-                  <PlayingCard card={s.lastPair[1]} width={46} />
-                </div>
-              ) : (
-                <div className="oldmaid-pair-empty" />
-              )}
-              <span>버린 짝 {s.pairs}쌍</span>
-            </div>
-            {lastMine && (
-              <div className="oldmaid-drawn" key={lastMine.card.id}>
-                <PlayingCard card={lastMine.card} width={58} />
-                <span>
-                  뽑은 카드 {cardLabel(lastMine.card)}
-                  <br />
-                  {lastMine.paired ? '짝 맞춤! 🎯' : lastMine.card.rank === 0 ? '앗, 도둑이다! 😱' : '짝 없음'}
-                </span>
-              </div>
-            )}
-            {!lastMine && lostMine && (
-              <div className="oldmaid-drawn lost" key={lostMine.card.id}>
-                <PlayingCard card={lostMine.card} width={58} />
-                <span>
-                  {players[lostMine.by].name}가
-                  <br />
-                  {lostMine.card.rank === 0 ? '도둑을 가져갔어요! 😆' : '가져갔어요'}
-                </span>
-              </div>
-            )}
-          </div>
+          <OldMaidCenter
+            lastPair={s.lastPair}
+            pairs={s.pairs}
+            drawn={
+              lastMine
+                ? {
+                    card: lastMine.card,
+                    lost: false,
+                    text: (
+                      <>
+                        뽑은 카드 {cardLabel(lastMine.card)}
+                        <br />
+                        {lastMine.paired ? '짝 맞춤! 🎯' : lastMine.card.rank === 0 ? '앗, 도둑이다! 😱' : '짝 없음'}
+                      </>
+                    ),
+                  }
+                : lostMine
+                  ? {
+                      card: lostMine.card,
+                      lost: true,
+                      text: (
+                        <>
+                          {players[lostMine.by].name}가
+                          <br />
+                          {lostMine.card.rank === 0 ? '도둑을 가져갔어요! 😆' : '가져갔어요'}
+                        </>
+                      ),
+                    }
+                  : null
+            }
+          />
         )}
       </div>
 

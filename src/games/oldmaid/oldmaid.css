@@ -25,6 +25,8 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* the deal-in animation slides cards sideways; don't let it widen the page */
+  overflow-x: clip;
 }
 .oldmaid-target-name {
   text-align: center;

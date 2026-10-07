@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PlayingCard } from '../../cards'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
-import { HandFan, MiniBack, PassCover, Toasts } from '../onecard/kit'
+import { HandFan, PassCover, Toasts } from '../onecard/kit'
+import { HeartsBoard, HeartsScores } from './Board'
 import { useHotSeat, useKeyedState } from '../onecard/kitHooks'
 import {
   PASS_KO,
@@ -46,8 +46,6 @@ export default function Hearts() {
   }
   return <Game key={JSON.stringify(cfg)} cfg={cfg} onExit={() => setCfg(null)} />
 }
-
-const POS = ['bottom', 'left', 'top', 'right'] as const
 
 function Game({ cfg, onExit }: { cfg: Config; onExit: () => void }) {
   const { players, difficulty } = cfg
@@ -120,28 +118,13 @@ function Game({ cfg, onExit }: { cfg: Config; onExit: () => void }) {
       <div className="hearts">
         <Result title={title} onAgain={() => setS(over ? newGame(names) : deal(s))} againLabel={over ? '다시 하기' : '다음 판'}>
           {s.moon !== null && <p className="hearts-moon">🌙 {players[s.moon].name} 문 슛 성공! 다른 사람 모두 +26</p>}
-          <table className="hearts-scores">
-            <thead>
-              <tr>
-                <th>이름</th>
-                <th>이번 판</th>
-                <th>총점</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.map((p) => (
-                <tr key={p} className={win.includes(p) && over ? 'win' : ''}>
-                  <td>
-                    {players[p].isAI ? '🤖' : '🙂'} {players[p].name}
-                  </td>
-                  <td>+{s.lastHand?.[p] ?? 0}</td>
-                  <td>
-                    <strong>{s.scores[p]}</strong>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <HeartsScores
+            order={order}
+            label={(p) => `${players[p].isAI ? '🤖' : '🙂'} ${players[p].name}`}
+            lastHand={s.lastHand}
+            scores={s.scores}
+            win={over ? win : []}
+          />
           {!over && <p className="muted hearts-note">누군가 {TARGET}점이 되면 끝나요. 점수가 가장 낮은 사람이 이겨요.</p>}
           <button className="btn ghost" onClick={onExit}>
             설정 바꾸기
@@ -169,64 +152,38 @@ function Game({ cfg, onExit }: { cfg: Config; onExit: () => void }) {
     status = s.trickNo === 0 ? '♣2로 시작하세요' : s.heartsBroken ? '선이에요! 아무 카드나' : '선이에요! (하트는 아직 못 내요)'
   else status = '같은 무늬가 있으면 따라 내야 해요'
 
-  const seatBox = (p: number) => {
-    const rel = (p - base + 4) % 4
-    const pts = handPoints(s.taken[p])
-    return (
-      <div
-        key={p}
-        className={`hearts-seat ${POS[rel]} ${actor === p || (s.phase === 'play' && s.turn === p) ? 'active' : ''}`}
-        style={{ borderColor: `var(--p${p + 1})` }}
-      >
-        <span className="hearts-seat-name">
-          {players[p].isAI ? '🤖' : '🙂'} {players[p].name}
-        </span>
-        <span className="hearts-seat-stats">
-          <MiniBack count={s.hands[p].length} />
-          <span className="hearts-pts" title="이번 판 점수">
-            ♥{pts}
-          </span>
-          <span className="hearts-total" title="총점">
-            총{s.scores[p]}
-          </span>
-        </span>
-      </div>
-    )
-  }
-
   return (
     <div className="hearts">
       {hs.cover && <PassCover name={hs.coverName} onReady={hs.reveal} />}
       <div className="hearts-table felt">
         <Toasts log={s.log} />
-        <div className="hearts-board">
-          {[0, 1, 2, 3].filter((p) => p !== me).map(seatBox)}
-          <div className="hearts-trick">
-            {s.trick.map((t) => {
-              const rel = (t.p - base + 4) % 4
-              return (
-                <div key={t.card.id} className={`hearts-tcard ${POS[rel]} ${t.p === winnerNow ? 'win' : ''}`}>
-                  <PlayingCard card={t.card} width={48} />
-                </div>
-              )
-            })}
-            {s.trick.length === 0 && (
-              <div className="hearts-center-info">
-                {s.phase === 'pass' ? (
-                  <>
-                    <b>{dir === 'none' ? '넘기기 없음' : `${PASS_KO[dir]}으로`}</b>
-                    <span>{dir !== 'none' && '3장 넘기기'}</span>
-                  </>
-                ) : (
-                  <>
-                    <b>{s.trickNo + 1}/13</b>
-                    <span>{s.heartsBroken ? '💔 하트 깨짐' : '♥ 아직 안 깨짐'}</span>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+        <HeartsBoard
+          seats={[0, 1, 2, 3].map((p) => ({
+            name: players[p].name,
+            isAI: players[p].isAI,
+            count: s.hands[p].length,
+            pts: handPoints(s.taken[p]),
+            total: s.scores[p],
+            active: actor === p || (s.phase === 'play' && s.turn === p),
+          }))}
+          base={base}
+          hide={me}
+          trick={s.trick}
+          winner={winnerNow}
+          center={
+            s.phase === 'pass' ? (
+              <>
+                <b>{dir === 'none' ? '넘기기 없음' : `${PASS_KO[dir]}으로`}</b>
+                <span>{dir !== 'none' && '3장 넘기기'}</span>
+              </>
+            ) : (
+              <>
+                <b>{s.trickNo + 1}/13</b>
+                <span>{s.heartsBroken ? '💔 하트 깨짐' : '♥ 아직 안 깨짐'}</span>
+              </>
+            )
+          }
+        />
         <div className={`status hearts-status ${myTurn ? 'mine' : ''}`}>{status}</div>
       </div>
 

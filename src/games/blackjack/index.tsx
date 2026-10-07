@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { PlayingCard } from '../../cards'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
 import { useStored } from '../../lib/storage'
@@ -23,9 +22,9 @@ import {
   startRound,
   totalLabel,
   type Action,
-  type Hand,
   type Table,
 } from './logic'
+import { CardRow, HandView } from './parts'
 import './blackjack.css'
 
 type Bank = Record<string, number>
@@ -314,46 +313,4 @@ function resultTitle(t: Table, humanCount: number): string {
     return net > 0 ? `🎉 승리! +${net}` : net < 0 ? `😢 ${net}칩` : '🤝 무승부'
   }
   return '라운드 결과'
-}
-
-function HandView({ hand, active }: { hand: Hand; active: boolean }) {
-  const bust = handValue(hand.cards).total > 21
-  return (
-    <div className={`blackjack-hand ${active ? 'active' : ''}`}>
-      <CardRow cards={hand.cards} width={50} />
-      <div className="blackjack-hand-info">
-        <span className="blackjack-total">{totalLabel(hand.cards)}</span>
-        <span className="blackjack-handbet">
-          {hand.bet}
-          {hand.doubled ? ' (더블)' : ''}
-        </span>
-        {hand.outcome ? (
-          <span className={`blackjack-badge ${hand.outcome}`}>{OUTCOME_LABEL[hand.outcome]}</span>
-        ) : bust ? (
-          <span className="blackjack-badge bust">버스트</span>
-        ) : hand.cards.length === 2 && !hand.split && handValue(hand.cards).total === 21 ? (
-          <span className="blackjack-badge blackjack">블랙잭!</span>
-        ) : null}
-      </div>
-    </div>
-  )
-}
-
-function CardRow({ cards, width, hideFrom = 99 }: { cards: Hand['cards']; width: number; hideFrom?: number }) {
-  const step = width * 0.58
-  return (
-    <div
-      className="blackjack-cards"
-      style={{
-        width: cards.length ? width + (cards.length - 1) * step : width,
-        height: width * 1.4,
-      }}
-    >
-      {cards.map((c, i) => (
-        <div key={c.id + i} className="blackjack-card" style={{ left: i * step }}>
-          <PlayingCard card={c} faceDown={i >= hideFrom} width={width} back="red" />
-        </div>
-      ))}
-    </div>
-  )
 }

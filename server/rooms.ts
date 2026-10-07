@@ -296,7 +296,7 @@ export class Lobby {
       if (room.status === 'over') this.broadcastRoom(room)
       this.broadcastState(room)
       this.schedule(room)
-    }, this.botDelay)
+    }, room.game.botDelay?.(room.state) ?? this.botDelay)
   }
 
   private botControlled(room: Room, seat: number): boolean {
