@@ -1,4 +1,3 @@
-import { rollDie } from '../../lib/random'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
 
 export const START_DICE = 5
@@ -158,8 +157,8 @@ export const alive = (s: LiarState) => s.hands.map((h, i) => (h.length > 0 ? i :
 export const totalDice = (s: LiarState) => s.hands.reduce((a, h) => a + h.length, 0)
 export const currentBid = (s: LiarState) => (s.bids.length ? s.bids[s.bids.length - 1] : null)
 
-export function rollHand(n: number): number[] {
-  return Array.from({ length: n }, () => rollDie()).sort((a, b) => a - b)
+export function rollHand(n: number, rng: () => number = Math.random): number[] {
+  return Array.from({ length: n }, () => Math.floor(rng() * 6) + 1).sort((a, b) => a - b)
 }
 
 export function newLiar(players: PlayerConfig[], wild: boolean, rolled?: number[][]): LiarState {

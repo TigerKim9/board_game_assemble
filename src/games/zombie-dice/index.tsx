@@ -3,7 +3,6 @@ import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
 import {
-  BUST_SHOTS,
   GOAL,
   aiShouldContinue,
   drawDice,
@@ -11,10 +10,10 @@ import {
   newZombie,
   resolveRoll,
   rollFaces,
-  type Color,
   type ZState,
 } from './logic'
-import { ColorDot, ZombieDie } from './ZombieDie'
+import { ZdCupInfo, ZdLegend, ZdPlayers, ZdTally } from './parts'
+import { ZombieDie } from './ZombieDie'
 import './zombie-dice.css'
 
 interface Setup {
@@ -39,8 +38,6 @@ export default function ZombieHunt() {
   }
   return <Board key={round} setup={setup} onAgain={() => setRound((r) => r + 1)} onReset={() => setSetup(null)} />
 }
-
-const countColor = (xs: Color[], c: Color) => xs.filter((x) => x === c).length
 
 function Board({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void; onReset: () => void }) {
   const [s, setS] = useState<ZState>(() => newZombie(setup.players))
@@ -92,21 +89,7 @@ function Board({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void;
 
   return (
     <>
-      <ul className="zd-players">
-        {s.players.map((p, i) => (
-          <li
-            key={i}
-            className={`zd-player ${i === s.turn ? 'active' : ''}`}
-            style={{ '--c': `var(--p${(i % 6) + 1})` } as React.CSSProperties}
-          >
-            <span className="zd-pname">
-              {p.isAI ? '🤖 ' : ''}
-              {p.name}
-            </span>
-            <strong>🧠 {s.scores[i]}</strong>
-          </li>
-        ))}
-      </ul>
+      <ZdPlayers names={s.players.map((p) => `${p.isAI ? '🤖 ' : ''}${p.name}`)} scores={s.scores} turn={s.turn} />
 
       <div className="zd-table felt">
         <div className="status">
@@ -131,31 +114,9 @@ function Board({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void;
 
         {s.log && <div className="zd-log">{s.log}</div>}
 
-        <div className="zd-tally">
-          <div className="zd-tally-box brains">
-            <span className="zd-tally-label">이번 차례 뇌</span>
-            <strong>🧠 {s.brains}</strong>
-          </div>
-          <div className={`zd-tally-box shots ${s.shots.length >= 2 ? 'danger' : ''}`}>
-            <span className="zd-tally-label">총알</span>
-            <div className="zd-shots">
-              {Array.from({ length: BUST_SHOTS }, (_, i) => (
-                <span key={i} className={`zd-shot ${i < s.shots.length ? 'hit' : ''}`}>
-                  💥
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
+        <ZdTally brains={s.brains} shots={s.shots.length} />
 
-        <div className="zd-cupinfo">
-          통 속 남은 주사위:
-          {(['green', 'yellow', 'red'] as Color[]).map((c) => (
-            <span key={c} className="zd-cupcount">
-              <ColorDot color={c} /> {countColor(s.cup, c)}
-            </span>
-          ))}
-        </div>
+        <ZdCupInfo cup={s.cup} />
 
         <div className="zd-buttons">
           <button className="btn accent big" disabled={!canRoll} onClick={() => setS(drawDice(s))}>
@@ -171,20 +132,7 @@ function Board({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void;
         </div>
       </div>
 
-      <div className="zd-legend card-panel">
-        <div>
-          <ZombieDie color="green" face="brain" size={30} /> 뇌 = 점수
-        </div>
-        <div>
-          <ZombieDie color="red" face="shot" size={30} /> 총알 3개면 꽝
-        </div>
-        <div>
-          <ZombieDie color="yellow" face="feet" size={30} /> 발자국은 다시 굴림
-        </div>
-        <div className="zd-legend-colors">
-          <ColorDot color="green" /> 안전 <ColorDot color="yellow" /> 보통 <ColorDot color="red" /> 위험
-        </div>
-      </div>
+      <ZdLegend />
     </>
   )
 }

@@ -1,4 +1,3 @@
-import { rollDie } from '../../lib/random'
 
 export const CATEGORIES = [
   'ones',
@@ -92,8 +91,8 @@ export function isComplete(scores: Scores): boolean {
   return CATEGORIES.every((k) => scores[k] !== undefined)
 }
 
-export function roll(dice: number[], held: boolean[]): number[] {
-  return dice.map((d, i) => (held[i] ? d : rollDie()))
+export function roll(dice: number[], held: boolean[], rng: () => number = Math.random): number[] {
+  return dice.map((d, i) => (held[i] ? d : Math.floor(rng() * 6) + 1))
 }
 
 // ---------- AI ----------
@@ -147,7 +146,13 @@ function finalValue(dice: number[], scores: Scores): number {
 }
 
 /** Choose which dice to hold by Monte Carlo over all 32 hold masks. */
-export function chooseHolds(dice: number[], scores: Scores, rollsLeft: number, samples = 120): boolean[] {
+export function chooseHolds(
+  dice: number[],
+  scores: Scores,
+  rollsLeft: number,
+  samples = 120,
+  rng: () => number = Math.random,
+): boolean[] {
   let bestMask: boolean[] = [false, false, false, false, false]
   let bestV = -Infinity
   for (let m = 0; m < 32; m++) {
@@ -158,13 +163,13 @@ export function chooseHolds(dice: number[], scores: Scores, rollsLeft: number, s
     } else {
       let acc = 0
       for (let s = 0; s < samples; s++) {
-        let d = roll(dice, held)
+        let d = roll(dice, held, rng)
         if (rollsLeft > 1) {
           // Greedy second step: keep the most common face (cheap approximation).
           const c = counts(d)
           const face = c.indexOf(Math.max(...c))
-          d = roll(d, d.map((x) => x === face))
-          const alt = finalValue(roll(dice, held), scores)
+          d = roll(d, d.map((x) => x === face), rng)
+          const alt = finalValue(roll(dice, held, rng), scores)
           acc += Math.max(finalValue(d, scores), alt)
         } else {
           acc += finalValue(d, scores)

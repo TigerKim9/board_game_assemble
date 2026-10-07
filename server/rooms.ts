@@ -280,13 +280,22 @@ export class Lobby {
     room.timer = this.setTimer(() => {
       room.timer = null
       if (room.status !== 'playing' || !this.rooms.has(room.code)) return
-      const seat = room.game.toAct(room.state).find((i) => this.botControlled(room, i))
-      if (seat == null) return
-      try {
-        this.applyAction(room, seat, room.game.bot!(room.state, seat, this.rng))
-      } catch (e) {
-        console.error(`bot failed in ${room.game.id}`, e)
+      // Every bot that is due right now acts in this tick (e.g. simultaneous card picks),
+      // so a table full of bots doesn't wait botDelay per bot.
+      const due = room.game.toAct(room.state).filter((i) => this.botControlled(room, i))
+      for (const seat of due) {
+        if (room.status !== 'playing' || !room.game.toAct(room.state).includes(seat)) continue
+        try {
+          room.state = room.game.apply(room.state, seat, room.game.bot!(room.state, seat, this.rng), this.rng)
+          room.version++
+          if (room.game.result(room.state)) room.status = 'over'
+        } catch (e) {
+          console.error(`bot failed in ${room.game.id}`, e)
+        }
       }
+      if (room.status === 'over') this.broadcastRoom(room)
+      this.broadcastState(room)
+      this.schedule(room)
     }, this.botDelay)
   }
 

@@ -248,3 +248,20 @@
   border-color: var(--gold);
   color: #2b1a05;
 }
+/* online: previous round's reveal */
+.ld-last {
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.ld-last summary {
+  padding: 10px 12px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-height: 40px;
+}
+.ld-last .ld-table {
+  border-radius: 0;
+}

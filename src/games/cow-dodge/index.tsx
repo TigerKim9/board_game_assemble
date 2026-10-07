@@ -6,16 +6,15 @@ import type { Difficulty, PlayerConfig } from '../../lib/types'
 import {
   END_SCORE,
   HAND_SIZE,
-  ROW_LIMIT,
   aiChooseCard,
   aiChooseRow,
   deal,
-  heads,
   placeCard,
   sumHeads,
   takeRow,
   targetRow,
 } from './logic'
+import { CowCard, CowRows } from './parts'
 import './cow-dodge.css'
 
 interface Game {
@@ -281,32 +280,12 @@ function Table({ game, onAgain, onReset }: { game: Game; onAgain: () => void; on
       </div>
       <div className="cd-board felt">
         <div className="status cd-status">{statusText}</div>
-        <div className="cd-rows">
-          {rows.map((r, i) => {
-            const danger = r.length >= ROW_LIMIT
-            const pickable = phase === 'pickRow'
-            const hit = current && phase === 'resolve' && !takeMsg && targetRow(rows, current.card) === i
-            return (
-              <button
-                key={i}
-                className={`cd-row ${pickable ? 'pickable' : ''} ${hit ? 'hit' : ''}`}
-                disabled={!pickable}
-                onClick={() => rowResolver.current?.(i)}
-              >
-                {Array.from({ length: ROW_LIMIT + 1 }, (_, j) =>
-                  r[j] != null ? (
-                    <CowCard key={j} value={r[j]} />
-                  ) : (
-                    <span key={j} className={`cd-slot ${j === ROW_LIMIT ? 'six' : ''} ${danger && j === ROW_LIMIT ? 'warn' : ''}`}>
-                      {j === ROW_LIMIT ? '💥' : ''}
-                    </span>
-                  ),
-                )}
-                {pickable && <span className="cd-row-tag">🐮{sumHeads(r)}</span>}
-              </button>
-            )
-          })}
-        </div>
+        <CowRows
+          rows={rows}
+          pickable={phase === 'pickRow'}
+          hit={current && phase === 'resolve' && !takeMsg ? targetRow(rows, current.card) : -1}
+          onPick={(i) => rowResolver.current?.(i)}
+        />
         {reveal.length > 0 && (
           <div className="cd-reveal">
             {reveal.map((p, k) => (
@@ -385,36 +364,4 @@ function Table({ game, onAgain, onReset }: { game: Game; onAgain: () => void; on
       </ul>
     </>
   )
-}
-
-function CowCard({
-  value,
-  small,
-  selected,
-  flip,
-  onClick,
-}: {
-  value: number
-  small?: boolean
-  selected?: boolean
-  flip?: boolean
-  onClick?: () => void
-}) {
-  const h = heads(value)
-  const cls = `cd-card h${h} ${small ? 'small' : ''} ${selected ? 'selected' : ''} ${flip ? 'flip' : ''}`
-  const inner = (
-    <>
-      <span className="cd-num">{value}</span>
-      <span className="cd-heads" aria-label={`소 ${h}마리`}>
-        {h >= 5 ? `🐮×${h}` : '🐮'.repeat(h)}
-      </span>
-    </>
-  )
-  if (onClick)
-    return (
-      <button className={cls} onClick={onClick}>
-        {inner}
-      </button>
-    )
-  return <span className={cls}>{inner}</span>
 }

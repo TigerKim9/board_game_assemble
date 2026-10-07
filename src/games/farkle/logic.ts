@@ -1,4 +1,3 @@
-import { rollDie } from '../../lib/random'
 import type { Difficulty } from '../../lib/types'
 
 // ---------- scoring ----------
@@ -84,8 +83,8 @@ export function bestRollScore(dice: number[]): number {
 
 export const isFarkle = (dice: number[]) => bestRollScore(dice) === 0
 
-export function rollN(n: number): number[] {
-  return Array.from({ length: n }, () => rollDie())
+export function rollN(n: number, rng: () => number = Math.random): number[] {
+  return Array.from({ length: n }, () => Math.floor(rng() * 6) + 1)
 }
 
 // ---------- AI ----------

@@ -17,6 +17,7 @@ import {
   type FarkleState,
 } from './game'
 import { aiChooseKeep, aiShouldBank, rollN, type AiContext } from './logic'
+import { FarkleKept, FarklePlayers, FarkleRef } from './parts'
 import './farkle.css'
 
 interface Setup {
@@ -151,22 +152,12 @@ function Board({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void;
 
   return (
     <>
-      <ul className="farkle-players">
-        {s.players.map((p, i) => (
-          <li
-            key={i}
-            className={`farkle-player ${i === s.turn ? 'active' : ''}`}
-            style={{ '--c': `var(--p${(i % 6) + 1})` } as React.CSSProperties}
-          >
-            <span className="farkle-pname">
-              {p.isAI ? '🤖 ' : ''}
-              {p.name}
-              {s.finalFrom === i && ' 🏁'}
-            </span>
-            <strong>{s.scores[i].toLocaleString()}</strong>
-          </li>
-        ))}
-      </ul>
+      <FarklePlayers
+        names={s.players.map((p) => `${p.isAI ? '🤖 ' : ''}${p.name}`)}
+        scores={s.scores}
+        turn={s.turn}
+        finalFrom={s.finalFrom}
+      />
 
       <div className="farkle-table felt">
         <div className="status">
@@ -205,16 +196,7 @@ function Board({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void;
         {s.log && <div className="farkle-log">{s.log}</div>}
         {hint && <div className="farkle-hint">{hint}</div>}
 
-        {s.kept.length > 0 && (
-          <div className="farkle-kept">
-            <span>따로 둔 주사위</span>
-            <div className="farkle-kept-dice">
-              {s.kept.flat().map((d, i) => (
-                <Die key={i} value={d} size={26} />
-              ))}
-            </div>
-          </div>
-        )}
+        <FarkleKept kept={s.kept} />
 
         <div className="farkle-buttons">
           {s.phase === 'start' || s.phase === 'rolling' || s.phase === 'farkle' ? (
@@ -234,16 +216,7 @@ function Board({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void;
         </div>
       </div>
 
-      <details className="farkle-ref card-panel">
-        <summary>점수표 보기</summary>
-        <ul>
-          <li>1 하나 = 100 · 5 하나 = 50</li>
-          <li>같은 눈 3개 = 눈×100 (1 세 개는 1,000)</li>
-          <li>같은 눈 4개 = 1,000 · 5개 = 2,000 · 6개 = 3,000</li>
-          <li>1-2-3-4-5-6 스트레이트 = 1,500</li>
-          <li>세 쌍 = 1,500 · 4개+한 쌍 = 1,500 · 트리플 두 개 = 2,500</li>
-        </ul>
-      </details>
+      <FarkleRef />
     </>
   )
 }

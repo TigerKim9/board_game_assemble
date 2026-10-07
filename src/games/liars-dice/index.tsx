@@ -4,21 +4,8 @@ import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
 import { useStored } from '../../lib/storage'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
-import {
-  aiAction,
-  challenge,
-  countMatching,
-  currentBid,
-  facesFor,
-  isHigher,
-  minRaise,
-  newLiar,
-  nextRound,
-  placeBid,
-  totalDice,
-  type Bid,
-  type LiarState,
-} from './logic'
+import { aiAction, challenge, currentBid, newLiar, nextRound, placeBid, totalDice, type LiarState } from './logic'
+import { BidControls, BidLog, BidView, RevealPanel } from './parts'
 import './liars-dice.css'
 
 interface Setup {
@@ -52,16 +39,6 @@ export default function LiarsDice() {
   return <Board key={round} setup={setup} onAgain={() => setRound((r) => r + 1)} onReset={() => setSetup(null)} />
 }
 
-function BidView({ bid, size = 30 }: { bid: Bid; size?: number }) {
-  return (
-    <span className="ld-bid">
-      <strong>{bid.qty}</strong>
-      <span className="ld-x">×</span>
-      <Die value={bid.face} size={size} />
-    </span>
-  )
-}
-
 function Board({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void; onReset: () => void }) {
   const [s, setS] = useState<LiarState>(() => newLiar(setup.players, setup.wild))
   /** Which human has dismissed the cover screen for the current turn. */
@@ -71,13 +48,7 @@ function Board({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void;
   const current = s.players[s.turn]
   const cur = currentBid(s)
   const total = totalDice(s)
-  const [draft, setDraft] = useState<Bid>(() => minRaise(null, setup.wild))
   const humansAlive = humans.some((i) => s.hands[i].length > 0)
-
-  // Reset the bid draft to the minimal raise whenever a new turn begins.
-  useEffect(() => {
-    setDraft(minRaise(cur?.bid ?? null, s.wild))
-  }, [s.turn, s.bids.length, s.round]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let t: ReturnType<typeof setTimeout> | undefined
@@ -129,13 +100,6 @@ function Board({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void;
   }
 
   const rv = s.reveal
-  const faces = facesFor(s.wild)
-  const draftValid = isHigher(draft, cur?.bid ?? null) && draft.qty <= total
-  const setFace = (f: number) => {
-    let qty = draft.qty
-    while (!isHigher({ qty, face: f }, cur?.bid ?? null)) qty++
-    setDraft({ qty: Math.min(qty, total), face: f })
-  }
 
   return (
     <>
@@ -180,39 +144,14 @@ function Board({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void;
         </div>
 
         {s.phase === 'reveal' && rv ? (
-          <div className="ld-reveal">
-            <p className="ld-reveal-result">
-              실제로 <strong>{rv.actual}개</strong> → {rv.actual >= rv.bid.qty ? '베팅이 맞았어요!' : '거짓말이었어요!'}
-              <br />
-              <strong>{s.players[rv.loser].name}</strong>님이 주사위 하나를 잃어요
-              {s.hands[rv.loser].length === 1 && ' (탈락!)'}
-            </p>
-            <ul className="ld-reveal-list">
-              {s.players.map((p, i) =>
-                s.hands[i].length === 0 ? null : (
-                  <li key={i}>
-                    <span className="ld-reveal-name">{p.name}</span>
-                    <span className="ld-reveal-dice">
-                      {s.hands[i].map((d, j) => {
-                        const hit = countMatching([d], rv.bid.face, s.wild) > 0
-                        return (
-                          <span key={j} className={hit ? 'hit' : 'miss'}>
-                            <Die value={d} size={30} />
-                          </span>
-                        )
-                      })}
-                    </span>
-                  </li>
-                ),
-              )}
-            </ul>
+          <RevealPanel names={s.players.map((p) => p.name)} hands={s.hands} reveal={rv} wild={s.wild}>
             <button className="btn primary big" onClick={() => {
               setSeenBy(null)
               setS((p) => nextRound(p))
             }}>
               다음 라운드
             </button>
-          </div>
+          </RevealPanel>
         ) : (
           <>
             <div className="ld-mine">
@@ -229,50 +168,20 @@ function Board({ setup, onAgain, onReset }: { setup: Setup; onAgain: () => void;
             </div>
 
             {humanTurn && (
-              <div className="ld-controls">
-                <div className="ld-qty">
-                  <button className="btn" onClick={() => setDraft((d) => ({ ...d, qty: Math.max(1, d.qty - 1) }))} disabled={draft.qty <= 1}>
-                    −
-                  </button>
-                  <span>
-                    <strong>{draft.qty}</strong>개
-                  </span>
-                  <button className="btn" onClick={() => setDraft((d) => ({ ...d, qty: Math.min(total, d.qty + 1) }))} disabled={draft.qty >= total}>
-                    +
-                  </button>
-                </div>
-                <div className="ld-faces">
-                  {faces.map((f) => (
-                    <Die key={f} value={f} size={40} held={draft.face === f} onClick={() => setFace(f)} />
-                  ))}
-                </div>
-                <div className="ld-actions">
-                  <button className="btn accent big" disabled={!draftValid} onClick={() => setS((p) => placeBid(p, draft))}>
-                    베팅: {draft.qty}×{draft.face}
-                  </button>
-                  <button className="btn danger big" disabled={!cur} onClick={() => setS(challenge)}>
-                    거짓말!
-                  </button>
-                </div>
-              </div>
+              <BidControls
+                key={`${s.round}-${s.bids.length}-${s.turn}`}
+                cur={cur?.bid ?? null}
+                total={total}
+                wild={s.wild}
+                onBid={(bid) => setS((p) => placeBid(p, bid))}
+                onChallenge={() => setS(challenge)}
+              />
             )}
           </>
         )}
       </div>
 
-      {s.bids.length > 0 && s.phase === 'bid' && (
-        <ol className="ld-log card-panel">
-          {s.bids
-            .slice(-6)
-            .reverse()
-            .map((b, i) => (
-              <li key={s.bids.length - i}>
-                <span>{s.players[b.player].name}</span>
-                <BidView bid={b.bid} size={22} />
-              </li>
-            ))}
-        </ol>
-      )}
+      {s.phase === 'bid' && <BidLog names={s.players.map((p) => p.name)} bids={s.bids} />}
     </>
   )
 }

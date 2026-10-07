@@ -5,22 +5,8 @@ import { Result } from '../../components/Result'
 import { sleep } from '../../lib/random'
 import { useBestScore } from '../../lib/storage'
 import type { PlayerConfig } from '../../lib/types'
-import {
-  BONUS,
-  BONUS_THRESHOLD,
-  CATEGORIES,
-  LABELS,
-  bestCategory,
-  bonusFor,
-  chooseHolds,
-  isComplete,
-  roll,
-  scoreFor,
-  total,
-  upperTotal,
-  type Category,
-  type Scores,
-} from './logic'
+import { bestCategory, chooseHolds, isComplete, roll, scoreFor, total, type Category, type Scores } from './logic'
+import { YachtScoreboard } from './Scoreboard'
 import './yacht.css'
 
 interface State {
@@ -186,89 +172,14 @@ function Board({
         </div>
       )}
 
-      <div className="scoreboard-wrap">
-        <table className="scoreboard">
-          <thead>
-            <tr>
-              <th></th>
-              {players.map((p, i) => (
-                <th key={i} className={i === turn && !gameOver ? 'active' : ''}>
-                  {p.isAI ? '🤖 ' : ''}
-                  {p.name}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {CATEGORIES.map((cat) => (
-              <ScoreRow
-                key={cat}
-                cat={cat}
-                state={state}
-                canPick={humanTurn && hasRolled && !rolling}
-                onPick={choose}
-                after={cat === 'sixes'}
-              />
-            ))}
-            <tr className="total-row">
-              <th>합계</th>
-              {scores.map((s, i) => (
-                <td key={i}>{total(s)}</td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </>
-  )
-}
-
-function ScoreRow({
-  cat,
-  state,
-  canPick,
-  onPick,
-  after,
-}: {
-  cat: Category
-  state: State
-  canPick: boolean
-  onPick: (c: Category) => void
-  after: boolean
-}) {
-  const { scores, turn, dice } = state
-  return (
-    <>
-      <tr>
-        <th>{LABELS[cat]}</th>
-        {scores.map((s, i) => {
-          const v = s[cat]
-          if (v !== undefined) return <td key={i}>{v}</td>
-          if (i === turn && canPick) {
-            const preview = scoreFor(cat, dice)
-            return (
-              <td key={i}>
-                <button className={`pick ${preview > 0 ? 'good' : ''}`} onClick={() => onPick(cat)}>
-                  {preview}
-                </button>
-              </td>
-            )
-          }
-          return <td key={i} className="empty"></td>
-        })}
-      </tr>
-      {after && (
-        <tr className="bonus-row">
-          <th>
-            보너스 <small>({BONUS_THRESHOLD}↑ +{BONUS})</small>
-          </th>
-          {scores.map((s, i) => (
-            <td key={i}>
-              {bonusFor(s) ? `+${BONUS}` : <small className="muted">{upperTotal(s)}/{BONUS_THRESHOLD}</small>}
-            </td>
-          ))}
-        </tr>
-      )}
+      <YachtScoreboard
+        names={players.map((p) => `${p.isAI ? '🤖 ' : ''}${p.name}`)}
+        scores={scores}
+        turn={gameOver ? null : turn}
+        dice={dice}
+        canPick={humanTurn && hasRolled && !rolling}
+        onPick={choose}
+      />
     </>
   )
 }
