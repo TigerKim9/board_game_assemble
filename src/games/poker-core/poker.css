@@ -1,0 +1,47 @@
+.pk-bank {
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.pk-bank-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+}
+.pk-bank p {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+}
+.pk-bank .pk-small {
+  font-size: 0.8rem;
+}
+.pk-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pk-chip-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #fff 0 22%, #e0a526 24% 58%, #fff 60% 68%, #c2861a 70%);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  flex: none;
+}
+.pk-cover {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: pop 0.25s ease-out;
+}
+.pk-cover-emoji {
+  font-size: 2.6rem;
+}
+.pk-cover p {
+  margin: 0;
+}

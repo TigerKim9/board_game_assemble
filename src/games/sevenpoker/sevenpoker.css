@@ -1,0 +1,262 @@
+.sevenpoker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sevenpoker-note {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.sevenpoker-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+.sevenpoker-pot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 1rem;
+}
+.sevenpoker-pot .pk-chips {
+  color: #ffe08a;
+  font-size: 1.25rem;
+}
+.sevenpoker-round {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.sevenpoker-community {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+.sevenpoker-seats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+@media (min-width: 640px) {
+  .sevenpoker-seats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.sevenpoker-seat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+  border-left: 4px solid var(--seat);
+  min-width: 0;
+  transition: background 0.2s, opacity 0.2s;
+}
+.sevenpoker-seat.turn {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 2px #ffe08a inset;
+}
+.sevenpoker-seat.out {
+  opacity: 0.5;
+}
+.sevenpoker-seat.won {
+  background: rgba(255, 224, 138, 0.26);
+}
+.sevenpoker-seat-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+.sevenpoker-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sevenpoker-stack {
+  font-size: 0.85rem;
+}
+.sevenpoker-tagbox {
+  min-width: 52px;
+  display: flex;
+  justify-content: flex-end;
+}
+.sevenpoker-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+}
+.sevenpoker-tag.die {
+  background: rgba(0, 0, 0, 0.3);
+}
+.sevenpoker-tag.hand {
+  background: rgba(255, 255, 255, 0.88);
+  color: #1e3a2f;
+}
+.sevenpoker-tag.win {
+  background: #ffe08a;
+  color: #3a2a00;
+}
+.sevenpoker-tag.thinking {
+  animation: flash 1s infinite;
+}
+.sevenpoker-row {
+  display: flex;
+  gap: 3px;
+  min-height: 42px;
+  align-items: center;
+}
+.sevenpoker-sitout {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 0.85rem;
+}
+.sevenpoker-hidden.pc:not(.pc-down) {
+  transform: translateY(3px);
+  filter: brightness(0.9);
+}
+.sevenpoker-deal {
+  animation: sevenpoker-deal 0.28s ease-out;
+}
+@keyframes sevenpoker-deal {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+}
+.sevenpoker-status {
+  font-size: 1rem;
+}
+.sevenpoker-pots {
+  list-style: none;
+  margin: 0;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+.sevenpoker-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+.sevenpoker-choice-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.sevenpoker-choice-cards {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.sevenpoker-choice-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.sevenpoker-discarded {
+  opacity: 0.35;
+  transform: translateY(6px) rotate(-4deg);
+}
+.sevenpoker-choice-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.sevenpoker-choice-label.discard {
+  color: var(--danger);
+}
+.sevenpoker-choice-label.open {
+  color: var(--primary);
+}
+.sevenpoker-me {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+.sevenpoker-me.folded .sevenpoker-me-cards {
+  opacity: 0.45;
+}
+.sevenpoker-me-cards {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+}
+.sevenpoker-me-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+.sevenpoker-me-slot.hidden span {
+  color: var(--accent);
+  font-weight: 700;
+}
+.sevenpoker-me-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sevenpoker-bets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.sevenpoker-bets .btn {
+  min-height: 50px;
+  padding: 4px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.15;
+}
+.sevenpoker-bets .btn small {
+  font-size: 0.72rem;
+  opacity: 0.9;
+  font-weight: 600;
+}
+.sevenpoker-after {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.sevenpoker-ranking {
+  text-align: left;
+  margin: 0;
+  padding-left: 22px;
+}
+.sevenpoker-plus {
+  color: var(--success);
+  font-weight: 700;
+}
+.sevenpoker-minus {
+  color: var(--danger);
+  font-weight: 700;
+}

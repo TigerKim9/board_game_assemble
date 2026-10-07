@@ -1,0 +1,249 @@
+.hula {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hula-players {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+@media (min-width: 640px) {
+  .hula-players {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.hula-player {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-left: 5px solid var(--seat);
+  min-width: 0;
+  line-height: 1.3;
+}
+.hula-player.active {
+  border-color: var(--primary);
+  border-left-color: var(--seat);
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+}
+.hula-pname {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hula-pinfo {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.hula-reg {
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-text);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.hula-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+.hula-piles {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+}
+.hula-pile {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.hula-pile:disabled {
+  cursor: default;
+}
+.hula-pile:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.hula-pile:not(:disabled) {
+  outline: 2px dashed rgba(255, 224, 138, 0.8);
+  outline-offset: 1px;
+}
+.hula-round {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.8rem;
+}
+.hula-round strong {
+  font-size: 1.2rem;
+}
+.hula-status {
+  font-size: 0.98rem;
+}
+.hula-melds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.hula-meld {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  padding: 4px 6px 4px 4px;
+  border-radius: 8px;
+  border: none;
+  border-bottom: 3px solid var(--seat);
+  background: rgba(0, 0, 0, 0.2);
+  min-height: 44px;
+  cursor: default;
+}
+.hula-meld .hula-meld-card + .hula-meld-card {
+  margin-left: -14px;
+}
+.hula-meld.target {
+  cursor: pointer;
+  background: rgba(255, 224, 138, 0.35);
+  box-shadow: 0 0 0 2px #ffe08a;
+  animation: flash 1.2s infinite;
+}
+.hula-empty {
+  margin: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+.hula-log {
+  list-style: none;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+.hula-log li:last-child {
+  font-weight: 700;
+}
+.hula-toast {
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  animation: pop 0.2s ease-out;
+}
+.hula-me {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+.hula-me-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.hula-chance {
+  text-align: center;
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+.hula-hand {
+  position: relative;
+  width: 100%;
+  margin-top: 8px;
+}
+.hula-hand-card {
+  position: absolute !important;
+  top: 8px;
+}
+.hula-hand-card.pc-selected {
+  top: -4px;
+}
+.hula-buttons {
+  display: flex;
+  gap: 8px;
+}
+.hula-buttons .btn {
+  flex: 1;
+  min-height: 46px;
+}
+.hula-thank {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+}
+.hula-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.82rem;
+}
+.hula-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: pop 0.25s ease-out;
+}
+.hula-summary h3 {
+  text-align: center;
+}
+.hula-summary ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hula-sum-head {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+}
+.hula-sum-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 2px;
+}
+.hula-pen {
+  color: var(--danger);
+}
+.hula-win {
+  color: var(--success);
+}
+.hula-ranking {
+  text-align: left;
+  margin: 0;
+  padding-left: 22px;
+}
+.hula-foot {
+  text-align: center;
+  font-size: 0.8rem;
+  margin: 0;
+}

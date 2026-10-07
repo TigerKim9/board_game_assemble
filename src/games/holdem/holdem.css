@@ -1,0 +1,323 @@
+.holdem {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.holdem-setup-extra {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.holdem-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  min-height: 40px;
+  cursor: pointer;
+}
+.holdem-check input {
+  width: 20px;
+  height: 20px;
+}
+.holdem-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.holdem-info {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.holdem-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+}
+.holdem-seats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.holdem-seats.few {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 640px) {
+  .holdem-seats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .holdem-seats.few {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.holdem-seat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px 5px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 3px solid var(--seat);
+  min-width: 0;
+  transition: background 0.2s, opacity 0.2s, box-shadow 0.2s;
+}
+.holdem-seat.turn {
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 2px #ffe08a inset;
+}
+.holdem-seat.folded {
+  opacity: 0.5;
+}
+.holdem-seat.won {
+  background: rgba(255, 224, 138, 0.28);
+}
+.holdem-seat.me .holdem-name-text {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.holdem-seat-name {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.holdem-name-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.holdem-btn {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #fff;
+  color: #222;
+  font-size: 0.65rem;
+  font-weight: 800;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.holdem-seat-cards {
+  display: flex;
+  gap: 3px;
+  min-height: 39px;
+  align-items: center;
+}
+.holdem-seat-stack {
+  font-size: 0.8rem;
+}
+.holdem-seat-tag {
+  min-height: 20px;
+  display: flex;
+  justify-content: center;
+}
+.holdem-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  white-space: nowrap;
+}
+.holdem-tag.fold {
+  background: rgba(0, 0, 0, 0.3);
+}
+.holdem-tag.hand {
+  background: rgba(255, 255, 255, 0.85);
+  color: #1e3a2f;
+}
+.holdem-tag.win {
+  background: #ffe08a;
+  color: #3a2a00;
+}
+.holdem-tag.thinking {
+  animation: flash 1s infinite;
+}
+.holdem-seat-bet {
+  position: absolute;
+  top: -7px;
+  right: 2px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: #ffe08a;
+  color: #3a2a00;
+  border-radius: 999px;
+  padding: 0 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.holdem-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.holdem-board {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+}
+.holdem-slot {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  background: rgba(0, 0, 0, 0.12) !important;
+}
+.holdem-deal {
+  animation: holdem-deal 0.3s ease-out;
+}
+@keyframes holdem-deal {
+  from {
+    transform: translateY(-10px) scale(0.9);
+    opacity: 0;
+  }
+}
+.holdem-pot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+.holdem-pot .pk-chips {
+  color: #ffe08a;
+  font-size: 1.2rem;
+}
+.holdem-street {
+  font-size: 0.75rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.holdem-status {
+  font-size: 1rem;
+}
+.holdem-pots {
+  list-style: none;
+  margin: 0;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+.holdem-me {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+}
+.holdem-me.folded .holdem-me-cards {
+  opacity: 0.45;
+}
+.holdem-me-cards {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.holdem-me-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+  line-height: 1.3;
+}
+.holdem-me-info strong {
+  font-size: 1rem;
+}
+.holdem-me-stack {
+  font-size: 0.9rem;
+}
+.holdem-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.holdem-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
+  gap: 8px;
+}
+.holdem-buttons .btn {
+  min-height: 48px;
+  padding: 8px 6px;
+}
+.holdem-raise {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+.holdem-raise-amount {
+  text-align: center;
+  font-size: 1.05rem;
+}
+.holdem-raise-amount strong {
+  font-size: 1.4rem;
+  color: var(--accent);
+}
+.holdem-allin {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  vertical-align: middle;
+}
+.holdem-slider {
+  width: 100%;
+  height: 32px;
+  accent-color: var(--accent);
+}
+.holdem-quick {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.holdem-quick .btn {
+  min-height: 40px;
+  padding: 6px 4px;
+}
+.holdem-raise-go {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+}
+.holdem-raise-go .btn {
+  min-height: 44px;
+}
+.holdem-after {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.holdem-ranking {
+  text-align: left;
+  margin: 0;
+  padding-left: 22px;
+}
+.holdem-ranking.plain {
+  list-style: none;
+  padding: 0;
+}
+.holdem-plus {
+  color: var(--success);
+  font-weight: 700;
+}
+.holdem-minus {
+  color: var(--danger);
+  font-weight: 700;
+}
