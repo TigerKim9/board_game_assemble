@@ -15,5 +15,5 @@ npm run build   # 배포용 빌드 (dist/)
 ```
 
 ## 배포 (GitHub Pages)
-`main` 브랜치에 푸시하면 `.github/workflows/deploy.yml`이 자동 배포합니다.
+기본 브랜치(`claude/jolly-cori-ys09wp`) 또는 `main`에 푸시하면 `.github/workflows/deploy.yml`이 테스트·빌드 후 자동 배포합니다.
 처음 한 번은 저장소 **Settings → Pages → Source: GitHub Actions** 로 설정해 주세요.
