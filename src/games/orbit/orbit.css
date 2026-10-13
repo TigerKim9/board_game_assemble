@@ -1,0 +1,372 @@
+.orbit-root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 540px;
+  margin: -4px 0 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---- space stage ---- */
+.orbit-stage {
+  position: relative;
+  flex: 0 0 auto;
+  height: clamp(260px, 47%, 520px);
+  border-radius: 18px;
+  overflow: hidden;
+  background: #070a1c;
+  box-shadow: 0 6px 24px rgba(10, 8, 40, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.orbit-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.orbit-hud {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  pointer-events: none;
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+  line-height: 1.15;
+}
+.orbit-coins {
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.orbit-rate {
+  font-size: 0.8rem;
+  color: #9fe9ff;
+  font-weight: 600;
+}
+.orbit-dust {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  pointer-events: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(255, 216, 74, 0.14);
+  border: 1px solid rgba(255, 216, 74, 0.45);
+  color: #ffe58a;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.orbit-dust small {
+  opacity: 0.85;
+}
+.orbit-boost {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 140px;
+  margin-left: -70px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(70, 227, 255, 0.12);
+  border: 1px solid rgba(70, 227, 255, 0.5);
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.orbit-boost.on {
+  opacity: 1;
+  transform: none;
+}
+.orbit-boost i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, rgba(70, 227, 255, 0.35), rgba(150, 240, 255, 0.6));
+  transition: width 0.2s linear;
+}
+.orbit-boost span {
+  position: relative;
+  display: block;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 18px;
+  color: #e9fbff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* ---- upgrade panel ---- */
+.orbit-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 6px;
+  overscroll-behavior: contain;
+}
+.orbit-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg);
+  padding-bottom: 2px;
+}
+.orbit-toolbar .segmented button {
+  min-width: 48px;
+  min-height: 36px;
+}
+.orbit-nova {
+  min-height: 40px;
+  white-space: nowrap;
+}
+.orbit-nova.ready {
+  background: linear-gradient(135deg, #ff7a3d, #ff4f9a);
+  color: #fff;
+  border-color: transparent;
+  animation: orbit-glow 1.6s ease-in-out infinite;
+}
+@keyframes orbit-glow {
+  50% {
+    box-shadow: 0 0 14px rgba(255, 90, 140, 0.7);
+  }
+}
+
+.orbit-unlock,
+.orbit-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px;
+  box-shadow: var(--shadow);
+}
+.orbit-unlock {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-style: dashed;
+}
+.orbit-unlock-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  gap: 2px;
+}
+.orbit-unlock-text small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.orbit-unlock-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+  min-width: 88px;
+  min-height: 44px;
+  padding: 6px 10px;
+}
+.orbit-unlock-btn small {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+.orbit-icon polygon {
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 2px currentColor);
+}
+.orbit-icon {
+  flex: 0 0 auto;
+  background: #0b0e24;
+  border-radius: 9px;
+  padding: 1px;
+}
+.orbit-icon.locked polygon {
+  stroke-dasharray: 3 3;
+  opacity: 0.8;
+}
+
+.orbit-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.orbit-bar.big {
+  height: 10px;
+  margin: 4px 0;
+}
+.orbit-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--oc, var(--accent));
+  transition: width 0.25s;
+}
+
+.orbit-row-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.orbit-row-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.orbit-row-title small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.orbit-row-title em {
+  font-style: normal;
+  font-weight: 800;
+  color: var(--accent);
+}
+.orbit-row-income {
+  text-align: right;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.orbit-row-income strong {
+  font-size: 1.05rem;
+}
+.orbit-row-income small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-left: 1px;
+}
+.orbit-ms {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 7px 0 0;
+}
+.orbit-ms .orbit-bar {
+  flex: 1;
+}
+.orbit-ms small {
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.orbit-btns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+.orbit-buy {
+  min-height: 48px;
+  padding: 5px 4px;
+  border-radius: 11px;
+  border: 1px solid color-mix(in srgb, var(--oc) 55%, var(--border));
+  background: color-mix(in srgb, var(--oc) 14%, var(--surface));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  cursor: pointer;
+  line-height: 1.15;
+  transition: transform 0.08s, filter 0.15s;
+}
+.orbit-buy:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.orbit-buy:disabled {
+  cursor: default;
+  background: var(--surface-2);
+  border-color: var(--border);
+  opacity: 0.62;
+}
+.orbit-buy-top {
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.orbit-buy-top b {
+  font-weight: 800;
+}
+.orbit-buy-cost {
+  font-size: 0.82rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.orbit-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  padding: 2px 4px;
+}
+.orbit-foot .btn {
+  margin-left: auto;
+}
+
+.orbit-offline {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.orbit-offline p {
+  margin: 4px 0;
+}
+.orbit-offline strong {
+  font-size: 1.25rem;
+  color: var(--accent);
+}
+.orbit-offline-ships {
+  font-size: 2.4rem;
+  animation: orbit-float 2s ease-in-out infinite;
+}
+@keyframes orbit-float {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+.orbit-small {
+  font-size: 0.82rem;
+}
+.orbit-novabox p {
+  margin: 6px 0;
+}
+.orbit-novabox .orbit-bar i {
+  background: linear-gradient(90deg, #ff7a3d, #ff4f9a);
+}
+
+@media (min-width: 760px) {
+  .orbit-root {
+    flex-direction: row;
+  }
+  .orbit-stage {
+    flex: 1;
+    height: 100%;
+  }
+  .orbit-panel {
+    flex: 0 0 380px;
+  }
+}
+.orbit-wide {
+  width: 100%;
+}
