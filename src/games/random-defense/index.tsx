@@ -38,6 +38,7 @@ import {
   transformCost,
   auraInfo,
   unitDamage,
+  unitInterval,
   unlock,
   unlockCost,
   upgrade,
@@ -609,7 +610,8 @@ function SideView({
                 <>
                   {INFO[selUnit.type].emoji} <b>{INFO[selUnit.type].name}</b>{' '}
                   <span style={{ color: TIER_COLORS[selUnit.tier] }}>{'★'.repeat(selUnit.tier)}</span> ·{' '}
-                  {INFO[selUnit.type].role} · 공격력 {fmt(unitDamage(selUnit, side))}
+                  {INFO[selUnit.type].role} · 공격력 {fmt(unitDamage(selUnit, side))} · 초당{' '}
+                  {(((selAura?.mult ?? 1) / unitInterval(selUnit))).toFixed(1)}회
                   {selAura && selAura.count > 0 && (
                     <span className="rd-haste">
                       {' '}· 🌪️×{selAura.count} 공격 속도 +{Math.round((selAura.mult - 1) * 100)}%

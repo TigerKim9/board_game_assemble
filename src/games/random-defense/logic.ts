@@ -193,7 +193,9 @@ export function neighbors(i: number): number[] {
 // ---------- numbers ----------
 
 export const classOf = (tier: number) => (tier <= 2 ? 0 : tier <= 4 ? 1 : 2)
-export const tierMult = (tier: number) => Math.pow(2.3, tier - 1)
+export const tierMult = (tier: number) => Math.pow(2.1, tier - 1)
+/** Attack-speed multiplier from stars: +10% per star above ★1 (★6 = +50%). */
+export const tierSpeed = (tier: number) => 1 + 0.1 * (tier - 1)
 export const summonCost = (summons: number) => 10 + summons * 2
 /** Sell refund: half of what went into the unit, so selling never beats keeping coins. */
 export const SELL_RATE = 0.5
@@ -220,6 +222,11 @@ export const sendCount = (kind: MonsterKind, wave: number) =>
 
 export function unitDamage(u: Unit, side: Side): number {
   return INFO[u.type].dmg * tierMult(u.tier) * (1 + UPGRADE_BONUS * side.upg[classOf(u.tier)])
+}
+
+/** Seconds between attacks (before wind auras). */
+export function unitInterval(u: Unit): number {
+  return INFO[u.type].interval / tierSpeed(u.tier)
 }
 
 export function unitRange(u: Unit): number {
@@ -268,7 +275,7 @@ export function auraMults(side: Side): number[] {
 
 /** Damage-per-second estimate (ignores effects), used by the AI and the info panel. */
 export function unitDps(u: Unit, side: Side): number {
-  return unitDamage(u, side) / INFO[u.type].interval
+  return unitDamage(u, side) / unitInterval(u)
 }
 
 // ---------- setup ----------
@@ -615,7 +622,7 @@ function stepSide(g: Game, idx: number, dt: number, rng: () => number) {
       continue
     }
     const info = INFO[u.type]
-    u.cd += info.interval
+    u.cd += unitInterval(u)
     const m = side.monsters[best]
     const mp = pos[best]
     const dmg = unitDamage(u, side)

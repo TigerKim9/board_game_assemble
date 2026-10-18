@@ -9,6 +9,8 @@ import {
   TIER_COLORS,
   auraInfo,
   canMerge,
+  neighbors,
+  unitRange,
   isStuck,
   pathPos,
   unlockCost,
@@ -73,6 +75,41 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.arcTo(x, y + h, x, y, r)
   ctx.arcTo(x, y, x + w, y, r)
   ctx.closePath()
+}
+
+/** Attack range circle (and, for wind spirits, the 8 boosted neighbour tiles). */
+function drawRange(ctx: CanvasRenderingContext2D, u: Unit, x: number, y: number, slot: number, now: number) {
+  const color = INFO[u.type].color
+  if (u.type === 'wind' && slot >= 0) {
+    ctx.save()
+    ctx.fillStyle = 'rgba(201,184,255,0.22)'
+    ctx.strokeStyle = 'rgba(201,184,255,0.75)'
+    ctx.lineWidth = 0.035
+    for (const n of neighbors(slot)) {
+      const p = slotPos(n)
+      roundRect(ctx, p.x - 0.45, p.y - 0.45, 0.9, 0.9, 0.14)
+      ctx.fill()
+      ctx.stroke()
+    }
+    ctx.restore()
+  }
+  const r = unitRange(u)
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, Math.PI * 2)
+  ctx.fillStyle = hexA(color, 0.12)
+  ctx.fill()
+  ctx.strokeStyle = hexA(color, 0.85)
+  ctx.lineWidth = 0.04
+  ctx.setLineDash([0.16, 0.1])
+  ctx.lineDashOffset = -now * 0.4
+  ctx.stroke()
+  ctx.restore()
+}
+
+function hexA(hex: string, a: number): string {
+  const n = parseInt(hex.slice(1), 16)
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`
 }
 
 /** Swirling lavender ring behind a spirit sped up by wind; spins faster with more stacked winds. */
@@ -269,6 +306,13 @@ export function drawSide(ctx: CanvasRenderingContext2D, w: number, dpr: number, 
       ctx.lineWidth = 0.06
       ctx.stroke()
     }
+  }
+
+  // range of the selected / dragged spirit
+  if (src && from >= 0) {
+    const dragging = ui.drag && ui.drag.moved
+    const c = dragging ? { x: ui.drag!.x, y: ui.drag!.y } : slotPos(from)
+    drawRange(ctx, src, c.x, c.y, dragging ? -1 : from, now)
   }
 
   // units
