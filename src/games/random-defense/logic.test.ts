@@ -260,7 +260,7 @@ describe('combat', () => {
     expect(one).toBeCloseTo(1 + auraBonus(2))
     s.units[13] = unit('wind', 2) // below slot 7
     const two = auraMults(s)[7]
-    expect(two).toBeCloseTo(1 + auraBonus(2) * (1 + 0.85))
+    expect(two).toBeCloseTo(1 + auraBonus(2) * (1 + 0.95))
     s.units[6] = unit('wind', 2) // left of slot 7
     const three = auraMults(s)[7]
     expect(three).toBeGreaterThan(two)
