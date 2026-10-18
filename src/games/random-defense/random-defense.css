@@ -336,3 +336,116 @@
     color: #c9b8ff;
   }
 }
+
+/* ---- mode picker ---- */
+.rd-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rd-modes {
+  align-self: center;
+  width: min(100%, 360px);
+}
+.rd-modes button {
+  flex: 1;
+  min-height: 44px;
+  font-weight: 700;
+}
+.rd-facing {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.rd-facing input {
+  width: 22px;
+  height: 22px;
+  margin: 1px 0 0;
+  flex: none;
+}
+.rd-facing span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.9rem;
+}
+.rd-facing small {
+  font-size: 0.78rem;
+}
+.rd-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: 1px;
+}
+
+/* ---- co-op ---- */
+.rd-arena.coop {
+  gap: 4px;
+  min-height: 480px;
+  /* hug the 8:9 field plus the player panels instead of stretching to the full viewport */
+  height: min(calc(100dvh - 92px), calc(min(100vw - 24px, 868px) * 1.125 + 184px));
+}
+.rd-arena.coop.two {
+  height: min(calc(100dvh - 92px), calc(min(100vw - 24px, 868px) * 1.125 + 212px));
+}
+.rd-coop-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: none;
+}
+.rd-coop-panel.top {
+  flex-direction: column-reverse;
+}
+.rd-coop-panel.top.rotated {
+  flex-direction: column;
+  transform: rotate(180deg);
+}
+.rd-coop-panel .rd-hud {
+  font-size: 0.85rem;
+  border-left: 4px solid var(--rd-own);
+  padding-left: 6px;
+  border-radius: 2px;
+}
+.rd-coop-panel .rd-controls .btn {
+  min-height: 44px;
+}
+.rd-arena.coop .rd-strip {
+  white-space: nowrap;
+  gap: 6px;
+  font-size: 0.88rem;
+}
+.rd-total {
+  font-size: 0.85rem;
+}
+@media (max-width: 380px) {
+  .rd-arena.coop .rd-strip {
+    font-size: 0.8rem;
+    padding: 0;
+  }
+  .rd-total {
+    padding: 2px 8px 4px;
+  }
+}
+.rd-actions.at-top {
+  top: 1.5%;
+  bottom: auto;
+}
+.rd-hint.at-top {
+  top: 2%;
+  bottom: auto;
+}
+.rd-flip {
+  position: absolute;
+  inset: 0;
+  transform: rotate(180deg);
+  pointer-events: none;
+}

@@ -4,6 +4,12 @@
 // the start; the right-hand column (EXTRA_SLOTS) starts locked and opens at wave milestones
 // or when bought with coins. `step` mutates the game in
 // place (it runs every frame) and returns it for convenience.
+//
+// Co-op (협동): two boards stacked vertically in one shared coordinate system. The bottom
+// board is shifted down by COOP_OFFSET so the top board's bottom path edge and the bottom
+// board's top path edge are the same physical lane (y = SHARED_LANE_Y, the "공동 전선").
+// Every spirit can hit any monster in range — its own or the partner's. Each side keeps its
+// own loop, coins, upgrades and boss; the monster limit and the defeat are shared.
 
 import type { Difficulty } from '../../lib/types'
 
@@ -72,6 +78,25 @@ export interface Unit {
   inv: number
 }
 
+/** Who owns a co-op board: side 0 is the top board, side 1 the bottom one. */
+export type Mode = 'solo' | 'versus' | 'coop'
+/** Vertical shift of the bottom co-op board: its top path edge lands on the top board's bottom edge. */
+export const COOP_OFFSET = FIELD_H - 1
+/** Height of the combined co-op field (two boards sharing one lane). */
+export const COOP_H = FIELD_H + COOP_OFFSET
+/** y of the shared lane in co-op coordinates. */
+export const SHARED_LANE_Y = 0.5 + PATH_H
+/** Grid row of each co-op board that touches the shared lane. */
+export const COOP_EDGE_ROW = [ROWS - 1, 0]
+/** Shared monster limit across both co-op loops (meta.ts rules quote it). */
+export const COOP_LIMIT = 160
+/** Co-op waves are a bit tougher than solo ones because the partner helps on the shared lane. */
+export const COOP_HP = 1.25
+/** Body hue of each co-op board's normal monsters (matches the players' colours in render.ts). */
+export const COOP_HUES = [28, 205]
+/** Share of a partner-monster kill reward the killer gets (the owner gets the rest). */
+export const COOP_HELP_SHARE = 0.5
+
 export type MonsterKind = 'normal' | 'elite' | 'boss' | 'sent'
 
 export interface Monster {
@@ -90,6 +115,10 @@ export interface Monster {
   poisonT: number
   hitT: number
   hue: number
+  /** Side whose spirit hit it last (kill credit in co-op). */
+  by?: number
+  /** Side whose poison is ticking on it. */
+  poisonBy?: number
 }
 
 export interface Spawn {
@@ -139,11 +168,18 @@ export interface Side {
   unlocks: number
   transforms: number
   sold: number
+  /** Path position where this side's monsters appear (co-op bottom board spawns bottom-left). */
+  spawnS: number
+  /** Co-op: partner monsters this side finished off. */
+  helped: number
 }
 
 export interface Game {
   sides: Side[]
   versus: boolean
+  coop: boolean
+  /** Co-op defeat: why and whose board caused it. */
+  coopFail: { reason: 'overflow' | 'boss'; side: number } | null
   time: number
   wave: number
   waveTimer: number
@@ -188,6 +224,17 @@ export function neighbors(i: number): number[] {
       if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) out.push(nr * COLS + nc)
     }
   return out
+}
+
+/** Offset of a side's board in the shared field (co-op stacks the boards). */
+export function boardOffset(g: Pick<Game, 'coop'>, idx: number): { x: number; y: number } {
+  return { x: 0, y: g.coop ? idx * COOP_OFFSET : 0 }
+}
+
+/** Monster position in the shared field coordinates. */
+export function monsterPos(g: Pick<Game, 'coop'>, idx: number, m: Monster): { x: number; y: number } {
+  const p = pathPos(m.s)
+  return { x: p.x, y: p.y + boardOffset(g, idx).y }
 }
 
 // ---------- numbers ----------
@@ -305,13 +352,21 @@ export function newSide(): Side {
     unlocks: 0,
     transforms: 0,
     sold: 0,
+    spawnS: 0,
+    helped: 0,
   }
 }
 
-export function newGame(players: number): Game {
+export function newGame(players: number, mode: Mode = players > 1 ? 'versus' : 'solo'): Game {
+  const coop = mode === 'coop' && players > 1
+  const sides = Array.from({ length: players }, newSide)
+  // the bottom co-op board's portal sits at its bottom-left corner (mirrors the top board's)
+  if (coop) sides[1].spawnS = 2 * PATH_W + PATH_H
   return {
-    sides: Array.from({ length: players }, newSide),
-    versus: players > 1,
+    sides,
+    versus: players > 1 && !coop,
+    coop,
+    coopFail: null,
     time: 0,
     wave: 0,
     waveTimer: FIRST_WAVE_DELAY,
@@ -506,7 +561,7 @@ function spawnMonster(side: Side, sp: Spawn) {
   side.monsters.push({
     id: side.nextId++,
     kind: sp.kind,
-    s: 0,
+    s: side.spawnS,
     dist: 0,
     hp: sp.hp,
     maxHp: sp.hp,
@@ -542,7 +597,14 @@ export function startWave(g: Game, rng: () => number) {
   g.waveTimer = WAVE_TIME
   for (const side of g.sides) {
     if (side.lost) continue
-    side.queue.push(...waveSpawns(g.wave, rng))
+    const list = waveSpawns(g.wave, rng)
+    if (g.coop)
+      for (const sp of list) {
+        sp.hp = Math.round(sp.hp * COOP_HP)
+        // warm monsters on the top loop, cool ones on the bottom loop: easy to tell apart on the shared lane
+        if (sp.kind === 'normal') sp.hue = COOP_HUES[g.sides.indexOf(side)]
+      }
+    side.queue.push(...list)
     if (isBossWave(g.wave)) {
       side.bossT = BOSS_TIME
       side.warn = 2.5
@@ -554,15 +616,34 @@ export function startWave(g: Game, rng: () => number) {
   }
 }
 
-function hit(side: Side, m: Monster, dmg: number, show: boolean, color: string, pos: { x: number; y: number }) {
+function hit(side: Side, by: number, m: Monster, dmg: number, show: boolean, color: string, pos: { x: number; y: number }) {
   m.hp -= dmg
   m.hitT = 0.12
+  m.by = by
   if (show) pushFx(side, { k: 'txt', x: pos.x, y: pos.y - 0.25, text: fmt(dmg), color, t: 0, life: 0.6, size: 0.26 })
 }
 
-function stepSide(g: Game, idx: number, dt: number, rng: () => number) {
-  const side = g.sides[idx]
-  // effects
+/** A monster a spirit may shoot, with its position in the shared field coordinates. */
+export interface Target {
+  m: Monster
+  x: number
+  y: number
+  owner: number
+}
+
+/** Every live monster the given sides own, positioned in the shared field. */
+export function targetsOf(g: Game, idxs: number[]): Target[] {
+  const out: Target[] = []
+  for (const i of idxs)
+    for (const m of g.sides[i].monsters) {
+      const p = monsterPos(g, i, m)
+      out.push({ m, x: p.x, y: p.y, owner: i })
+    }
+  return out
+}
+
+/** Effects, spawning, movement, poison and the boss clock. */
+function tickSide(side: Side, dt: number) {
   for (const f of side.fx) f.t += dt
   if (side.fx.length && side.fx[0].t >= side.fx[0].life) side.fx = side.fx.filter((f) => f.t < f.life)
   side.warn = Math.max(0, side.warn - dt)
@@ -585,6 +666,7 @@ function stepSide(g: Game, idx: number, dt: number, rng: () => number) {
     if (m.poisonT > 0) {
       m.hp -= m.poisonDps * Math.min(dt, m.poisonT)
       m.poisonT -= dt
+      if (m.hp <= 0 && m.poisonBy != null) m.by = m.poisonBy
     }
     if (m.stunT > 0) {
       m.stunT -= dt
@@ -599,25 +681,30 @@ function stepSide(g: Game, idx: number, dt: number, rng: () => number) {
     m.dist += v * dt
   }
   if (side.bossT != null) side.bossT -= dt
+}
 
-  // units attack
-  const pos = side.monsters.map((m) => pathPos(m.s))
+/** Spirits of side `idx` shoot at `targets` (shared coordinates; effects drawn in the side's own frame). */
+function attackSide(g: Game, idx: number, targets: Target[], dt: number, rng: () => number) {
+  const side = g.sides[idx]
+  const off = boardOffset(g, idx)
+  const local = (t: { x: number; y: number }) => ({ x: t.x - off.x, y: t.y - off.y })
   const aura = auraMults(side)
   for (let i = 0; i < SLOTS; i++) {
     const u = side.units[i]
     if (!u) continue
     u.cd -= dt * aura[i]
     if (u.cd > 0) continue
-    const p = slotPos(i)
+    const lp = slotPos(i)
+    const p = { x: lp.x + off.x, y: lp.y + off.y }
     const r2 = unitRange(u) ** 2
     let best = -1
-    for (let k = 0; k < side.monsters.length; k++) {
-      const m = side.monsters[k]
+    for (let k = 0; k < targets.length; k++) {
+      const m = targets[k].m
       if (m.hp <= 0) continue
-      const dx = pos[k].x - p.x
-      const dy = pos[k].y - p.y
+      const dx = targets[k].x - p.x
+      const dy = targets[k].y - p.y
       if (dx * dx + dy * dy > r2) continue
-      if (best < 0 || m.dist > side.monsters[best].dist) best = k
+      if (best < 0 || m.dist > targets[best].m.dist) best = k
     }
     if (best < 0) {
       u.cd = 0
@@ -625,32 +712,33 @@ function stepSide(g: Game, idx: number, dt: number, rng: () => number) {
     }
     const info = INFO[u.type]
     u.cd += unitInterval(u)
-    const m = side.monsters[best]
-    const mp = pos[best]
+    const m = targets[best].m
+    const mp = local(targets[best])
     const dmg = unitDamage(u, side)
     const boss = m.kind === 'boss'
-    pushFx(side, { k: 'shot', x: p.x, y: p.y, x2: mp.x, y2: mp.y, color: info.color, t: 0, life: 0.14 })
+    pushFx(side, { k: 'shot', x: lp.x, y: lp.y, x2: mp.x, y2: mp.y, color: info.color, t: 0, life: 0.14 })
     switch (u.type) {
       case 'thunder': {
         const R = 0.8 + 0.06 * u.tier
         pushFx(side, { k: 'boom', x: mp.x, y: mp.y, r: R, color: info.color, t: 0, life: 0.25 })
-        side.monsters.forEach((o, k) => {
-          if (o.hp <= 0) return
-          const dx = pos[k].x - mp.x
-          const dy = pos[k].y - mp.y
-          if (dx * dx + dy * dy <= R * R) hit(side, o, dmg, o === m, info.color, pos[k])
-        })
+        const c = targets[best]
+        for (const o of targets) {
+          if (o.m.hp <= 0) continue
+          const dx = o.x - c.x
+          const dy = o.y - c.y
+          if (dx * dx + dy * dy <= R * R) hit(side, idx, o.m, dmg, o.m === m, info.color, local(o))
+        }
         break
       }
       case 'ice': {
-        hit(side, m, dmg, true, info.color, mp)
+        hit(side, idx, m, dmg, true, info.color, mp)
         const f = 1 - slowAmount(u.tier) * (boss ? 0.5 : 1)
         m.slowF = m.slowT > 0 ? Math.min(m.slowF, f) : f
         m.slowT = 1.5
         break
       }
       case 'rock': {
-        hit(side, m, dmg, true, info.color, mp)
+        hit(side, idx, m, dmg, true, info.color, mp)
         if (rng() < stunChance(u.tier)) {
           m.stunT = Math.max(m.stunT, (0.5 + 0.1 * u.tier) * (boss ? 0.5 : 1))
           pushFx(side, { k: 'txt', x: mp.x, y: mp.y - 0.5, text: '기절!', color: '#ffe066', t: 0, life: 0.7, size: 0.24 })
@@ -658,47 +746,82 @@ function stepSide(g: Game, idx: number, dt: number, rng: () => number) {
         break
       }
       case 'poison': {
-        hit(side, m, dmg, true, info.color, mp)
+        hit(side, idx, m, dmg, true, info.color, mp)
         m.poisonDps = m.poisonT > 0 ? Math.max(m.poisonDps, dmg * 1.5) : dmg * 1.5
         m.poisonT = 3
+        m.poisonBy = idx
         break
       }
       default:
-        hit(side, m, dmg, true, info.color, mp)
+        hit(side, idx, m, dmg, true, info.color, mp)
     }
   }
+}
 
-  // deaths
-  if (side.monsters.some((m) => m.hp <= 0)) {
-    const mult = coinMult(side)
-    const alive: Monster[] = []
-    side.monsters.forEach((m, k) => {
-      if (m.hp > 0) {
-        alive.push(m)
-        return
-      }
-      side.kills++
-      side.coins += m.reward * mult * side.coinRate
-      const p = pos[k] ?? pathPos(m.s)
-      pushFx(side, { k: 'boom', x: p.x, y: p.y, r: m.kind === 'boss' ? 1.4 : 0.45, color: `hsl(${m.hue} 80% 65%)`, t: 0, life: 0.35 })
-      if (m.kind === 'boss') {
-        side.bossT = null
-        pushFx(side, { k: 'txt', x: FIELD_W / 2, y: FIELD_H / 2, text: '보스 처치!', color: '#ffe066', t: 0, life: 1.6, size: 0.55 })
-      } else if (m.kind === 'elite') {
-        pushFx(side, { k: 'txt', x: p.x, y: p.y - 0.4, text: '정예 처치!', color: '#e6b3ff', t: 0, life: 1, size: 0.3 })
-      }
-      const n = g.versus ? sendCount(m.kind, g.wave) : 0
-      if (n > 0) {
-        g.sides.forEach((o, j) => {
-          if (j === idx || o.lost) return
-          o.queue.push(...sentSpawns(n, g.wave))
-          o.incoming = 2
-        })
-      }
-    })
-    side.monsters = alive
+/**
+ * Coins for a kill. Solo / versus / own kills: the owner gets the full reward. A co-op kill of
+ * the partner's monster is split: COOP_HELP_SHARE to the killer (with the killer's luck bonus),
+ * the rest to the owner (with the owner's) — helping never costs anyone coins.
+ */
+export function killRewards(g: Game, owner: number, killer: number, reward: number): number[] {
+  const out = g.sides.map(() => 0)
+  const pay = (i: number, share: number) => (out[i] += reward * share * coinMult(g.sides[i]) * g.sides[i].coinRate)
+  if (!g.coop || killer === owner || !g.sides[killer]) pay(owner, 1)
+  else {
+    pay(killer, COOP_HELP_SHARE)
+    pay(owner, 1 - COOP_HELP_SHARE)
   }
+  return out
+}
 
+/** Removes side `idx`'s dead monsters and pays out. */
+function reapSide(g: Game, idx: number) {
+  const side = g.sides[idx]
+  if (!side.monsters.some((m) => m.hp <= 0)) return
+  const alive: Monster[] = []
+  for (const m of side.monsters) {
+    if (m.hp > 0) {
+      alive.push(m)
+      continue
+    }
+    const killer = g.coop && m.by != null && g.sides[m.by] ? m.by : idx
+    killRewards(g, idx, killer, m.reward).forEach((c, i) => (g.sides[i].coins += c))
+    g.sides[killer].kills++
+    const p = pathPos(m.s)
+    pushFx(side, { k: 'boom', x: p.x, y: p.y, r: m.kind === 'boss' ? 1.4 : 0.45, color: `hsl(${m.hue} 80% 65%)`, t: 0, life: 0.35 })
+    if (killer !== idx) {
+      g.sides[killer].helped++
+      if (m.kind !== 'normal' || g.sides[killer].helped % 5 === 0)
+        pushFx(side, { k: 'txt', x: p.x, y: p.y - 0.3, text: '🤝', color: '#ffe066', t: 0, life: 0.8, size: 0.3 })
+    }
+    if (m.kind === 'boss') {
+      side.bossT = null
+      pushFx(side, {
+        k: 'txt',
+        x: FIELD_W / 2,
+        y: FIELD_H / 2,
+        text: killer !== idx ? '함께 보스 처치!' : '보스 처치!',
+        color: '#ffe066',
+        t: 0,
+        life: 1.6,
+        size: 0.55,
+      })
+    } else if (m.kind === 'elite') {
+      pushFx(side, { k: 'txt', x: p.x, y: p.y - 0.4, text: '정예 처치!', color: '#e6b3ff', t: 0, life: 1, size: 0.3 })
+    }
+    const n = g.versus ? sendCount(m.kind, g.wave) : 0
+    if (n > 0) {
+      g.sides.forEach((o, j) => {
+        if (j === idx || o.lost) return
+        o.queue.push(...sentSpawns(n, g.wave))
+        o.incoming = 2
+      })
+    }
+  }
+  side.monsters = alive
+}
+
+function checkLose(side: Side) {
   if (side.monsters.length >= LIMIT) {
     side.lost = true
     side.loseReason = 'overflow'
@@ -706,6 +829,39 @@ function stepSide(g: Game, idx: number, dt: number, rng: () => number) {
     side.lost = true
     side.loseReason = 'boss'
   }
+}
+
+/** Monsters alive across both co-op loops. */
+export const coopCount = (g: Game) => g.sides.reduce((n, s) => n + s.monsters.length, 0)
+
+function stepCoop(g: Game, dt: number, rng: () => number) {
+  const idxs = g.sides.map((_, i) => i)
+  for (const i of idxs) tickSide(g.sides[i], dt)
+  const targets = targetsOf(g, idxs)
+  for (const i of idxs) attackSide(g, i, targets, dt, rng)
+  for (const i of idxs) reapSide(g, i)
+  let fail: Game['coopFail'] = null
+  const late = g.sides.findIndex((s) => s.bossT != null && s.bossT <= 0)
+  if (coopCount(g) >= COOP_LIMIT) {
+    // blame the fuller loop
+    const side = g.sides[0].monsters.length >= g.sides[1].monsters.length ? 0 : 1
+    fail = { reason: 'overflow', side }
+  } else if (late >= 0) fail = { reason: 'boss', side: late }
+  if (fail) {
+    g.coopFail = fail
+    for (const s of g.sides) {
+      s.lost = true
+      s.loseReason = fail.reason
+    }
+  }
+}
+
+function stepSide(g: Game, idx: number, dt: number, rng: () => number) {
+  const side = g.sides[idx]
+  tickSide(side, dt)
+  attackSide(g, idx, targetsOf(g, [idx]), dt, rng)
+  reapSide(g, idx)
+  checkLose(side)
 }
 
 /** Both sides fell in the same instant: less boss HP left wins, then fewer monsters; else a draw. */
@@ -726,6 +882,11 @@ export function step(g: Game, dt: number, rng: () => number): Game {
   g.time += dt
   g.waveTimer -= dt
   if (g.waveTimer <= 0) startWave(g, rng)
+  if (g.coop) {
+    stepCoop(g, dt, rng)
+    if (g.coopFail) g.over = true
+    return g
+  }
   g.sides.forEach((s, i) => {
     if (!s.lost) stepSide(g, i, dt, rng)
   })
@@ -747,7 +908,7 @@ export const wavesCleared = (g: Game) => Math.max(0, g.sides.every((s) => s.lost
 
 export const AI_INTERVAL: Record<Difficulty, number> = { easy: 1.5, normal: 0.75, hard: 0.3 }
 
-export type AiAction = 'summon' | 'merge' | 'upgrade' | 'unlock' | 'transform' | 'sell' | null
+export type AiAction = 'summon' | 'merge' | 'upgrade' | 'unlock' | 'transform' | 'sell' | 'move' | null
 
 /** Chance that rerolling `slot` creates a merge pair (another unit with its ★ but a different type). */
 export function pairChance(side: Side, slot: number): number {
@@ -808,10 +969,70 @@ function aiUpgrade(side: Side, diff: Difficulty, rng: () => number): AiAction {
 }
 
 /**
+ * Co-op placement preference by grid row: the middle row reaches both of the board's long
+ * lanes, the row next to the shared lane reaches the busiest lane (both players' monsters)
+ * and the partner's side lanes, and the far row only covers this board's outer lane.
+ */
+export function coopRowPenalty(row: number, edgeRow: number): number {
+  return row === edgeRow ? 0.5 : Math.abs(row - edgeRow) === 1 ? 0 : 1.5
+}
+
+/** Co-op board value the AI maximises: damage per second × wind aura, weighted by row reach. */
+export function coopBoardScore(side: Side, edgeRow: number): number {
+  const aura = auraMults(side)
+  let total = 0
+  side.units.forEach((u, i) => {
+    if (!u) return
+    const w = 1 - 0.1 * coopRowPenalty(Math.floor(i / COLS), edgeRow)
+    total += unitDps(u, side) * aura[i] * w
+  })
+  return total
+}
+
+/**
+ * Co-op: tries every move / swap and makes the one that raises coopBoardScore the most (at
+ * least 3%): strong spirits drift to the rows touching the shared lane, winds gather around them.
+ * One move per call; returns whether it moved.
+ */
+const settled = new WeakMap<Side, string>()
+
+export function coopArrange(side: Side, edgeRow: number): boolean {
+  if (side.lost) return false
+  // nothing changed since the last search found no better layout
+  const key = side.units.map((u) => (u ? u.id : 0)).join(',') + '|' + side.upg.join(',')
+  if (settled.get(side) === key) return false
+  const base = coopBoardScore(side, edgeRow)
+  let best = base * 1.03
+  let pick: [number, number] | null = null
+  for (let a = 0; a < SLOTS; a++) {
+    if (!side.units[a] || !side.open[a]) continue
+    for (let b = 0; b < SLOTS; b++) {
+      if (a === b || !side.open[b] || (side.units[b] && b < a)) continue
+      const t = side.units[a]
+      side.units[a] = side.units[b]
+      side.units[b] = t
+      const v = coopBoardScore(side, edgeRow)
+      side.units[b] = side.units[a]
+      side.units[a] = t
+      if (v > best) {
+        best = v
+        pick = [a, b]
+      }
+    }
+  }
+  if (!pick) {
+    settled.set(side, key)
+    return false
+  }
+  return move(side, pick[0], pick[1])
+}
+
+/**
  * Performs at most one action for the AI-controlled side. Returns what it did.
  * `tools = false` gives the old behaviour (no selling / rerolling / buying slots) for comparisons.
+ * `edgeRow` (co-op) is the grid row next to the shared lane, which the AI fills with its best spirits.
  */
-export function aiAct(side: Side, diff: Difficulty, rng: () => number, tools = true): AiAction {
+export function aiAct(side: Side, diff: Difficulty, rng: () => number, tools = true, edgeRow = -1): AiAction {
   if (side.lost) return null
   if (diff === 'easy' && rng() < 0.3) return null
   // a nearly full board is worth growing before it jams
@@ -837,11 +1058,15 @@ export function aiAct(side: Side, diff: Difficulty, rng: () => number, tools = t
     }
     // put the result in the more central slot (better reach)
     const mid = (COLS - 1) / 2
-    const centrality = (i: number) => -Math.abs((i % COLS) - mid) - Math.abs(Math.floor(i / COLS) - 1)
+    const centrality = (i: number) =>
+      edgeRow >= 0
+        ? -Math.abs((i % COLS) - mid) - coopRowPenalty(Math.floor(i / COLS), edgeRow)
+        : -Math.abs((i % COLS) - mid) - Math.abs(Math.floor(i / COLS) - 1)
     const [a, b] = diff !== 'easy' && centrality(pair[0]) > centrality(pair[1]) ? [pair[1], pair[0]] : pair
     merge(side, a, b, rng)
     return 'merge'
   }
+  if (edgeRow >= 0 && diff !== 'easy' && coopArrange(side, edgeRow)) return 'move'
   if (!tools || !isStuck(side)) return aiUpgrade(side, diff, rng)
 
   // Stuck: full board, no pairs. Open a slot, reroll a spirit into a pair, or sell the weakest.
@@ -894,6 +1119,23 @@ export function simulate(
       if (timers[i] >= AI_INTERVAL[d]) {
         timers[i] = 0
         aiAct(g.sides[i], d, rng, tools)
+      }
+    })
+    step(g, dt, rng)
+  }
+  return g
+}
+
+/** Headless co-op game with two AI partners (tests, balancing). */
+export function simulateCoop(diffs: Difficulty[], rng: () => number, maxTime = 3000, dt = 1 / 20, aware = true): Game {
+  const g = newGame(2, 'coop')
+  const timers = diffs.map(() => 0)
+  while (!g.over && g.time < maxTime) {
+    diffs.forEach((d, i) => {
+      timers[i] += dt
+      if (timers[i] >= AI_INTERVAL[d]) {
+        timers[i] = 0
+        aiAct(g.sides[i], d, rng, true, aware ? COOP_EDGE_ROW[i] : -1)
       }
     })
     step(g, dt, rng)

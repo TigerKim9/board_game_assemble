@@ -1,6 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import { mulberry32 } from '../../lib/random'
 import {
+  COOP_EDGE_ROW,
+  COOP_H,
+  COOP_HELP_SHARE,
+  COOP_LIMIT,
+  COOP_OFFSET,
+  PATH_H,
+  PATH_W,
+  SHARED_LANE_Y,
+  boardOffset,
+  coopArrange,
+  coopBoardScore,
+  coopCount,
+  killRewards,
+  monsterPos,
+  simulateCoop,
+  COLS,
   AI_INTERVAL,
   BASE_SLOTS,
   BOSS_TIME,
@@ -608,4 +624,174 @@ describe('stuck board', () => {
         expect(s.upg.every((l) => l <= MAX_UPGRADE)).toBe(true)
       }
   })
+})
+
+/** Co-op game with the wave clock frozen. */
+function quietCoop() {
+  const g = newGame(2, 'coop')
+  g.waveTimer = 1e9
+  return g
+}
+
+describe('co-op', () => {
+  it('stacks the boards so both loops share one lane', () => {
+    const g = quietCoop()
+    expect(g.coop).toBe(true)
+    expect(g.versus).toBe(false)
+    expect(boardOffset(g, 1).y).toBe(COOP_OFFSET)
+    expect(COOP_H).toBe(9)
+    // top board's bottom edge runs right→left, bottom board's top edge left→right: same physical points
+    for (let d = 0; d <= PATH_W; d += 0.5) {
+      const top = monsterPos(g, 0, monster(PATH_W + PATH_H + d))
+      const bottom = monsterPos(g, 1, monster(PATH_W - d))
+      expect(top.y).toBeCloseTo(SHARED_LANE_Y)
+      expect(bottom.x).toBeCloseTo(top.x)
+      expect(bottom.y).toBeCloseTo(top.y)
+    }
+    // the other edges stay apart
+    expect(monsterPos(g, 0, monster(1)).y).toBeCloseTo(0.5)
+    expect(monsterPos(g, 1, monster(PATH_W + PATH_H + 1)).y).toBeCloseTo(COOP_H - 0.5)
+    // the bottom board spawns at its bottom-left corner, mirroring the top one
+    g.sides[1].queue.push(...sentSpawns(1, 1))
+    g.sides[0].queue.push(...sentSpawns(1, 1))
+    step(g, 0.001, mulberry32(1))
+    const t = monsterPos(g, 0, g.sides[0].monsters[0])
+    expect(t.x).toBeCloseTo(0.5)
+    expect(t.y).toBeCloseTo(0.5)
+    const b = monsterPos(g, 1, g.sides[1].monsters[0])
+    expect(b.x).toBeCloseTo(0.5)
+    expect(b.y).toBeCloseTo(COOP_H - 0.5)
+  })
+
+  it("a spirit next to the shared lane hits the partner's monster there, but not far ones", () => {
+    const g = quietCoop()
+    const [top, bottom] = g.sides
+    top.units[2 * COLS + 1] = unit('fire', 1) // top board, edge row → (2.5, 3.5)
+    const near = monster(2, 1e6) // bottom board, shared lane at x = 2.5
+    const far = monster(PATH_W + PATH_H + PATH_W - 2, 1e6) // bottom board, its bottom lane
+    bottom.monsters.push(near, far)
+    for (let i = 0; i < 20; i++) step(g, 0.05, mulberry32(1))
+    expect(near.hp).toBeLessThan(1e6)
+    expect(far.hp).toBe(1e6)
+    // without co-op the same unit never sees the other board
+    const v = newGame(2)
+    v.waveTimer = 1e9
+    v.sides[0].units[2 * COLS + 1] = unit('fire', 1)
+    const other = monster(2, 1e6)
+    v.sides[1].monsters.push(other)
+    for (let i = 0; i < 20; i++) step(v, 0.05, mulberry32(1))
+    expect(other.hp).toBe(1e6)
+  })
+
+  it('splits the reward of a partner-monster kill and credits the helper', () => {
+    const g = quietCoop()
+    expect(killRewards(g, 1, 1, 10)).toEqual([0, 10])
+    expect(killRewards(g, 1, 0, 10)).toEqual([10 * COOP_HELP_SHARE, 10 * (1 - COOP_HELP_SHARE)])
+    // the helper's luck boosts only the helper's share
+    g.sides[0].units[0] = unit('luck', 3)
+    const r = killRewards(g, 1, 0, 10)
+    expect(r[0]).toBeGreaterThan(5)
+    expect(r[1]).toBe(5)
+    g.sides[0].units[0] = null
+
+    const [top, bottom] = g.sides
+    top.units[2 * COLS + 1] = unit('fire', 6)
+    const m = monster(2, 50)
+    m.reward = 10
+    bottom.monsters.push(m)
+    const c0 = top.coins
+    const c1 = bottom.coins
+    step(g, 0.05, mulberry32(1))
+    expect(bottom.monsters).toHaveLength(0)
+    expect(top.kills).toBe(1)
+    expect(top.helped).toBe(1)
+    expect(bottom.kills).toBe(0)
+    expect(top.coins - c0).toBeCloseTo(5)
+    expect(bottom.coins - c1).toBeCloseTo(5)
+  })
+
+  it('a partner can finish your boss and clear its timer', () => {
+    const g = quietCoop()
+    g.sides[1].bossT = 30
+    g.sides[1].monsters.push(monster(3, 100, 'boss'))
+    g.sides[0].units[2 * COLS + 2] = unit('fire', 6)
+    step(g, 0.05, mulberry32(1))
+    expect(g.sides[1].bossT).toBeNull()
+    expect(g.sides[0].helped).toBe(1)
+  })
+
+  it('loses together on the shared monster limit', () => {
+    const g = quietCoop()
+    // one loop alone may go past the solo limit as long as the total is below the shared one
+    for (let i = 0; i < LIMIT + 10; i++) g.sides[0].monsters.push(monster(1 + (i % 5)))
+    for (let i = 0; i < COOP_LIMIT - LIMIT - 11; i++) g.sides[1].monsters.push(monster(1 + (i % 5)))
+    step(g, 0.01, mulberry32(1))
+    expect(coopCount(g)).toBe(COOP_LIMIT - 1)
+    expect(g.over).toBe(false)
+    g.sides[1].monsters.push(monster(2))
+    step(g, 0.01, mulberry32(1))
+    expect(g.over).toBe(true)
+    expect(g.coopFail).toEqual({ reason: 'overflow', side: 0 })
+    expect(g.sides.every((s) => s.lost)).toBe(true)
+  })
+
+  it("either player's boss timer running out ends it for both", () => {
+    const g = quietCoop()
+    g.sides[1].bossT = 1
+    g.sides[1].monsters.push(monster(PATH_W + PATH_H + PATH_W, 1e12, 'boss'))
+    step(g, 0.5, mulberry32(1))
+    expect(g.over).toBe(false)
+    step(g, 0.6, mulberry32(1))
+    expect(g.over).toBe(true)
+    expect(g.coopFail).toEqual({ reason: 'boss', side: 1 })
+    expect(g.sides[0].lost).toBe(true)
+  })
+
+  it('makes co-op waves a bit tougher and keeps them in sync', () => {
+    const g = newGame(2, 'coop')
+    const solo = newGame(1)
+    startWave(g, mulberry32(3))
+    startWave(solo, mulberry32(3))
+    expect(g.sides[0].queue.length).toBe(solo.sides[0].queue.length)
+    expect(g.sides[1].queue.length).toBe(solo.sides[0].queue.length)
+    expect(g.sides[0].queue[0].hp).toBeGreaterThan(solo.sides[0].queue[0].hp)
+  })
+
+  it('the co-op AI moves its strongest spirits next to the shared lane and winds beside them', () => {
+    const g = quietCoop()
+    const s = g.sides[0] // top board: edge row = 2
+    expect(COOP_EDGE_ROW).toEqual([2, 0])
+    s.units[1] = unit('fire', 4, 1) // far row
+    s.units[12] = unit('ice', 1, 2) // edge row
+    s.units[7] = unit('wind', 3, 3)
+    const before = coopBoardScore(s, 2)
+    let moves = 0
+    while (coopArrange(s, 2) && moves < 20) moves++
+    expect(moves).toBeGreaterThan(0)
+    expect(coopBoardScore(s, 2)).toBeGreaterThan(before)
+    const fire = s.units.findIndex((u) => u?.type === 'fire')
+    const wind = s.units.findIndex((u) => u?.type === 'wind')
+    expect(Math.floor(fire / COLS)).not.toBe(0)
+    // the wind ends up touching the fire spirit
+    expect(Math.abs((fire % COLS) - (wind % COLS))).toBeLessThanOrEqual(1)
+    expect(Math.abs(Math.floor(fire / COLS) - Math.floor(wind / COLS))).toBeLessThanOrEqual(1)
+    // settled: no more moves
+    expect(coopArrange(s, 2)).toBe(false)
+  })
+
+  it('AI partners play a full co-op game, help each other and reach a fair wave', () => {
+    const waves: number[] = []
+    for (let seed = 1; seed <= 6; seed++) {
+      const g = simulateCoop(['hard', 'hard'], mulberry32(seed), 4000)
+      expect(g.over, `seed ${seed}`).toBe(true)
+      expect(g.coopFail).not.toBeNull()
+      expect(g.sides[0].helped + g.sides[1].helped).toBeGreaterThan(20)
+      expect(g.sides.every((s) => s.helped > 0)).toBe(true)
+      waves.push(g.wave)
+    }
+    const avg = waves.reduce((a, b) => a + b, 0) / waves.length
+    console.log(`co-op AI+AI waves: ${waves.join(', ')} (avg ${avg.toFixed(1)})`)
+    expect(avg).toBeGreaterThanOrEqual(35)
+    expect(avg).toBeLessThanOrEqual(50)
+  }, 60000)
 })

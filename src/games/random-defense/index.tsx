@@ -1,85 +1,111 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
-import { useBestScore } from '../../lib/storage'
+import { useBestScore, useStored } from '../../lib/storage'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
 import {
   AI_COIN_RATE,
   AI_INTERVAL,
   BOSS_EVERY,
-  CLASS_NAMES,
+  COOP_LIMIT,
   FIELD_H,
   FIELD_W,
   INFO,
   LIMIT,
-  MAX_TIER,
-  MAX_UPGRADE,
-  TIER_COLORS,
   TYPES,
-  UNLOCK_WAVES,
-  act,
   aiAct,
-  canMerge,
-  canSummon,
-  canTransform,
-  canUnlock,
-  canUpgrade,
-  fmt,
   isBossWave,
-  isStuck,
   newGame,
-  refundOf,
-  sell,
-  slotAt,
   step,
   summon,
-  summonCost,
-  transform,
-  transformCost,
-  auraInfo,
-  unitDamage,
-  unitInterval,
-  unlock,
-  unlockCost,
   upgrade,
-  upgradeCost,
   type Game,
-  type Side,
+  type Mode,
 } from './logic'
 import { drawSide, type UiState } from './render'
+import {
+  ActionOverlay,
+  AiNote,
+  Controls,
+  Hud,
+  InfoLine,
+  boardDown,
+  boardMove,
+  boardUp,
+  makePress,
+  sellSelected,
+  transformSelected,
+  unlockSelected,
+} from './parts'
+import { CoopMatch } from './coop'
 import './random-defense.css'
 
-interface Cfg {
+export interface Cfg {
   players: PlayerConfig[]
   difficulty: Difficulty
+  mode: Mode
+  /** Co-op with two humans: rotate the top half for players sitting across from each other. */
+  facing: boolean
+}
+
+const MODES: { id: Mode; label: string }[] = [
+  { id: 'solo', label: '혼자' },
+  { id: 'versus', label: '대전' },
+  { id: 'coop', label: '협동' },
+]
+
+const MODE_NOTES: Record<Mode, string> = {
+  solo: '몇 웨이브까지 버티는지 도전해요.',
+  versus: '위아래로 나눠 대결해요. 컴퓨터 또는 친구와 폰 하나로 마주 앉아 해요.',
+  coop: `두 필드가 가운데 길(🤝 공동 전선)을 함께 써요. 서로의 몬스터도 공격할 수 있고, 둘이 합쳐 ${COOP_LIMIT}마리가 되면 함께 져요.`,
 }
 
 export default function RandomDefense() {
   const [cfg, setCfg] = useState<Cfg | null>(null)
   const [round, setRound] = useState(0)
+  const [mode, setMode] = useStored<Mode>('setup:random-defense:mode', 'solo')
+  const [facing, setFacing] = useStored('setup:random-defense:facing', false)
   if (!cfg) {
     return (
-      <PlayerSetup
-        gameId="random-defense"
-        min={1}
-        max={2}
-        defaultCount={1}
-        showDifficulty
-        startLabel="수호 시작!"
-        extra={<Roster />}
-        onStart={(players, difficulty) => setCfg({ players, difficulty })}
-      />
+      <div className="rd-setup">
+        <div className="segmented rd-modes" role="tablist" aria-label="모드">
+          {MODES.map((m) => (
+            <button key={m.id} role="tab" aria-selected={mode === m.id} className={mode === m.id ? 'active' : ''} onClick={() => setMode(m.id)}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <PlayerSetup
+          key={mode}
+          gameId="random-defense"
+          min={mode === 'solo' ? 1 : 2}
+          max={mode === 'solo' ? 1 : 2}
+          showDifficulty={mode === 'versus'}
+          startLabel={mode === 'coop' ? '함께 수호 시작!' : '수호 시작!'}
+          extra={<Roster mode={mode} facing={facing} onFacing={setFacing} />}
+          onStart={(players, difficulty) => setCfg({ players, difficulty, mode, facing })}
+        />
+      </div>
     )
   }
+  if (cfg.mode === 'coop')
+    return <CoopMatch key={round} cfg={cfg} onAgain={() => setRound((r) => r + 1)} onReset={() => setCfg(null)} />
   return <Match key={round} cfg={cfg} onAgain={() => setRound((r) => r + 1)} onReset={() => setCfg(null)} />
 }
 
-function Roster() {
+function Roster({ mode, facing, onFacing }: { mode: Mode; facing: boolean; onFacing: (v: boolean) => void }) {
   return (
     <div className="rd-roster">
-      <p className="muted">
-        1명: 몇 웨이브까지 버티는지 도전 · 2명: 위아래로 나눠 대전 (컴퓨터 또는 친구와 한 폰으로)
-      </p>
+      <p className="muted">{MODE_NOTES[mode]}</p>
+      {mode === 'coop' && (
+        <label className="rd-facing">
+          <input type="checkbox" checked={facing} onChange={(e) => onFacing(e.target.checked)} />
+          <span>
+            <b>마주 보고 하기</b>
+            <small className="muted">두 사람이 폰을 사이에 두고 마주 앉을 때 위쪽 화면을 뒤집어요</small>
+          </span>
+        </label>
+      )}
       <ul>
         {TYPES.map((t) => (
           <li key={t}>
@@ -95,46 +121,12 @@ function Roster() {
 
 const DT = 1 / 60
 
-// ---- selection actions shared by the action bar and the keyboard ----
-
-function select(ui: UiState, slot: number) {
-  if (ui.sel !== slot) ui.confirm = 0
-  ui.sel = slot
-}
-
-/** Sells the selected spirit; ★3+ needs a second press. Returns 'confirm' while waiting for it. */
-function sellSelected(side: Side, ui: UiState): 'sold' | 'confirm' | null {
-  const u = ui.sel >= 0 ? side.units[ui.sel] : null
-  if (!u) return null
-  if (u.tier >= 3 && ui.confirm !== u.id) {
-    ui.confirm = u.id
-    return 'confirm'
-  }
-  sell(side, ui.sel)
-  select(ui, -1)
-  return 'sold'
-}
-
-function transformSelected(side: Side, ui: UiState): boolean {
-  if (ui.sel < 0 || !transform(side, ui.sel, Math.random)) return false
-  ui.confirm = 0
-  return true
-}
-
-/** Opens the selected locked slot, or the next one when no locked slot is selected. */
-function unlockSelected(side: Side, ui: UiState): boolean {
-  const slot = ui.sel >= 0 && !side.open[ui.sel] ? ui.sel : undefined
-  if (unlock(side, slot) < 0) return false
-  if (slot != null) select(ui, -1)
-  return true
-}
-
 function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onReset: () => void }) {
   const { players, difficulty } = cfg
   const versus = players.length > 1
   const gameRef = useRef<Game>(null as unknown as Game)
   if (!gameRef.current) {
-    const g = newGame(players.length)
+    const g = newGame(players.length, cfg.mode)
     if (versus) players.forEach((p, i) => p.isAI && (g.sides[i].coinRate = AI_COIN_RATE[difficulty]))
     gameRef.current = g
   }
@@ -410,7 +402,7 @@ function SideView({
   const [size, setSize] = useState(0)
   const interactive = !player.isAI
 
-  // fit the 7:5 canvas inside the available box
+  // fit the 8:5 canvas inside the available box
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
@@ -440,129 +432,30 @@ function SideView({
     if (blocked() || ui.drag) return
     e.preventDefault()
     const { x, y } = toField(e)
-    const slot = slotAt(x, y)
-    if (slot < 0) {
-      select(ui, -1)
-      onChange()
-      return
-    }
-    if (!side.open[slot]) {
-      select(ui, ui.sel === slot ? -1 : slot)
-      onChange()
-      return
-    }
-    if (side.units[slot]) {
-      ui.drag = { id: e.pointerId, from: slot, x, y, sx: x, sy: y, moved: false }
-      e.currentTarget.setPointerCapture(e.pointerId)
-    } else if (ui.sel >= 0) {
-      act(side, ui.sel, slot, Math.random)
-      select(ui, -1)
-      onChange()
-    }
+    if (boardDown(side, ui, x, y, e.pointerId)) e.currentTarget.setPointerCapture(e.pointerId)
+    else onChange()
   }
   const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const d = ui.drag
-    if (!d || d.id !== e.pointerId) return
+    if (!ui.drag || ui.drag.id !== e.pointerId) return
     const { x, y } = toField(e)
-    d.x = x
-    d.y = y
-    if (!d.moved && Math.hypot(x - d.sx, y - d.sy) > 0.25) d.moved = true
+    boardMove(ui, x, y)
   }
   const onUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const d = ui.drag
-    if (!d || d.id !== e.pointerId) return
-    ui.drag = null
-    if (blocked()) return
+    if (!ui.drag || ui.drag.id !== e.pointerId) return
     const { x, y } = toField(e)
-    const target = slotAt(x, y)
-    if (d.moved) {
-      if (target >= 0 && target !== d.from) act(side, d.from, target, Math.random)
-      select(ui, -1)
-    } else if (ui.sel < 0 || ui.sel === d.from) {
-      select(ui, ui.sel === d.from ? -1 : d.from)
-    } else if (canMerge(side.units[ui.sel], side.units[d.from])) {
-      act(side, ui.sel, d.from, Math.random)
-      select(ui, -1)
-    } else select(ui, d.from)
+    boardUp(side, ui, x, y, blocked())
     onChange()
   }
   const onCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (ui.drag && ui.drag.id === e.pointerId) ui.drag = null
   }
 
-  // Buttons fire on pointerdown so two players can press at the same time; keyboard still works via click.
-  const press = (fn: () => unknown) => ({
-    onPointerDown: (e: React.PointerEvent) => {
-      if (e.button !== 0) return
-      e.preventDefault()
-      if (!blocked()) {
-        fn()
-        onChange()
-      }
-    },
-    onClick: (e: React.MouseEvent) => {
-      if (e.detail === 0 && !blocked()) {
-        fn()
-        onChange()
-      }
-    },
-  })
-
-  const count = side.monsters.length
-  const danger = count / LIMIT
-  const cost = summonCost(side.summons)
-  const selUnit = ui.sel >= 0 ? side.units[ui.sel] : null
-  const selAura = selUnit ? auraInfo(side)[ui.sel] : null
-  const selLocked = ui.sel >= 0 && !side.open[ui.sel]
-  const partners = selUnit ? side.units.filter((u) => u && u !== selUnit && canMerge(selUnit, u)).length : 0
-  const stuck = isStuck(side)
-  const freeWave = UNLOCK_WAVES.find((w) => w > game.wave)
+  const press = makePress(blocked, onChange)
   const boardH = (size * FIELD_H) / FIELD_W
-
-  let overlay: React.ReactNode = null
-  if (interactive && selUnit) {
-    const confirming = ui.confirm === selUnit.id
-    const tCost = transformCost(selUnit.tier, side.transforms)
-    overlay = (
-      <div className={`rd-actions ${stuck ? 'stuck' : ''}`}>
-        <button className={`btn small rd-act-sell ${confirming ? 'confirm' : ''}`} {...press(() => sellSelected(side, ui))}>
-          {confirming ? '한 번 더 누르면 판매' : '💰 판매'} <b>+{refundOf(selUnit)}</b>
-        </button>
-        <button
-          className="btn small rd-act-swap"
-          disabled={!canTransform(side, ui.sel)}
-          {...press(() => transformSelected(side, ui))}
-        >
-          🔄 바꾸기 <b>🪙{tCost}</b>
-        </button>
-      </div>
-    )
-  } else if (interactive && selLocked) {
-    overlay = (
-      <div className="rd-actions">
-        <button className="btn small primary rd-act-unlock" disabled={!canUnlock(side)} {...press(() => unlockSelected(side, ui))}>
-          🔓 칸 열기 <b>🪙{unlockCost(side.unlocks)}</b>
-        </button>
-      </div>
-    )
-  } else if (interactive && stuck) {
-    overlay = <div className="rd-hint">합칠 짝이 없어요 — 정령을 팔거나 바꿔 보세요</div>
-  }
 
   return (
     <section className={`rd-side ${rotated ? 'rotated' : ''} ${compact ? 'compact' : ''} ${player.isAI ? 'ai' : ''}`}>
-      <div className="rd-hud">
-        <span className="rd-name">
-          {player.isAI ? '🤖 ' : ''}
-          {player.name}
-        </span>
-        <span className={`rd-count ${danger > 0.75 ? 'danger' : danger > 0.5 ? 'warn' : ''}`}>
-          👾 {count}/{LIMIT}
-          <i style={{ width: `${Math.min(100, danger * 100)}%` }} />
-        </span>
-        {side.bossT != null && <span className="rd-bosst">👹 {Math.max(0, Math.ceil(side.bossT))}초</span>}
-        <span className="rd-coins">🪙 {Math.floor(side.coins)}</span>
-      </div>
+      <Hud player={player} side={side} count={side.monsters.length} limit={LIMIT} />
       <div className="rd-canvas-wrap" ref={wrapRef}>
         <div className="rd-board" style={{ width: size, height: boardH }}>
           <canvas
@@ -575,73 +468,16 @@ function SideView({
             onPointerCancel={onCancel}
             onContextMenu={(e) => e.preventDefault()}
           />
-          {overlay}
+          {interactive && <ActionOverlay side={side} ui={ui} press={press} />}
         </div>
       </div>
       {interactive ? (
         <>
-          <div className="rd-controls">
-            <button className="btn accent rd-summon" disabled={!canSummon(side)} {...press(() => summon(side, Math.random))}>
-              <b>소환</b>
-              <small>🪙 {cost}</small>
-            </button>
-            {CLASS_NAMES.map((name, cls) => {
-              const lvl = side.upg[cls]
-              const maxed = lvl >= MAX_UPGRADE
-              return (
-                <button
-                  key={cls}
-                  className="btn rd-upg"
-                  disabled={!canUpgrade(side, cls)}
-                  style={{ borderColor: TIER_COLORS[cls * 2 + 2] }}
-                  {...press(() => upgrade(side, cls))}
-                >
-                  <b>
-                    {name} <span className="rd-lv">Lv{lvl}</span>
-                  </b>
-                  <small>{maxed ? '최대' : `🪙 ${upgradeCost(lvl)}`}</small>
-                </button>
-              )
-            })}
-          </div>
-          {!compact && (
-            <p className={`rd-info ${stuck && !selUnit && !selLocked ? 'rd-info-stuck' : ''}`}>
-              {selUnit ? (
-                <>
-                  {INFO[selUnit.type].emoji} <b>{INFO[selUnit.type].name}</b>{' '}
-                  <span style={{ color: TIER_COLORS[selUnit.tier] }}>{'★'.repeat(selUnit.tier)}</span> ·{' '}
-                  {INFO[selUnit.type].role} · 공격력 {fmt(unitDamage(selUnit, side))} · 초당{' '}
-                  {(((selAura?.mult ?? 1) / unitInterval(selUnit))).toFixed(1)}회
-                  {selAura && selAura.count > 0 && (
-                    <span className="rd-haste">
-                      {' '}· 🌪️×{selAura.count} 공격 속도 +{Math.round((selAura.mult - 1) * 100)}%
-                    </span>
-                  )}
-                  {selUnit.tier >= MAX_TIER
-                    ? ' · 최고 등급'
-                    : partners
-                      ? ` · 합칠 짝 ${partners}`
-                      : ' · 같은 정령·같은 별이 필요해요'}
-                </>
-              ) : selLocked ? (
-                <>
-                  🔒 <b>잠긴 칸</b> · 코인으로 지금 열거나
-                  {freeWave ? `, 웨이브 ${freeWave}에 무료로 하나씩 열려요` : ' 기다려요'}
-                </>
-              ) : stuck ? (
-                <>
-                  <b>정령을 탭</b>하면 💰판매 · 🔄바꾸기 버튼이 나와요. 바꾸기는 같은 별의 다른 정령으로 바꿔 줘요
-                </>
-              ) : (
-                '같은 정령(같은 별)끼리 끌어 겹치면 합쳐져요 · 정령을 탭하면 판매·바꾸기 · 🔒칸은 코인으로 열 수 있어요'
-              )}
-            </p>
-          )}
+          <Controls side={side} press={press} />
+          {!compact && <InfoLine game={game} side={side} ui={ui} />}
         </>
       ) : (
-        <div className="rd-ai-note muted">
-          강화 {CLASS_NAMES.map((n, c) => `${n} ${side.upg[c]}`).join(' · ')}
-        </div>
+        <AiNote side={side} />
       )}
     </section>
   )
