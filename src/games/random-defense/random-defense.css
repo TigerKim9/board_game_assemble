@@ -39,8 +39,8 @@
   -webkit-touch-callout: none;
 }
 .rd-arena.solo {
-  /* hug the 7:5 field instead of stretching to the full viewport */
-  height: min(calc(100dvh - 92px), calc(min(100vw - 24px, 868px) * 0.714 + 220px));
+  /* hug the 8:5 field instead of stretching to the full viewport */
+  height: min(calc(100dvh - 92px), calc(min(100vw - 24px, 868px) * 0.625 + 220px));
   min-height: 400px;
 }
 .rd-arena.versus {
@@ -141,6 +141,93 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.rd-board {
+  position: relative;
+}
+.rd-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1.5%;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 6px;
+  pointer-events: none;
+  animation: rd-rise 0.15s ease-out;
+}
+.rd-actions .btn {
+  pointer-events: auto;
+  min-height: 40px;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  touch-action: none;
+  border-width: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.rd-actions .btn b {
+  margin-left: 2px;
+}
+.rd-act-sell {
+  background: #3a2f12;
+  color: #ffe08a;
+  border-color: #c9a227;
+}
+.rd-act-sell.confirm {
+  background: var(--danger);
+  color: #fff;
+  border-color: #fff;
+  animation: rd-nudge 0.8s ease-in-out infinite;
+}
+.rd-act-swap {
+  background: #2a2350;
+  color: #e3dcff;
+  border-color: #8f7cf0;
+}
+.rd-actions .btn:disabled {
+  opacity: 0.55;
+}
+.rd-actions.stuck .btn:not(:disabled) {
+  animation: rd-nudge 1.2s ease-in-out infinite;
+}
+.rd-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 3%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 12px);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(40, 20, 0, 0.82);
+  border: 2px solid #ffaa5a;
+  color: #ffd9a8;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  animation: rd-nudge 1.4s ease-in-out infinite;
+}
+.rd-info-stuck {
+  color: #e8902e;
+}
+@keyframes rd-rise {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+@keyframes rd-nudge {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.35);
+  }
 }
 .rd-canvas {
   display: block;

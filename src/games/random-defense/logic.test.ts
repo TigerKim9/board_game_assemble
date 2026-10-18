@@ -1,7 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import { mulberry32 } from '../../lib/random'
 import {
+  AI_INTERVAL,
+  BASE_SLOTS,
   BOSS_TIME,
+  EXTRA_SLOTS,
+  MAX_UPGRADE,
+  PATH_LEN,
+  UNLOCK_COSTS,
+  UNLOCK_WAVES,
+  canUnlock,
+  isStuck,
+  nextLocked,
+  pairChance,
+  refundOf,
+  sell,
+  startWave,
+  transform,
+  transformCost,
+  unlock,
+  unlockCost,
   LIMIT,
   LUCKY_CHANCE,
   MAX_TIER,
@@ -28,6 +46,7 @@ import {
   summonCost,
   tieBreak,
   unitDamage,
+  unitDps,
   upgrade,
   upgradeCost,
   waveCount,
@@ -39,7 +58,7 @@ import {
   type UnitType,
 } from './logic'
 
-const unit = (type: UnitType, tier = 1, id = 0): Unit => ({ id, type, tier, cd: 0, flash: 0 })
+const unit = (type: UnitType, tier = 1, id = 0, inv = 10): Unit => ({ id, type, tier, cd: 0, flash: 0, inv })
 const monster = (s: number, hp = 1000, kind: Monster['kind'] = 'normal'): Monster => ({
   id: Math.random(),
   kind,
@@ -66,11 +85,12 @@ function quiet(): { g: ReturnType<typeof newGame>; s: Side } {
 
 describe('geometry', () => {
   it('path is a closed loop around the grid', () => {
+    expect(PATH_LEN).toBe(22)
     expect(pathPos(0)).toEqual({ x: 0.5, y: 0.5 })
-    expect(pathPos(6)).toEqual({ x: 6.5, y: 0.5 })
-    expect(pathPos(10)).toEqual({ x: 6.5, y: 4.5 })
-    expect(pathPos(16)).toEqual({ x: 0.5, y: 4.5 })
-    expect(pathPos(20)).toEqual({ x: 0.5, y: 0.5 })
+    expect(pathPos(7)).toEqual({ x: 7.5, y: 0.5 })
+    expect(pathPos(11)).toEqual({ x: 7.5, y: 4.5 })
+    expect(pathPos(18)).toEqual({ x: 0.5, y: 4.5 })
+    expect(pathPos(22)).toEqual({ x: 0.5, y: 0.5 })
   })
   it('maps points to slots', () => {
     for (let i = 0; i < SLOTS; i++) {
@@ -78,7 +98,13 @@ describe('geometry', () => {
       expect(slotAt(p.x, p.y)).toBe(i)
     }
     expect(slotAt(0.5, 0.5)).toBe(-1)
-    expect(slotAt(6.2, 2)).toBe(-1)
+    expect(slotAt(7.2, 2)).toBe(-1)
+    // every slot is next to the loop path (grid is 3 rows tall)
+    for (let i = 0; i < SLOTS; i++) {
+      const p = slotPos(i)
+      const d = Math.min(...Array.from({ length: 220 }, (_, k) => Math.hypot(pathPos(k / 10).x - p.x, pathPos(k / 10).y - p.y)))
+      expect(d).toBeLessThanOrEqual(2.01)
+    }
   })
 })
 
@@ -105,8 +131,9 @@ describe('summon', () => {
     expect(s.coins).toBe(START_COINS - summonCost(0))
     expect(summonCost(1)).toBeGreaterThan(summonCost(0))
     s.coins = 1e9
-    for (let i = 1; i < SLOTS; i++) expect(summon(s, rng)).toBeGreaterThanOrEqual(0)
-    expect(summon(s, rng)).toBe(-1)
+    for (let i = 1; i < BASE_SLOTS; i++) expect(summon(s, rng)).toBeGreaterThanOrEqual(0)
+    expect(summon(s, rng)).toBe(-1) // locked slots stay empty
+    for (const i of EXTRA_SLOTS) expect(s.units[i]).toBeNull()
     s.units[3] = null
     s.coins = 0
     expect(summon(s, rng)).toBe(-1)
@@ -143,6 +170,7 @@ describe('merge', () => {
     expect(s.units[1]).toBeNull()
     expect(s.units[9]!.type).toBe('fire')
     expect(act(s, 4, 9, rng)).toBeNull()
+    expect(act(s, 9, EXTRA_SLOTS[0], rng)).toBeNull() // can't move onto a locked slot
   })
   it('finds merge pairs', () => {
     const { s } = quiet()
@@ -336,5 +364,225 @@ describe('AI', () => {
     let wins = 0
     for (let seed = 1; seed <= 6; seed++) if (simulate(2, ['hard', 'easy'], mulberry32(seed), 1500).winner === 0) wins++
     expect(wins).toBeGreaterThanOrEqual(4)
+  })
+})
+
+/** Fills every open slot with units that can never pair (distinct type per tier). */
+function jam(s: Side) {
+  let k = 0
+  s.units.forEach((_, i) => {
+    if (!s.open[i]) return
+    s.units[i] = unit(TYPES[k % TYPES.length], 1 + Math.floor(k / TYPES.length), 100 + k, 20)
+    k++
+  })
+}
+
+describe('sell', () => {
+  it('refunds half of what went in, merges included', () => {
+    const { s } = quiet()
+    const rng = mulberry32(2)
+    s.coins = 1e6
+    const a = summon(s, rng)
+    const paid = summonCost(0)
+    expect(s.units[a]!.inv).toBe(paid)
+    expect(refundOf(s.units[a]!)).toBe(Math.floor(paid / 2))
+    // invested value adds up through merges: ★3 from four ★1s refunds half of all four
+    s.units = s.units.map(() => null)
+    s.units[0] = unit('fire', 1, 1, 10)
+    s.units[1] = unit('fire', 1, 2, 12)
+    s.units[2] = unit('ice', 1, 3, 14)
+    s.units[3] = unit('ice', 1, 4, 16)
+    merge(s, 0, 1, rng)
+    merge(s, 2, 3, rng)
+    expect(s.units[1]!.inv).toBe(22)
+    expect(s.units[3]!.inv).toBe(30)
+    s.units[1] = { ...s.units[1]!, type: 'rock' }
+    s.units[3] = { ...s.units[3]!, type: 'rock' }
+    merge(s, 1, 3, rng)
+    const top = s.units[3]!
+    expect(top.tier).toBe(3)
+    expect(top.inv).toBe(52)
+    expect(refundOf(top)).toBe(26)
+    // higher ★ refunds more
+    expect(refundOf(unit('fire', 4, 0, 200))).toBeGreaterThan(refundOf(top))
+  })
+  it('frees the slot and pays out', () => {
+    const { s } = quiet()
+    s.units[4] = unit('rock', 2, 1, 40)
+    const before = s.coins
+    expect(sell(s, 4)).toBe(20)
+    expect(s.units[4]).toBeNull()
+    expect(s.coins).toBe(before + 20)
+    expect(s.sold).toBe(1)
+    expect(sell(s, 4)).toBe(-1)
+  })
+  it('sell → resummon (and transform → sell) always loses coins', () => {
+    const { s } = quiet()
+    const rng = mulberry32(9)
+    s.coins = 10000
+    let last = s.coins
+    for (let i = 0; i < 60; i++) {
+      const slot = summon(s, rng)
+      if (i % 3 === 0) transform(s, slot, rng)
+      sell(s, slot)
+      expect(s.coins).toBeLessThan(last)
+      last = s.coins
+    }
+  })
+})
+
+describe('transform', () => {
+  it('keeps ★, changes type and costs coins', () => {
+    const { s } = quiet()
+    const rng = mulberry32(4)
+    s.coins = 1e6
+    for (let i = 0; i < 40; i++) {
+      s.units[0] = unit('fire', 3, 1, 50)
+      const before = s.coins
+      const cost = transformCost(3, s.transforms)
+      expect(transform(s, 0, rng)).toBe(true)
+      expect(s.units[0]!.tier).toBe(3)
+      expect(s.units[0]!.type).not.toBe('fire')
+      expect(s.coins).toBe(before - cost)
+      expect(s.units[0]!.inv).toBe(50 + cost)
+    }
+  })
+  it('costs more for higher ★ and rises with use', () => {
+    expect(transformCost(1, 0)).toBe(15)
+    for (let t = 1; t < MAX_TIER; t++) expect(transformCost(t + 1, 0)).toBe(2 * transformCost(t, 0))
+    expect(transformCost(1, 5)).toBeGreaterThan(transformCost(1, 0))
+    const { s } = quiet()
+    s.units[0] = unit('fire', 2)
+    s.coins = transformCost(2, 0) - 1
+    expect(transform(s, 0, mulberry32(1))).toBe(false)
+    expect(transform(s, 3, mulberry32(1))).toBe(false) // empty slot
+  })
+})
+
+describe('slot expansion', () => {
+  it('starts with the extra column locked', () => {
+    const { s } = quiet()
+    expect(s.open.filter(Boolean)).toHaveLength(BASE_SLOTS)
+    for (const i of EXTRA_SLOTS) expect(s.open[i]).toBe(false)
+  })
+  it('opens one slot at each milestone wave', () => {
+    const g = newGame(1)
+    const rng = mulberry32(1)
+    const s = g.sides[0]
+    while (g.wave < UNLOCK_WAVES[UNLOCK_WAVES.length - 1] + 5) {
+      startWave(g, rng)
+      const expected = UNLOCK_WAVES.filter((w) => w <= g.wave).length
+      expect(s.unlocks, `wave ${g.wave}`).toBe(Math.min(EXTRA_SLOTS.length, expected))
+      s.queue = []
+    }
+    expect(s.open.every(Boolean)).toBe(true)
+  })
+  it('can be bought early at a rising price, never past the max', () => {
+    const { s } = quiet()
+    s.coins = unlockCost(0) - 1
+    expect(canUnlock(s)).toBe(false)
+    expect(unlock(s)).toBe(-1)
+    s.coins = 1e6
+    const prices: number[] = []
+    for (let k = 0; k < EXTRA_SLOTS.length; k++) {
+      const before = s.coins
+      expect(unlock(s)).toBe(EXTRA_SLOTS[k])
+      prices.push(before - s.coins)
+    }
+    expect(prices).toEqual(UNLOCK_COSTS)
+    for (let k = 1; k < prices.length; k++) expect(prices[k]).toBeGreaterThan(prices[k - 1])
+    expect(nextLocked(s)).toBe(-1)
+    expect(unlock(s)).toBe(-1)
+    expect(s.open.every(Boolean)).toBe(true)
+    // a bought slot accepts summons
+    s.coins = 1e6
+    for (let i = 0; i < SLOTS; i++) summon(s, mulberry32(i))
+    expect(s.units.every(Boolean)).toBe(true)
+  })
+  it('buying a specific locked slot and the wave milestone together still cap at the max', () => {
+    const g = newGame(1)
+    const s = g.sides[0]
+    s.coins = 1e6
+    expect(unlock(s, EXTRA_SLOTS[2])).toBe(EXTRA_SLOTS[2])
+    expect(unlock(s, 0)).toBe(-1) // not a locked slot
+    for (let w = 0; w < 40; w++) {
+      startWave(g, mulberry32(w))
+      s.queue = []
+    }
+    expect(s.unlocks).toBe(EXTRA_SLOTS.length)
+  })
+})
+
+describe('stuck board', () => {
+  it('is detected only when full with no pairs', () => {
+    const { s } = quiet()
+    expect(isStuck(s)).toBe(false)
+    jam(s)
+    expect(findPairs(s)).toHaveLength(0)
+    expect(isStuck(s)).toBe(true)
+    s.units[0] = null
+    expect(isStuck(s)).toBe(false)
+    jam(s)
+    s.units[1] = { ...s.units[0]! }
+    expect(isStuck(s)).toBe(false)
+  })
+  it('the AI rerolls, sells or opens a slot instead of only upgrading', () => {
+    const { s } = quiet()
+    const rng = mulberry32(3)
+    jam(s)
+    s.coins = 40
+    expect(pairChance(s, 0)).toBeGreaterThan(0)
+    const act1 = aiAct(s, 'normal', rng)
+    expect(['transform', 'sell']).toContain(act1)
+    // with enough coins it grows the board first
+    jam(s)
+    s.coins = unlockCost(s.unlocks)
+    expect(aiAct(s, 'normal', rng)).toBe('unlock')
+    // the old behaviour (no tools) just waits / upgrades
+    const q = quiet()
+    jam(q.s)
+    q.s.coins = 40
+    expect(aiAct(q.s, 'normal', rng, false)).toBeNull()
+  })
+  it('a jammed AI gets stronger and survives longer with sell / transform / slots than without', () => {
+    const run = (diff: 'easy' | 'normal' | 'hard', tools: boolean, seed: number) => {
+      const g = newGame(1)
+      jam(g.sides[0])
+      g.sides[0].coins = 60
+      const rng = mulberry32(seed)
+      let t = 0
+      let dps = 0
+      while (!g.over && g.time < 3000) {
+        t += 0.05
+        if (t >= AI_INTERVAL[diff]) {
+          t = 0
+          aiAct(g.sides[0], diff, rng, tools)
+        }
+        step(g, 0.05, rng)
+        if (g.wave === 9 && !dps) dps = g.sides[0].units.reduce((a, u) => a + (u ? unitDps(u, g.sides[0]) : 0), 0)
+      }
+      return { g, dps }
+    }
+    let waves = [0, 0]
+    let dps = [0, 0]
+    for (const d of ['easy', 'normal', 'hard'] as const)
+      for (let seed = 1; seed <= 5; seed++) {
+        const a = run(d, true, seed)
+        const b = run(d, false, seed)
+        expect(a.g.sides[0].transforms + a.g.sides[0].sold, `${d} seed ${seed}`).toBeGreaterThan(0)
+        waves = [waves[0] + a.g.wave, waves[1] + b.g.wave]
+        dps = [dps[0] + a.dps, dps[1] + b.dps]
+      }
+    expect(dps[0]).toBeGreaterThan(dps[1] * 1.15)
+    expect(waves[0]).toBeGreaterThan(waves[1])
+  })
+  it('full AI games never end on a stuck board without having tried the tools', () => {
+    for (const d of ['easy', 'normal', 'hard'] as const)
+      for (let seed = 1; seed <= 4; seed++) {
+        const g = simulate(1, [d], mulberry32(seed * 11), 3000)
+        const s = g.sides[0]
+        if (isStuck(s)) expect(s.transforms + s.sold + s.unlocks, `${d} ${seed}`).toBeGreaterThan(0)
+        expect(s.upg.every((l) => l <= MAX_UPGRADE)).toBe(true)
+      }
   })
 })

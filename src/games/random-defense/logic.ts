@@ -1,16 +1,23 @@
 // 랜덤 디펜스 (정령 수호대) — pure simulation.
-// The field is FIELD_W × FIELD_H units: a 5×3 grid of summon slots surrounded by a
-// rectangular loop path on which monsters circle forever. `step` mutates the game in
+// The field is FIELD_W × FIELD_H units: a 6×3 grid of summon slots surrounded by a
+// rectangular loop path on which monsters circle forever. The left 5×3 slots are open from
+// the start; the right-hand column (EXTRA_SLOTS) starts locked and opens at wave milestones
+// or when bought with coins. `step` mutates the game in
 // place (it runs every frame) and returns it for convenience.
 
 import type { Difficulty } from '../../lib/types'
 
-export const COLS = 5
+export const COLS = 6
 export const ROWS = 3
 export const SLOTS = COLS * ROWS
-export const FIELD_W = 7
-export const FIELD_H = 5
-/** Path: rectangle from (0.5,0.5) to (6.5,4.5), clockwise from the top-left corner. */
+export const FIELD_W = COLS + 2
+export const FIELD_H = ROWS + 2
+/** Locked slots, in the order they open (middle of the right column first). */
+export const EXTRA_SLOTS = [11, 5, 17]
+export const BASE_SLOTS = SLOTS - EXTRA_SLOTS.length
+/** Waves at whose start one more locked slot opens for free. */
+export const UNLOCK_WAVES = [10, 20, 30]
+/** Path: rectangle from (0.5,0.5) to (FIELD_W-0.5, FIELD_H-0.5), clockwise from the top-left corner. */
 export const PATH_W = FIELD_W - 1
 export const PATH_H = FIELD_H - 1
 export const PATH_LEN = 2 * (PATH_W + PATH_H)
@@ -61,6 +68,8 @@ export interface Unit {
   tier: number
   cd: number
   flash: number
+  /** Coins spent on this unit (summon price + both merged units' value + transforms). */
+  inv: number
 }
 
 export type MonsterKind = 'normal' | 'elite' | 'boss' | 'sent'
@@ -92,7 +101,7 @@ export interface Spawn {
 }
 
 export interface Fx {
-  k: 'shot' | 'txt' | 'boom'
+  k: 'shot' | 'txt' | 'boom' | 'swap'
   x: number
   y: number
   x2?: number
@@ -124,6 +133,12 @@ export interface Side {
   /** Coin income multiplier (AI handicap / bonus in versus). */
   coinRate: number
   nextId: number
+  /** Which slots can hold units (EXTRA_SLOTS start closed). */
+  open: boolean[]
+  /** Extra slots opened so far (bought or by wave milestone). */
+  unlocks: number
+  transforms: number
+  sold: number
 }
 
 export interface Game {
@@ -180,6 +195,14 @@ export function neighbors(i: number): number[] {
 export const classOf = (tier: number) => (tier <= 2 ? 0 : tier <= 4 ? 1 : 2)
 export const tierMult = (tier: number) => Math.pow(2.3, tier - 1)
 export const summonCost = (summons: number) => 10 + summons * 2
+/** Sell refund: half of what went into the unit, so selling never beats keeping coins. */
+export const SELL_RATE = 0.5
+export const refundOf = (u: Unit) => Math.floor(u.inv * SELL_RATE)
+/** Reroll price: doubles per ★ and rises 10% with every transform used this game. */
+export const transformCost = (tier: number, uses: number) => Math.round(15 * Math.pow(2, tier - 1) * (1 + 0.1 * uses))
+export const UNLOCK_COSTS = [120, 200, 320]
+/** Price of the next locked slot, given how many extra slots are already open. */
+export const unlockCost = (opened: number) => UNLOCK_COSTS[Math.min(opened, UNLOCK_COSTS.length - 1)]
 export const upgradeCost = (level: number) => Math.round(60 * Math.pow(1.55, level) / 5) * 5
 export const waveHp = (w: number) => Math.round(28 * Math.pow(1.15, w - 1) * (1 + w * 0.03))
 export const waveCount = (w: number) => 12 + Math.floor(w * 0.4)
@@ -246,6 +269,10 @@ export function newSide(): Side {
     incoming: 0,
     coinRate: 1,
     nextId: 1,
+    open: Array.from({ length: SLOTS }, (_, i) => !EXTRA_SLOTS.includes(i)),
+    unlocks: 0,
+    transforms: 0,
+    sold: 0,
   }
 }
 
@@ -269,10 +296,11 @@ export function rollSummon(rng: () => number): { type: UnitType; tier: number } 
   return { type, tier }
 }
 
-export const emptySlots = (side: Side) => side.units.map((u, i) => (u ? -1 : i)).filter((i) => i >= 0)
+export const emptySlots = (side: Side) => side.units.map((u, i) => (u || !side.open[i] ? -1 : i)).filter((i) => i >= 0)
+export const openCount = (side: Side) => side.open.filter(Boolean).length
 
 export function canSummon(side: Side): boolean {
-  return !side.lost && side.coins >= summonCost(side.summons) && side.units.some((u) => !u)
+  return !side.lost && side.coins >= summonCost(side.summons) && side.units.some((u, i) => !u && side.open[i])
 }
 
 /** Summons into a random empty slot. Returns the slot or -1. */
@@ -280,10 +308,11 @@ export function summon(side: Side, rng: () => number): number {
   if (!canSummon(side)) return -1
   const empty = emptySlots(side)
   const slot = empty[Math.floor(rng() * empty.length)]
-  side.coins -= summonCost(side.summons)
+  const cost = summonCost(side.summons)
+  side.coins -= cost
   side.summons++
   const { type, tier } = rollSummon(rng)
-  side.units[slot] = { id: side.nextId++, type, tier, cd: 0.3, flash: 0.4 }
+  side.units[slot] = { id: side.nextId++, type, tier, cd: 0.3, flash: 0.4, inv: cost }
   const p = slotPos(slot)
   if (tier > 1) pushFx(side, { k: 'txt', x: p.x, y: p.y - 0.4, text: '행운!', color: '#ffe066', t: 0, life: 1, size: 0.34 })
   return slot
@@ -300,7 +329,7 @@ export function merge(side: Side, from: number, to: number, rng: () => number): 
   if (from === to || side.lost || !canMerge(a, b)) return false
   const type = TYPES[Math.floor(rng() * TYPES.length)]
   side.units[from] = null
-  side.units[to] = { id: side.nextId++, type, tier: b!.tier + 1, cd: 0.3, flash: 0.7 }
+  side.units[to] = { id: side.nextId++, type, tier: b!.tier + 1, cd: 0.3, flash: 0.7, inv: a!.inv + b!.inv }
   const p = slotPos(to)
   pushFx(side, { k: 'boom', x: p.x, y: p.y, r: 0.9, color: TIER_COLORS[b!.tier + 1], t: 0, life: 0.5 })
   return true
@@ -308,7 +337,7 @@ export function merge(side: Side, from: number, to: number, rng: () => number): 
 
 /** Moves a unit to an empty slot, or swaps two units. */
 export function move(side: Side, from: number, to: number): boolean {
-  if (from === to || !side.units[from] || side.lost) return false
+  if (from === to || !side.units[from] || side.lost || !side.open[to] || !side.open[from]) return false
   const t = side.units[to]
   side.units[to] = side.units[from]
   side.units[from] = t
@@ -334,6 +363,72 @@ export function upgrade(side: Side, cls: number): boolean {
     if (u && classOf(u.tier) === cls) u.flash = Math.max(u.flash, 0.35)
   })
   return true
+}
+
+export function canSell(side: Side, slot: number): boolean {
+  return !side.lost && !!side.units[slot]
+}
+
+/** Sells the unit in `slot` for half its invested coins. Returns the refund, or -1. */
+export function sell(side: Side, slot: number): number {
+  const u = side.units[slot]
+  if (!u || !canSell(side, slot)) return -1
+  const refund = refundOf(u)
+  side.coins += refund
+  side.units[slot] = null
+  side.sold++
+  const p = slotPos(slot)
+  pushFx(side, { k: 'boom', x: p.x, y: p.y, r: 0.6, color: '#ffd23f', t: 0, life: 0.4 })
+  pushFx(side, { k: 'txt', x: p.x, y: p.y - 0.2, text: `+${refund}`, color: '#ffe066', t: 0, life: 0.9, size: 0.3 })
+  return refund
+}
+
+export function canTransform(side: Side, slot: number): boolean {
+  const u = side.units[slot]
+  return !side.lost && !!u && side.coins >= transformCost(u.tier, side.transforms)
+}
+
+/** Rerolls the unit into a random different type with the same ★. */
+export function transform(side: Side, slot: number, rng: () => number): boolean {
+  const u = side.units[slot]
+  if (!u || !canTransform(side, slot)) return false
+  const cost = transformCost(u.tier, side.transforms)
+  const others = TYPES.filter((t) => t !== u.type)
+  const old = u.type
+  side.coins -= cost
+  side.transforms++
+  side.units[slot] = { ...u, id: side.nextId++, type: others[Math.floor(rng() * others.length)], flash: 0.7, inv: u.inv + cost }
+  const p = slotPos(slot)
+  pushFx(side, { k: 'swap', x: p.x, y: p.y, r: 0.55, text: INFO[old].emoji, color: INFO[side.units[slot]!.type].color, t: 0, life: 0.55 })
+  return true
+}
+
+/** Next locked slot to open, or -1 when every slot is open. */
+export const nextLocked = (side: Side) => EXTRA_SLOTS.find((i) => !side.open[i]) ?? -1
+
+export function canUnlock(side: Side): boolean {
+  return !side.lost && nextLocked(side) >= 0 && side.coins >= unlockCost(side.unlocks)
+}
+
+function openSlot(side: Side, slot: number, label: string) {
+  side.open[slot] = true
+  side.unlocks++
+  const p = slotPos(slot)
+  pushFx(side, { k: 'boom', x: p.x, y: p.y, r: 0.9, color: '#ffe066', t: 0, life: 0.6 })
+  pushFx(side, { k: 'txt', x: p.x, y: p.y - 0.35, text: label, color: '#ffe066', t: 0, life: 1.3, size: 0.26 })
+}
+
+/** Buys a locked slot (the given one, or the next in order). Returns the slot or -1. */
+export function unlock(side: Side, slot = nextLocked(side)): number {
+  if (!canUnlock(side) || slot < 0 || side.open[slot] || !EXTRA_SLOTS.includes(slot)) return -1
+  side.coins -= unlockCost(side.unlocks)
+  openSlot(side, slot, '칸 열림!')
+  return slot
+}
+
+/** Board full (no empty open slot) and nothing can merge: only sell / transform / unlock help. */
+export function isStuck(side: Side): boolean {
+  return !side.lost && emptySlots(side).length === 0 && findPairs(side).length === 0
 }
 
 export function findPairs(side: Side): [number, number][] {
@@ -420,6 +515,10 @@ export function startWave(g: Game, rng: () => number) {
       side.bossT = BOSS_TIME
       side.warn = 2.5
     } else if (isEliteWave(g.wave)) side.warn = 1.6
+    if (UNLOCK_WAVES.includes(g.wave)) {
+      const slot = nextLocked(side)
+      if (slot >= 0) openSlot(side, slot, '무료 칸 열림!')
+    }
   }
 }
 
@@ -616,33 +715,49 @@ export const wavesCleared = (g: Game) => Math.max(0, g.sides.every((s) => s.lost
 
 export const AI_INTERVAL: Record<Difficulty, number> = { easy: 1.5, normal: 0.75, hard: 0.3 }
 
-/** Performs at most one action for the AI-controlled side. Returns what it did. */
-export function aiAct(side: Side, diff: Difficulty, rng: () => number): 'summon' | 'merge' | 'upgrade' | null {
-  if (side.lost) return null
-  if (diff === 'easy' && rng() < 0.3) return null
-  if (canSummon(side)) {
-    summon(side, rng)
-    return 'summon'
-  }
-  const pairs = findPairs(side)
-  if (pairs.length) {
-    let pair: [number, number]
-    if (diff === 'easy') pair = pairs[Math.floor(rng() * pairs.length)]
-    else {
-      // merge the lowest tier first; keep wind/luck spirits when possible
-      const score = ([a]: [number, number]) => {
-        const u = side.units[a]!
-        return u.tier * 10 + (u.type === 'wind' || u.type === 'luck' ? 3 : 0)
-      }
-      pair = pairs.slice().sort((p, q) => score(p) - score(q))[0]
+export type AiAction = 'summon' | 'merge' | 'upgrade' | 'unlock' | 'transform' | 'sell' | null
+
+/** Chance that rerolling `slot` creates a merge pair (another unit with its ★ but a different type). */
+export function pairChance(side: Side, slot: number): number {
+  const u = side.units[slot]
+  if (!u || u.tier >= MAX_TIER) return 0
+  const types = new Set<UnitType>()
+  side.units.forEach((o, i) => {
+    if (o && i !== slot && o.tier === u.tier && o.type !== u.type) types.add(o.type)
+  })
+  return types.size / (TYPES.length - 1)
+}
+
+/** Best unit to reroll when stuck: highest pair chance per coin, sparing wind/luck spirits. */
+export function bestTransform(side: Side, diff: Difficulty, rng: () => number): number {
+  let best = -1
+  let bestScore = 0
+  side.units.forEach((u, i) => {
+    if (!u) return
+    const p = pairChance(side, i)
+    if (p <= 0 || side.coins < transformCost(u.tier, side.transforms)) return
+    let score = diff === 'easy' ? rng() : p / transformCost(u.tier, side.transforms)
+    if (diff !== 'easy' && (u.type === 'wind' || u.type === 'luck')) score *= 0.6
+    if (score > bestScore) {
+      bestScore = score
+      best = i
     }
-    // put the result in the more central slot (better reach)
-    const centrality = (i: number) => -Math.abs((i % COLS) - 2) - Math.abs(Math.floor(i / COLS) - 1)
-    const [a, b] = diff !== 'easy' && centrality(pair[0]) > centrality(pair[1]) ? [pair[1], pair[0]] : pair
-    merge(side, a, b, rng)
-    return 'merge'
-  }
-  // board is full and nothing merges: spend on upgrades
+  })
+  return best
+}
+
+/** Weakest unit worth selling to make room (never ★5+), or -1. */
+export function weakestUnit(side: Side): number {
+  let best = -1
+  side.units.forEach((u, i) => {
+    if (!u || u.tier >= 5) return
+    const b = best >= 0 ? side.units[best]! : null
+    if (!b || unitDps(u, side) < unitDps(b, side)) best = i
+  })
+  return best
+}
+
+function aiUpgrade(side: Side, diff: Difficulty, rng: () => number): AiAction {
   const power = [0, 0, 0]
   side.units.forEach((u) => {
     if (u) power[classOf(u.tier)] += unitDps(u, side)
@@ -660,6 +775,75 @@ export function aiAct(side: Side, diff: Difficulty, rng: () => number): 'summon'
   return null
 }
 
+/**
+ * Performs at most one action for the AI-controlled side. Returns what it did.
+ * `tools = false` gives the old behaviour (no selling / rerolling / buying slots) for comparisons.
+ */
+export function aiAct(side: Side, diff: Difficulty, rng: () => number, tools = true): AiAction {
+  if (side.lost) return null
+  if (diff === 'easy' && rng() < 0.3) return null
+  // a nearly full board is worth growing before it jams
+  if (tools && diff !== 'easy' && canUnlock(side) && emptySlots(side).length <= 1) {
+    unlock(side)
+    return 'unlock'
+  }
+  if (canSummon(side)) {
+    summon(side, rng)
+    return 'summon'
+  }
+  const pairs = findPairs(side)
+  if (pairs.length) {
+    let pair: [number, number]
+    if (diff === 'easy') pair = pairs[Math.floor(rng() * pairs.length)]
+    else {
+      // merge the lowest tier first; keep wind/luck spirits when possible
+      const score = ([a]: [number, number]) => {
+        const u = side.units[a]!
+        return u.tier * 10 + (u.type === 'wind' || u.type === 'luck' ? 3 : 0)
+      }
+      pair = pairs.slice().sort((p, q) => score(p) - score(q))[0]
+    }
+    // put the result in the more central slot (better reach)
+    const mid = (COLS - 1) / 2
+    const centrality = (i: number) => -Math.abs((i % COLS) - mid) - Math.abs(Math.floor(i / COLS) - 1)
+    const [a, b] = diff !== 'easy' && centrality(pair[0]) > centrality(pair[1]) ? [pair[1], pair[0]] : pair
+    merge(side, a, b, rng)
+    return 'merge'
+  }
+  if (!tools || !isStuck(side)) return aiUpgrade(side, diff, rng)
+
+  // Stuck: full board, no pairs. Open a slot, reroll a spirit into a pair, or sell the weakest.
+  if (canUnlock(side) && (diff !== 'easy' || rng() < 0.5)) {
+    unlock(side)
+    return 'unlock'
+  }
+  // a careful AI saves up for the next slot instead of frittering coins away
+  if (diff === 'hard' && nextLocked(side) >= 0 && side.coins >= unlockCost(side.unlocks) * 0.6) return null
+  if (diff === 'easy' && rng() < 0.5) return aiUpgrade(side, diff, rng)
+  const t = bestTransform(side, diff, rng)
+  if (t >= 0) {
+    const cost = transformCost(side.units[t]!.tier, side.transforms)
+    // a much better deal on an upgrade wins over a pricey reroll
+    const up = Math.min(...[0, 1, 2].map((c) => (side.upg[c] < MAX_UPGRADE ? upgradeCost(side.upg[c]) : Infinity)))
+    if (diff === 'easy' || cost <= up * 0.6 || side.coins < up) {
+      transform(side, t, rng)
+      return 'transform'
+    }
+    return aiUpgrade(side, diff, rng)
+  }
+  // nothing to reroll cheaply: sell the weakest spirit if a fresh summon could then pair with something
+  const w = weakestUnit(side)
+  if (w >= 0) {
+    const refund = refundOf(side.units[w]!)
+    const ones = new Set(side.units.filter((u, i) => u && i !== w && u.tier === 1).map((u) => u!.type))
+    if (ones.size > 0 && side.coins + refund >= summonCost(side.summons)) {
+      sell(side, w)
+      return 'sell'
+    }
+  }
+  return aiUpgrade(side, diff, rng)
+}
+
 /** Headless simulation helper (tests, balancing). */
 export function simulate(
   players: number,
@@ -667,6 +851,7 @@ export function simulate(
   rng: () => number,
   maxTime = 900,
   dt = 1 / 20,
+  tools = true,
 ): Game {
   const g = newGame(players)
   const timers = diffs.map(() => 0)
@@ -676,7 +861,7 @@ export function simulate(
       timers[i] += dt
       if (timers[i] >= AI_INTERVAL[d]) {
         timers[i] = 0
-        aiAct(g.sides[i], d, rng)
+        aiAct(g.sides[i], d, rng, tools)
       }
     })
     step(g, dt, rng)

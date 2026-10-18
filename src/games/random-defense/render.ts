@@ -8,7 +8,9 @@ import {
   SLOTS,
   TIER_COLORS,
   canMerge,
+  isStuck,
   pathPos,
+  unlockCost,
   slotPos,
   type Monster,
   type Side,
@@ -28,6 +30,8 @@ export interface Drag {
 export interface UiState {
   sel: number
   drag: Drag | null
+  /** Unit id waiting for the second "sell" press (★3+), or 0. */
+  confirm: number
 }
 
 const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'
@@ -208,12 +212,36 @@ export function drawSide(ctx: CanvasRenderingContext2D, w: number, dpr: number, 
   const from = ui.drag ? ui.drag.from : ui.sel
   const src = from >= 0 ? side.units[from] : null
   const pulse = 0.55 + 0.45 * Math.sin(now * 8)
+  const stuck = from < 0 && isStuck(side)
+  const price = unlockCost(side.unlocks)
   for (let i = 0; i < SLOTS; i++) {
     const { x, y } = slotPos(i)
+    if (!side.open[i]) {
+      // locked tile: dark, dashed, padlock and price
+      ctx.fillStyle = 'rgba(0,0,0,0.28)'
+      roundRect(ctx, x - 0.45, y - 0.45, 0.9, 0.9, 0.14)
+      ctx.fill()
+      ctx.strokeStyle = i === from ? '#ffffff' : 'rgba(255,255,255,0.22)'
+      ctx.lineWidth = i === from ? 0.06 : 0.03
+      if (i !== from) ctx.setLineDash([0.1, 0.08])
+      ctx.stroke()
+      ctx.setLineDash([])
+      text(ctx, '🔒', x, y - 0.1, 0.3, '#fff', { emoji: true })
+      const afford = side.coins >= price
+      text(ctx, `🪙${price}`, x, y + 0.27, 0.17, afford ? '#ffe066' : 'rgba(255,255,255,0.45)', { bold: true, outline: true })
+      continue
+    }
     ctx.fillStyle = 'rgba(255,255,255,0.06)'
     roundRect(ctx, x - 0.45, y - 0.45, 0.9, 0.9, 0.14)
     ctx.fill()
-    if (src && i !== from && canMerge(src, side.units[i])) {
+    if (stuck && side.units[i]) {
+      ctx.strokeStyle = `rgba(255,170,90,${0.25 + 0.35 * pulse})`
+      ctx.lineWidth = 0.045
+      ctx.setLineDash([0.12, 0.08])
+      ctx.lineDashOffset = -now * 0.3
+      ctx.stroke()
+      ctx.setLineDash([])
+    } else if (src && i !== from && canMerge(src, side.units[i])) {
       ctx.strokeStyle = `rgba(255,224,102,${pulse})`
       ctx.lineWidth = 0.07
       ctx.stroke()
@@ -253,6 +281,24 @@ export function drawSide(ctx: CanvasRenderingContext2D, w: number, dpr: number, 
       ctx.lineWidth = 0.07
       ctx.beginPath()
       ctx.arc(f.x, f.y, f.r! * (0.3 + 0.7 * p), 0, Math.PI * 2)
+      ctx.stroke()
+    } else if (f.k === 'swap') {
+      // old spirit puffs away while a ring of sparkles spins outward
+      ctx.globalAlpha = Math.max(0, 1 - p * 1.4)
+      text(ctx, f.text!, f.x, f.y - 0.03, 0.36 * (1 + p * 0.9), '#fff', { emoji: true })
+      ctx.globalAlpha = Math.max(0, 1 - p)
+      ctx.fillStyle = f.color
+      const R = f.r! * (0.4 + 0.9 * p)
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2 + p * 4
+        ctx.beginPath()
+        ctx.arc(f.x + Math.cos(a) * R, f.y + Math.sin(a) * R, 0.06 * (1 - p * 0.5), 0, Math.PI * 2)
+        ctx.fill()
+      }
+      ctx.strokeStyle = '#ffffff'
+      ctx.lineWidth = 0.05
+      ctx.beginPath()
+      ctx.arc(f.x, f.y, R * 0.8, p * 6, p * 6 + Math.PI * 1.2)
       ctx.stroke()
     } else if (f.k === 'txt') {
       text(ctx, f.text!, f.x, Math.max(0.22, f.y - p * 0.45), f.size ?? 0.26, f.color, { bold: true, outline: true })

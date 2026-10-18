@@ -16,22 +16,33 @@ import {
   MAX_UPGRADE,
   TIER_COLORS,
   TYPES,
+  UNLOCK_WAVES,
   act,
   aiAct,
   canMerge,
   canSummon,
+  canTransform,
+  canUnlock,
   canUpgrade,
   fmt,
   isBossWave,
+  isStuck,
   newGame,
+  refundOf,
+  sell,
   slotAt,
   step,
   summon,
   summonCost,
+  transform,
+  transformCost,
   unitDamage,
+  unlock,
+  unlockCost,
   upgrade,
   upgradeCost,
   type Game,
+  type Side,
 } from './logic'
 import { drawSide, type UiState } from './render'
 import './random-defense.css'
@@ -82,6 +93,40 @@ function Roster() {
 
 const DT = 1 / 60
 
+// ---- selection actions shared by the action bar and the keyboard ----
+
+function select(ui: UiState, slot: number) {
+  if (ui.sel !== slot) ui.confirm = 0
+  ui.sel = slot
+}
+
+/** Sells the selected spirit; ★3+ needs a second press. Returns 'confirm' while waiting for it. */
+function sellSelected(side: Side, ui: UiState): 'sold' | 'confirm' | null {
+  const u = ui.sel >= 0 ? side.units[ui.sel] : null
+  if (!u) return null
+  if (u.tier >= 3 && ui.confirm !== u.id) {
+    ui.confirm = u.id
+    return 'confirm'
+  }
+  sell(side, ui.sel)
+  select(ui, -1)
+  return 'sold'
+}
+
+function transformSelected(side: Side, ui: UiState): boolean {
+  if (ui.sel < 0 || !transform(side, ui.sel, Math.random)) return false
+  ui.confirm = 0
+  return true
+}
+
+/** Opens the selected locked slot, or the next one when no locked slot is selected. */
+function unlockSelected(side: Side, ui: UiState): boolean {
+  const slot = ui.sel >= 0 && !side.open[ui.sel] ? ui.sel : undefined
+  if (unlock(side, slot) < 0) return false
+  if (slot != null) select(ui, -1)
+  return true
+}
+
 function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onReset: () => void }) {
   const { players, difficulty } = cfg
   const versus = players.length > 1
@@ -91,7 +136,7 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
     if (versus) players.forEach((p, i) => p.isAI && (g.sides[i].coinRate = AI_COIN_RATE[difficulty]))
     gameRef.current = g
   }
-  const uiRef = useRef<UiState[]>(players.map(() => ({ sel: -1, drag: null })))
+  const uiRef = useRef<UiState[]>(players.map(() => ({ sel: -1, drag: null, confirm: 0 })))
   const canvases = useRef<(HTMLCanvasElement | null)[]>([])
   const pausedRef = useRef(false)
   const speedRef = useRef(1)
@@ -114,6 +159,11 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
   const bottom = Math.max(0, players.findIndex((p) => !p.isAI))
   const top = versus ? 1 - bottom : -1
   const bothHuman = versus && players.every((p) => !p.isAI)
+
+  // dev hook for automated checks
+  useEffect(() => {
+    if (import.meta.env.DEV) (window as unknown as { __rd: Game }).__rd = gameRef.current
+  }, [])
 
   // main loop
   useEffect(() => {
@@ -196,10 +246,15 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
       }
       if (pausedRef.current || g.over || players[bottom].isAI) return
       const side = g.sides[bottom]
-      if (e.key === ' ' || e.key === 's') {
+      const ui = uiRef.current[bottom]
+      const k = e.key.toLowerCase()
+      if (e.key === ' ' || k === 's') {
         e.preventDefault()
         summon(side, Math.random)
       } else if (e.key >= '1' && e.key <= '3') upgrade(side, Number(e.key) - 1)
+      else if (k === 'x') sellSelected(side, ui)
+      else if (k === 'c') transformSelected(side, ui)
+      else if (k === 'u') unlockSelected(side, ui)
       else return
       refresh()
     }
@@ -229,6 +284,12 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
             <p className="muted">{reason(0)}</p>
             <p>
               처치 <b>{s.kills}</b>마리 · 소환 <b>{s.summons}</b>회
+              {s.transforms + s.sold > 0 && (
+                <>
+                  {' '}
+                  · 바꾸기 <b>{s.transforms}</b> · 판매 <b>{s.sold}</b>
+                </>
+              )}
             </p>
             {!players[0].isAI && (
               <p>{newRecord ? '🎉 새로운 최고 기록!' : best != null ? `최고 기록: 웨이브 ${best}` : ''}</p>
@@ -379,7 +440,12 @@ function SideView({
     const { x, y } = toField(e)
     const slot = slotAt(x, y)
     if (slot < 0) {
-      ui.sel = -1
+      select(ui, -1)
+      onChange()
+      return
+    }
+    if (!side.open[slot]) {
+      select(ui, ui.sel === slot ? -1 : slot)
       onChange()
       return
     }
@@ -388,7 +454,7 @@ function SideView({
       e.currentTarget.setPointerCapture(e.pointerId)
     } else if (ui.sel >= 0) {
       act(side, ui.sel, slot, Math.random)
-      ui.sel = -1
+      select(ui, -1)
       onChange()
     }
   }
@@ -409,13 +475,13 @@ function SideView({
     const target = slotAt(x, y)
     if (d.moved) {
       if (target >= 0 && target !== d.from) act(side, d.from, target, Math.random)
-      ui.sel = -1
+      select(ui, -1)
     } else if (ui.sel < 0 || ui.sel === d.from) {
-      ui.sel = ui.sel === d.from ? -1 : d.from
+      select(ui, ui.sel === d.from ? -1 : d.from)
     } else if (canMerge(side.units[ui.sel], side.units[d.from])) {
       act(side, ui.sel, d.from, Math.random)
-      ui.sel = -1
-    } else ui.sel = d.from
+      select(ui, -1)
+    } else select(ui, d.from)
     onChange()
   }
   const onCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -444,7 +510,41 @@ function SideView({
   const danger = count / LIMIT
   const cost = summonCost(side.summons)
   const selUnit = ui.sel >= 0 ? side.units[ui.sel] : null
+  const selLocked = ui.sel >= 0 && !side.open[ui.sel]
   const partners = selUnit ? side.units.filter((u) => u && u !== selUnit && canMerge(selUnit, u)).length : 0
+  const stuck = isStuck(side)
+  const freeWave = UNLOCK_WAVES.find((w) => w > game.wave)
+  const boardH = (size * FIELD_H) / FIELD_W
+
+  let overlay: React.ReactNode = null
+  if (interactive && selUnit) {
+    const confirming = ui.confirm === selUnit.id
+    const tCost = transformCost(selUnit.tier, side.transforms)
+    overlay = (
+      <div className={`rd-actions ${stuck ? 'stuck' : ''}`}>
+        <button className={`btn small rd-act-sell ${confirming ? 'confirm' : ''}`} {...press(() => sellSelected(side, ui))}>
+          {confirming ? '한 번 더 누르면 판매' : '💰 판매'} <b>+{refundOf(selUnit)}</b>
+        </button>
+        <button
+          className="btn small rd-act-swap"
+          disabled={!canTransform(side, ui.sel)}
+          {...press(() => transformSelected(side, ui))}
+        >
+          🔄 바꾸기 <b>🪙{tCost}</b>
+        </button>
+      </div>
+    )
+  } else if (interactive && selLocked) {
+    overlay = (
+      <div className="rd-actions">
+        <button className="btn small primary rd-act-unlock" disabled={!canUnlock(side)} {...press(() => unlockSelected(side, ui))}>
+          🔓 칸 열기 <b>🪙{unlockCost(side.unlocks)}</b>
+        </button>
+      </div>
+    )
+  } else if (interactive && stuck) {
+    overlay = <div className="rd-hint">합칠 짝이 없어요 — 정령을 팔거나 바꿔 보세요</div>
+  }
 
   return (
     <section className={`rd-side ${rotated ? 'rotated' : ''} ${compact ? 'compact' : ''} ${player.isAI ? 'ai' : ''}`}>
@@ -461,16 +561,19 @@ function SideView({
         <span className="rd-coins">🪙 {Math.floor(side.coins)}</span>
       </div>
       <div className="rd-canvas-wrap" ref={wrapRef}>
-        <canvas
-          ref={canvasRef}
-          className="rd-canvas"
-          style={{ width: size, height: (size * FIELD_H) / FIELD_W }}
-          onPointerDown={onDown}
-          onPointerMove={onMove}
-          onPointerUp={onUp}
-          onPointerCancel={onCancel}
-          onContextMenu={(e) => e.preventDefault()}
-        />
+        <div className="rd-board" style={{ width: size, height: boardH }}>
+          <canvas
+            ref={canvasRef}
+            className="rd-canvas"
+            style={{ width: size, height: boardH }}
+            onPointerDown={onDown}
+            onPointerMove={onMove}
+            onPointerUp={onUp}
+            onPointerCancel={onCancel}
+            onContextMenu={(e) => e.preventDefault()}
+          />
+          {overlay}
+        </div>
       </div>
       {interactive ? (
         <>
@@ -499,7 +602,7 @@ function SideView({
             })}
           </div>
           {!compact && (
-            <p className="rd-info">
+            <p className={`rd-info ${stuck && !selUnit && !selLocked ? 'rd-info-stuck' : ''}`}>
               {selUnit ? (
                 <>
                   {INFO[selUnit.type].emoji} <b>{INFO[selUnit.type].name}</b>{' '}
@@ -511,8 +614,17 @@ function SideView({
                       ? ` · 합칠 짝 ${partners}`
                       : ' · 같은 정령·같은 별이 필요해요'}
                 </>
+              ) : selLocked ? (
+                <>
+                  🔒 <b>잠긴 칸</b> · 코인으로 지금 열거나
+                  {freeWave ? `, 웨이브 ${freeWave}에 무료로 하나씩 열려요` : ' 기다려요'}
+                </>
+              ) : stuck ? (
+                <>
+                  <b>정령을 탭</b>하면 💰판매 · 🔄바꾸기 버튼이 나와요. 바꾸기는 같은 별의 다른 정령으로 바꿔 줘요
+                </>
               ) : (
-                '정령을 끌어서 같은 정령(같은 별 수)에 놓으면 합쳐져 더 높은 등급의 랜덤 정령이 돼요'
+                '같은 정령(같은 별)끼리 끌어 겹치면 합쳐져요 · 정령을 탭하면 판매·바꾸기 · 🔒칸은 코인으로 열 수 있어요'
               )}
             </p>
           )}
