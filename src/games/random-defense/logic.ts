@@ -214,7 +214,7 @@ export const isBossWave = (w: number) => w > 0 && w % BOSS_EVERY === 0
 export const isEliteWave = (w: number) => w > 0 && w % ELITE_EVERY === 0 && !isBossWave(w)
 export const slowAmount = (tier: number) => Math.min(0.6, 0.25 + 0.05 * tier)
 export const stunChance = (tier: number) => 0.1 + 0.03 * tier
-export const auraBonus = (tier: number) => 0.1 + 0.05 * tier
+export const auraBonus = (tier: number) => 0.2 + 0.08 * tier
 export const luckBonus = (tier: number) => 0.12 * tier
 /** Monsters sent to the opponent when killing a boss / elite in versus. */
 export const sendCount = (kind: MonsterKind, wave: number) =>
@@ -241,11 +241,11 @@ export function coinMult(side: Side): number {
 
 /**
  * Wind auras stack with diminishing returns: the strongest neighbouring wind counts in full,
- * the 2nd at 70%, the 3rd at 50% … capped at +AURA_CAP. Wind spirits buff each other too,
+ * the 2nd at 85%, the 3rd at 70% … capped at +AURA_CAP. Wind spirits buff each other too,
  * so a cluster of winds speeds itself up.
  */
-export const AURA_STACK = [1, 0.7, 0.5, 0.35, 0.25, 0.2, 0.15, 0.1]
-export const AURA_CAP = 1.5
+export const AURA_STACK = [1, 0.85, 0.7, 0.6, 0.5, 0.4, 0.3, 0.25]
+export const AURA_CAP = 3
 
 export interface AuraInfo {
   /** Attack-speed multiplier (1 = no buff). */
