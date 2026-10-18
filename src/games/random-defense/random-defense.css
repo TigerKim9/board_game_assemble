@@ -327,3 +327,12 @@
     min-width: 54px;
   }
 }
+.rd-haste {
+  color: #8e72e8;
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) {
+  .rd-haste {
+    color: #c9b8ff;
+  }
+}

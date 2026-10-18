@@ -36,6 +36,7 @@ import {
   summonCost,
   transform,
   transformCost,
+  auraInfo,
   unitDamage,
   unlock,
   unlockCost,
@@ -510,6 +511,7 @@ function SideView({
   const danger = count / LIMIT
   const cost = summonCost(side.summons)
   const selUnit = ui.sel >= 0 ? side.units[ui.sel] : null
+  const selAura = selUnit ? auraInfo(side)[ui.sel] : null
   const selLocked = ui.sel >= 0 && !side.open[ui.sel]
   const partners = selUnit ? side.units.filter((u) => u && u !== selUnit && canMerge(selUnit, u)).length : 0
   const stuck = isStuck(side)
@@ -608,6 +610,11 @@ function SideView({
                   {INFO[selUnit.type].emoji} <b>{INFO[selUnit.type].name}</b>{' '}
                   <span style={{ color: TIER_COLORS[selUnit.tier] }}>{'★'.repeat(selUnit.tier)}</span> ·{' '}
                   {INFO[selUnit.type].role} · 공격력 {fmt(unitDamage(selUnit, side))}
+                  {selAura && selAura.count > 0 && (
+                    <span className="rd-haste">
+                      {' '}· 🌪️×{selAura.count} 공격 속도 +{Math.round((selAura.mult - 1) * 100)}%
+                    </span>
+                  )}
                   {selUnit.tier >= MAX_TIER
                     ? ' · 최고 등급'
                     : partners

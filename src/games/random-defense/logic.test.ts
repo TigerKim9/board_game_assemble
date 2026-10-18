@@ -28,6 +28,9 @@ import {
   TYPES,
   act,
   aiAct,
+  AURA_CAP,
+  auraBonus,
+  auraInfo,
   auraMults,
   canMerge,
   coinMult,
@@ -248,6 +251,26 @@ describe('combat', () => {
     expect(coinMult(s)).toBe(1)
     s.units[0] = unit('luck', 3)
     expect(coinMult(s)).toBeCloseTo(1.36)
+  })
+  it('wind auras stack with diminishing returns', () => {
+    const { s } = quiet()
+    s.units[7] = unit('fire', 1)
+    s.units[1] = unit('wind', 2) // above slot 7
+    const one = auraMults(s)[7]
+    expect(one).toBeCloseTo(1 + auraBonus(2))
+    s.units[13] = unit('wind', 2) // below slot 7
+    const two = auraMults(s)[7]
+    expect(two).toBeCloseTo(1 + auraBonus(2) * (1 + 0.7))
+    s.units[6] = unit('wind', 2) // left of slot 7
+    const three = auraMults(s)[7]
+    expect(three).toBeGreaterThan(two)
+    expect(three - two).toBeLessThan(two - one) // diminishing
+    expect(auraInfo(s)[7].count).toBe(3)
+    // winds buff each other
+    expect(auraMults(s)[1]).toBeGreaterThan(1)
+    // cap
+    for (let i = 0; i < 15; i++) if (i !== 7 && !s.units[i]) s.units[i] = unit('wind', 6)
+    expect(auraMults(s)[7]).toBeLessThanOrEqual(1 + AURA_CAP + 1e-9)
   })
 })
 

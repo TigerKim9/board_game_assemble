@@ -7,6 +7,7 @@ import {
   PATH_W,
   SLOTS,
   TIER_COLORS,
+  auraInfo,
   canMerge,
   isStuck,
   pathPos,
@@ -72,6 +73,24 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.arcTo(x, y + h, x, y, r)
   ctx.arcTo(x, y, x + w, y, r)
   ctx.closePath()
+}
+
+/** Swirling lavender ring behind a spirit sped up by wind; spins faster with more stacked winds. */
+function drawHaste(ctx: CanvasRenderingContext2D, x: number, y: number, count: number, now: number) {
+  const r = 0.43
+  const spin = now * (1.5 + count * 1.2)
+  ctx.save()
+  ctx.strokeStyle = `rgba(201,184,255,${Math.min(0.85, 0.35 + 0.15 * count)})`
+  ctx.lineWidth = 0.035
+  ctx.lineCap = 'round'
+  const arcs = Math.min(4, count + 1)
+  for (let k = 0; k < arcs; k++) {
+    const a = spin + (k * Math.PI * 2) / arcs
+    ctx.beginPath()
+    ctx.arc(x, y, r, a, a + 0.9)
+    ctx.stroke()
+  }
+  ctx.restore()
 }
 
 export function drawUnit(ctx: CanvasRenderingContext2D, u: Unit, x: number, y: number, scale = 1, alpha = 1) {
@@ -253,12 +272,25 @@ export function drawSide(ctx: CanvasRenderingContext2D, w: number, dpr: number, 
   }
 
   // units
+  const aura = auraInfo(side)
   for (let i = 0; i < SLOTS; i++) {
     const u = side.units[i]
     if (!u) continue
     const { x, y } = slotPos(i)
     const dragging = ui.drag && ui.drag.moved && ui.drag.from === i
+    if (aura[i].count > 0 && !dragging) drawHaste(ctx, x, y, aura[i].count, now)
     drawUnit(ctx, u, x, y, 1, dragging ? 0.3 : 1)
+    if (aura[i].count > 1 && !dragging) {
+      // stacked wind: small badge with the number of winds feeding this spirit
+      ctx.fillStyle = 'rgba(40,24,80,0.9)'
+      ctx.beginPath()
+      ctx.arc(x - 0.29, y - 0.29, 0.13, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = '#c9b8ff'
+      ctx.lineWidth = 0.025
+      ctx.stroke()
+      text(ctx, `${aura[i].count}`, x - 0.29, y - 0.285, 0.16, '#ffffff', { bold: true })
+    }
   }
 
   // monsters (bosses last so they sit on top)

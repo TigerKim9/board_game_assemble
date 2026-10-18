@@ -232,15 +232,38 @@ export function coinMult(side: Side): number {
   return m
 }
 
-/** Attack-speed multiplier per slot from neighbouring wind spirits (strongest only). */
-export function auraMults(side: Side): number[] {
-  const out = new Array<number>(SLOTS).fill(1)
+/**
+ * Wind auras stack with diminishing returns: the strongest neighbouring wind counts in full,
+ * the 2nd at 70%, the 3rd at 50% … capped at +AURA_CAP. Wind spirits buff each other too,
+ * so a cluster of winds speeds itself up.
+ */
+export const AURA_STACK = [1, 0.7, 0.5, 0.35, 0.25, 0.2, 0.15, 0.1]
+export const AURA_CAP = 1.5
+
+export interface AuraInfo {
+  /** Attack-speed multiplier (1 = no buff). */
+  mult: number
+  /** Number of neighbouring wind spirits contributing. */
+  count: number
+}
+
+export function auraInfo(side: Side): AuraInfo[] {
+  const bonuses: number[][] = Array.from({ length: SLOTS }, () => [])
   side.units.forEach((u, i) => {
     if (!u || u.type !== 'wind') return
-    const b = 1 + auraBonus(u.tier)
-    for (const n of neighbors(i)) if (out[n] < b) out[n] = b
+    for (const n of neighbors(i)) bonuses[n].push(auraBonus(u.tier))
   })
-  return out
+  return bonuses.map((list) => {
+    list.sort((a, b) => b - a)
+    let total = 0
+    list.forEach((b, k) => (total += b * (AURA_STACK[k] ?? AURA_STACK[AURA_STACK.length - 1])))
+    return { mult: 1 + Math.min(AURA_CAP, total), count: list.length }
+  })
+}
+
+/** Attack-speed multiplier per slot from neighbouring wind spirits (stacking). */
+export function auraMults(side: Side): number[] {
+  return auraInfo(side).map((a) => a.mult)
 }
 
 /** Damage-per-second estimate (ignores effects), used by the AI and the info panel. */
