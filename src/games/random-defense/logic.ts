@@ -39,6 +39,8 @@ export const START_COINS = 100
 export const SPAWN_GAP = 0.45
 export const LUCKY_CHANCE = 0.06
 export const MAX_UPGRADE = 10
+/** Single-target spirits aim at a boss in range before anything else (the boss is on a clock). */
+export const BOSS_HUNTERS: UnitType[] = ['fire', 'rock', 'poison']
 export const UPGRADE_BONUS = 0.2
 
 export type UnitType = 'fire' | 'thunder' | 'ice' | 'rock' | 'poison' | 'luck' | 'wind'
@@ -243,7 +245,8 @@ export const classOf = (tier: number) => (tier <= 2 ? 0 : tier <= 4 ? 1 : 2)
 export const tierMult = (tier: number) => Math.pow(2.1, tier - 1)
 /** Attack-speed multiplier from stars: +10% per star above ★1 (★6 = +50%). */
 export const tierSpeed = (tier: number) => 1 + 0.1 * (tier - 1)
-export const summonCost = (summons: number) => 10 + summons * 2
+export const SUMMON_COST_CAP = 60
+export const summonCost = (summons: number) => Math.min(SUMMON_COST_CAP, 10 + summons * 2)
 /** Sell refund: half of what went into the unit, so selling never beats keeping coins. */
 export const SELL_RATE = 0.5
 export const refundOf = (u: Unit) => Math.floor(u.inv * SELL_RATE)
@@ -253,7 +256,10 @@ export const UNLOCK_COSTS = [120, 200, 320]
 /** Price of the next locked slot, given how many extra slots are already open. */
 export const unlockCost = (opened: number) => UNLOCK_COSTS[Math.min(opened, UNLOCK_COSTS.length - 1)]
 export const upgradeCost = (level: number) => Math.round(60 * Math.pow(1.55, level) / 5) * 5
-export const waveHp = (w: number) => Math.round(28 * Math.pow(1.15, w - 1) * (1 + w * 0.03))
+/** Waves after this one grow more slowly, so the late game is a long climb instead of a wall. */
+export const HP_SOFT_WAVE = 30
+export const waveHp = (w: number) =>
+  Math.round(28 * Math.pow(1.15, Math.min(w, HP_SOFT_WAVE) - 1) * Math.pow(1.1, Math.max(0, w - HP_SOFT_WAVE)) * (1 + w * 0.03))
 export const waveCount = (w: number) => 12 + Math.floor(w * 0.4)
 export const waveSpeed = (w: number) => Math.min(3.2, 1.9 + w * 0.03)
 export const waveReward = (w: number) => 3 + Math.floor(w / 4)
@@ -697,6 +703,7 @@ function attackSide(g: Game, idx: number, targets: Target[], dt: number, rng: ()
     const lp = slotPos(i)
     const p = { x: lp.x + off.x, y: lp.y + off.y }
     const r2 = unitRange(u) ** 2
+    const hunter = BOSS_HUNTERS.includes(u.type)
     let best = -1
     for (let k = 0; k < targets.length; k++) {
       const m = targets[k].m
@@ -704,7 +711,13 @@ function attackSide(g: Game, idx: number, targets: Target[], dt: number, rng: ()
       const dx = targets[k].x - p.x
       const dy = targets[k].y - p.y
       if (dx * dx + dy * dy > r2) continue
-      if (best < 0 || m.dist > targets[best].m.dist) best = k
+      if (best < 0) best = k
+      else {
+        const b = targets[best].m
+        const mb = hunter && m.kind === 'boss'
+        const bb = hunter && b.kind === 'boss'
+        if (mb !== bb ? mb : m.dist > b.dist) best = k
+      }
     }
     if (best < 0) {
       u.cd = 0

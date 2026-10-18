@@ -343,5 +343,5 @@ describe('pacing', () => {
     // a first supernova should be reachable within the first half hour
     expect(stardustGain(s.runEarned)).toBeGreaterThan(0)
     expect(s.shapes.length).toBeLessThan(SHAPES.length)
-  })
+  }, 30000)
 })

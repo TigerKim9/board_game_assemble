@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { mulberry32 } from '../../lib/random'
 import {
+  BOSS_HUNTERS,
+  HP_SOFT_WAVE,
+  SUMMON_COST_CAP,
   COOP_EDGE_ROW,
   COOP_H,
   COOP_HELP_SHARE,
@@ -157,6 +160,10 @@ describe('summon', () => {
     s.coins = 0
     expect(summon(s, rng)).toBe(-1)
   })
+  it('stops getting pricier at the cap so late games can still grow', () => {
+    expect(summonCost(500)).toBe(SUMMON_COST_CAP)
+    expect(summonCost(10)).toBeLessThan(SUMMON_COST_CAP)
+  })
 })
 
 describe('merge', () => {
@@ -307,6 +314,31 @@ describe('waves', () => {
     expect(boss[0].hp).toBeGreaterThan(waveHp(10) * 10)
     expect(waveSpawns(5, rng).filter((s) => s.kind === 'elite')).toHaveLength(1)
     expect(waveSpawns(4, rng).every((s) => s.kind === 'normal')).toBe(true)
+  })
+  it('grows more slowly after the soft wave', () => {
+    const early = waveHp(HP_SOFT_WAVE) / waveHp(HP_SOFT_WAVE - 1)
+    const late = waveHp(HP_SOFT_WAVE + 6) / waveHp(HP_SOFT_WAVE + 5)
+    expect(late).toBeLessThan(early)
+    expect(late).toBeGreaterThan(1)
+  })
+  it('single-target spirits aim at the boss first, splash spirits at the front monster', () => {
+    const { g, s } = quiet()
+    s.units[1] = unit('fire', 1)
+    const boss = monster(1, 1e6, 'boss')
+    const front = monster(2, 1e6)
+    s.monsters.push(boss, front)
+    step(g, 0.01, mulberry32(1))
+    expect(boss.hp).toBeLessThan(1e6)
+    expect(front.hp).toBe(1e6)
+    expect(BOSS_HUNTERS).not.toContain('ice')
+    const q = quiet()
+    q.s.units[1] = unit('ice', 1)
+    const b2 = monster(1, 1e6, 'boss')
+    const f2 = monster(2, 1e6)
+    q.s.monsters.push(b2, f2)
+    step(q.g, 0.01, mulberry32(1))
+    expect(f2.hp).toBeLessThan(1e6)
+    expect(b2.hp).toBe(1e6)
   })
   it('spawns a wave when the timer runs out', () => {
     const g = newGame(1)
@@ -791,7 +823,7 @@ describe('co-op', () => {
     }
     const avg = waves.reduce((a, b) => a + b, 0) / waves.length
     console.log(`co-op AI+AI waves: ${waves.join(', ')} (avg ${avg.toFixed(1)})`)
-    expect(avg).toBeGreaterThanOrEqual(35)
-    expect(avg).toBeLessThanOrEqual(50)
+    expect(avg).toBeGreaterThanOrEqual(40)
+    expect(avg).toBeLessThanOrEqual(65)
   }, 60000)
 })
