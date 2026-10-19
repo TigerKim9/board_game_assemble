@@ -143,6 +143,7 @@ import {
   refillMissions,
   rollGamble,
   skillIndex,
+  SHOT_LIFE,
   type MissionId,
   type CardId,
   type Monster,
@@ -1618,5 +1619,37 @@ describe('pop-ups', () => {
     expect(pops).toHaveLength(2)
     expect(pops[0].t).toBeCloseTo(0)
     expect(pops[1].t).toBeCloseTo(-pops[0].life)
+  })
+})
+
+describe('attack visuals data', () => {
+  it('every attack fx names its spirit type and ★ with a per-type lifetime', () => {
+    for (const t of [...TYPES, 'meteor', 'curse', 'rainbow'] as UnitType[]) {
+      const { g, s } = quiet()
+      s.units[0] = unit(t, 4)
+      s.monsters.push(monster(1, 1e9))
+      step(g, 0.01, mulberry32(1))
+      const shot = s.fx.find((f) => f.k === 'shot')!
+      expect(shot, t).toBeDefined()
+      expect(shot.src).toBe(t)
+      expect(shot.tier).toBe(4)
+      expect(shot.life).toBe(SHOT_LIFE[t])
+      expect(s.monsters[0].lastHit).toBe(t)
+    }
+  })
+  it('thunder hits crackle and lucky kills show their coins', () => {
+    const { g, s } = quiet()
+    s.units[0] = unit('thunder', 1)
+    const m = monster(1, 1e9)
+    s.monsters.push(m)
+    step(g, 0.01, mulberry32(1))
+    expect(m.zapT).toBeGreaterThan(0)
+    const q = quiet()
+    q.s.units[0] = unit('luck', 3)
+    const weak = monster(1, 1)
+    weak.reward = 10
+    q.s.monsters.push(weak)
+    step(q.g, 0.01, mulberry32(1))
+    expect(q.s.fx.some((f) => f.k === 'txt' && f.text === `+${Math.floor(10 * coinMult(q.s))}🪙`)).toBe(true)
   })
 })

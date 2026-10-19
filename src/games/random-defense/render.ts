@@ -21,6 +21,7 @@ import {
   pathPos,
   unlockCost,
   slotPos,
+  type Fx,
   type Monster,
   type Side,
   type Unit,
@@ -222,7 +223,7 @@ export function drawUnit(ctx: CanvasRenderingContext2D, u: Unit, x: number, y: n
 /** Player colours of the co-op boards (top, bottom); monsters wear a thin ring in their owner's colour. */
 export const COOP_COLORS = ['#ffa94d', '#4dabf7']
 
-function drawMonster(ctx: CanvasRenderingContext2D, m: Monster, ring?: string) {
+function drawMonster(ctx: CanvasRenderingContext2D, m: Monster, ring: string | undefined, fancy: boolean) {
   const { x, y } = pathPos(m.s)
   const r = m.kind === 'boss' ? 0.42 : m.kind === 'elite' ? 0.29 : 0.19
   ctx.fillStyle = m.hitT > 0 ? '#ffffff' : m.kind === 'boss' ? '#c0392b' : `hsl(${m.hue} 65% 52%)`
@@ -265,7 +266,7 @@ function drawMonster(ctx: CanvasRenderingContext2D, m: Monster, ring?: string) {
     ctx.arc(x, y, r + 0.05, 0, Math.PI * 2)
     ctx.stroke()
   }
-  if (m.poisonT > 0) {
+  if (m.poisonT > 0 && !fancy) {
     ctx.fillStyle = 'rgba(125,220,90,0.9)'
     ctx.beginPath()
     ctx.arc(x + r * 0.8, y + r * 0.6, 0.05, 0, Math.PI * 2)
@@ -281,7 +282,7 @@ function drawMonster(ctx: CanvasRenderingContext2D, m: Monster, ring?: string) {
     ctx.setLineDash([])
     text(ctx, '💀', x - r * 0.9, y - r * 0.8, 0.15, '#fff', { emoji: true })
   }
-  if (m.stunT > 0) text(ctx, '💫', x, y - r - 0.1, 0.2, '#fff', { emoji: true })
+  if (m.stunT > 0 && !fancy) text(ctx, '💫', x, y - r - 0.1, 0.2, '#fff', { emoji: true })
   if (m.hp < m.maxHp) {
     const w = m.kind === 'boss' ? 0.9 : 0.4
     const by = y - r - (m.kind === 'boss' ? 0.14 : 0.08)
@@ -409,10 +410,11 @@ function drawUnits(ctx: CanvasRenderingContext2D, side: Side, ui: UiState, now: 
   }
 }
 
-function drawMonsters(ctx: CanvasRenderingContext2D, side: Side, ring?: string) {
+function drawMonsters(ctx: CanvasRenderingContext2D, side: Side, now: number, fancy: boolean, ring?: string) {
   // bosses last so they sit on top
-  for (const m of side.monsters) if (m.kind !== 'boss') drawMonster(ctx, m, ring)
-  for (const m of side.monsters) if (m.kind === 'boss') drawMonster(ctx, m, ring)
+  for (const m of side.monsters) if (m.kind !== 'boss') drawMonster(ctx, m, ring, fancy)
+  for (const m of side.monsters) if (m.kind === 'boss') drawMonster(ctx, m, ring, fancy)
+  if (fancy) drawStatuses(ctx, side.monsters, now)
   if (side.freezeT > 0) {
     // ⏸️ time freeze: icy film over every frozen monster
     ctx.save()
@@ -444,12 +446,17 @@ function drawFreeze(ctx: CanvasRenderingContext2D, side: Side, now: number) {
   ctx.restore()
 }
 
-function drawFx(ctx: CanvasRenderingContext2D, side: Side) {
+function drawFx(ctx: CanvasRenderingContext2D, side: Side, now: number, fancy: boolean) {
   for (const f of side.fx) {
     if (f.t < 0) continue // queued, not shown yet
     const p = f.t / f.life
     ctx.globalAlpha = Math.max(0, 1 - p)
-    if (f.k === 'shot') {
+    if (f.k === 'shot' && fancy && f.src) {
+      drawAttack(ctx, side, f, p, now)
+    } else if (f.k === 'shot') {
+      // simple: the classic short line, flashing for SIMPLE_SHOT seconds
+      if (f.t > SIMPLE_SHOT) continue
+      ctx.globalAlpha = Math.max(0, 1 - f.t / SIMPLE_SHOT)
       ctx.strokeStyle = f.color
       ctx.lineWidth = 0.05
       ctx.beginPath()
@@ -510,7 +517,18 @@ function drawFx(ctx: CanvasRenderingContext2D, side: Side) {
         ctx.fill()
       }
     } else if (f.k === 'chain') {
-      // jagged rainbow bolt
+      // jagged rainbow bolt (a soft glow underneath when effects are fancy)
+      if (fancy) {
+        ctx.save()
+        ctx.globalAlpha *= 0.35
+        ctx.strokeStyle = f.color
+        ctx.lineWidth = 0.14
+        ctx.beginPath()
+        ctx.moveTo(f.x, f.y)
+        ctx.lineTo(f.x2!, f.y2!)
+        ctx.stroke()
+        ctx.restore()
+      }
       const segs = 5
       ctx.lineWidth = 0.05
       ctx.strokeStyle = `hsl(${(f.x * 97 + f.t * 900) % 360} 95% 70%)`
@@ -580,8 +598,16 @@ function shake(ctx: CanvasRenderingContext2D, t: number) {
   ctx.translate((Math.random() - 0.5) * a, (Math.random() - 0.5) * a)
 }
 
-/** Draws the whole field. `w` is the canvas CSS width in px. */
-export function drawSide(ctx: CanvasRenderingContext2D, w: number, dpr: number, side: Side, ui: UiState, now: number) {
+/** Draws the whole field. `w` is the canvas CSS width in px. `fancy` = type-specific attack effects. */
+export function drawSide(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  dpr: number,
+  side: Side,
+  ui: UiState,
+  now: number,
+  fancy = true,
+) {
   const k = (w / FIELD_W) * dpr
   ctx.setTransform(k, 0, 0, k, 0, 0)
   ctx.clearRect(0, 0, FIELD_W, FIELD_H)
@@ -593,8 +619,9 @@ export function drawSide(ctx: CanvasRenderingContext2D, w: number, dpr: number, 
   drawSlots(ctx, side, ui, now)
   drawSelRange(ctx, side, ui, now)
   drawUnits(ctx, side, ui, now)
-  drawMonsters(ctx, side)
-  drawFx(ctx, side)
+  drawMonsters(ctx, side, now, fancy)
+  drawFx(ctx, side, now, fancy)
+  if (fancy) drawParticles(ctx, side, now)
   drawBanners(ctx, side, now)
   drawGhost(ctx, side, ui, now)
 }
@@ -655,6 +682,7 @@ export function drawCoop(
   uis: UiState[],
   now: number,
   flipTop: boolean,
+  fancy = true,
 ) {
   const k = (w / FIELD_W) * dpr
   ctx.setTransform(k, 0, 0, k, 0, 0)
@@ -683,8 +711,494 @@ export function drawCoop(
   each((s, i) => drawSlots(ctx, s, uis[i], now))
   each((s, i) => drawUnits(ctx, s, uis[i], now, flipTop && i === 0))
   each((s, i) => drawSelRange(ctx, s, uis[i], now))
-  each((s, i) => drawMonsters(ctx, s, COOP_COLORS[i]))
-  each((s) => drawFx(ctx, s))
+  each((s, i) => drawMonsters(ctx, s, now, fancy, COOP_COLORS[i]))
+  each((s) => drawFx(ctx, s, now, fancy))
+  if (fancy) each((s) => drawParticles(ctx, s, now))
   each((s, i) => drawBanners(ctx, s, now, flipTop && i === 0))
   each((s, i) => drawGhost(ctx, s, uis[i], now))
+}
+
+// ---------------------------------------------------------------------------
+// Fancy attack effects: one look per spirit type, plus a small particle pool.
+// Pure visuals — they read the logic's 'shot' fx (with src / tier) and never touch the game.
+// ---------------------------------------------------------------------------
+
+/** How long the simple line of an attack shows (the classic look). */
+const SIMPLE_SHOT = 0.14
+/** Live particles per board (two boards in versus / co-op stay around 250 in total). */
+export const PARTICLE_CAP = 125
+
+interface Particle {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  t: number
+  life: number
+  r: number
+  color: string
+  kind: 'dot' | 'puff' | 'spark' | 'crystal' | 'star'
+  /** Upward pull (embers / bubbles rise, dust settles). */
+  g: number
+}
+
+const pools = new WeakMap<Side, { list: Particle[]; last: number }>()
+/** Bit 1: start burst done, bit 2: impact burst done. */
+const burst = new WeakMap<Fx, number>()
+
+function pool(side: Side) {
+  let p = pools.get(side)
+  if (!p) pools.set(side, (p = { list: [], last: 0 }))
+  return p
+}
+
+/** Live particle count of a board (tests / perf checks). */
+export const particleCount = (side: Side) => pools.get(side)?.list.length ?? 0
+
+function emit(side: Side, n: number, make: (k: number) => Particle) {
+  const list = pool(side).list
+  for (let k = 0; k < n && list.length < PARTICLE_CAP; k++) list.push(make(k))
+}
+
+/** Runs the burst `bit` of an attack fx once. */
+function once(f: Fx, bit: number): boolean {
+  const done = burst.get(f) ?? 0
+  if (done & bit) return false
+  burst.set(f, done | bit)
+  return true
+}
+
+function drawParticles(ctx: CanvasRenderingContext2D, side: Side, now: number) {
+  const p = pool(side)
+  const dt = p.last ? Math.min(0.05, Math.max(0, now - p.last)) : 0
+  p.last = now
+  if (!p.list.length) return
+  let w = 0
+  ctx.save()
+  for (const q of p.list) {
+    q.t += dt
+    if (q.t >= q.life) continue
+    q.vy += q.g * dt
+    q.x += q.vx * dt
+    q.y += q.vy * dt
+    p.list[w++] = q
+    const a = 1 - q.t / q.life
+    ctx.globalAlpha = a
+    ctx.fillStyle = q.color
+    if (q.kind === 'puff') {
+      ctx.globalAlpha = a * 0.45
+      ctx.beginPath()
+      ctx.arc(q.x, q.y, q.r * (1 + 1.5 * (q.t / q.life)), 0, Math.PI * 2)
+      ctx.fill()
+    } else if (q.kind === 'crystal') diamond(ctx, q.x, q.y, q.r, q.r * 0.5, Math.atan2(q.vy, q.vx))
+    else if (q.kind === 'star') star(ctx, q.x, q.y, q.r)
+    else if (q.kind === 'spark') {
+      ctx.strokeStyle = q.color
+      ctx.lineWidth = q.r
+      ctx.beginPath()
+      ctx.moveTo(q.x, q.y)
+      ctx.lineTo(q.x - q.vx * 0.04, q.y - q.vy * 0.04)
+      ctx.stroke()
+    } else {
+      ctx.beginPath()
+      ctx.arc(q.x, q.y, q.r, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  p.list.length = w
+  ctx.restore()
+}
+
+function diamond(ctx: CanvasRenderingContext2D, x: number, y: number, len: number, wid: number, a: number) {
+  const c = Math.cos(a)
+  const s = Math.sin(a)
+  ctx.beginPath()
+  ctx.moveTo(x + c * len, y + s * len)
+  ctx.lineTo(x - s * wid, y + c * wid)
+  ctx.lineTo(x - c * len, y - s * len)
+  ctx.lineTo(x + s * wid, y - c * wid)
+  ctx.closePath()
+  ctx.fill()
+}
+
+function star(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  ctx.beginPath()
+  for (let k = 0; k < 8; k++) {
+    const a = (k * Math.PI) / 4
+    const rr = k % 2 ? r * 0.4 : r
+    ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr)
+  }
+  ctx.closePath()
+  ctx.fill()
+}
+
+const monR = (m: Monster) => (m.kind === 'boss' ? 0.42 : m.kind === 'elite' ? 0.29 : 0.19)
+
+/**
+ * Fancy status looks, batched into one path per look so a crowded loop stays cheap:
+ * frost tint + crystals, circling stun stars, rising poison bubbles, electric crackle.
+ */
+function drawStatuses(ctx: CanvasRenderingContext2D, monsters: Monster[], now: number) {
+  // a crowded loop drops the small decorations (crystals, second bubble) to keep frames cheap
+  const busy = monsters.length > STATUS_DETAIL_MAX
+  ctx.save()
+  // frost tint
+  ctx.beginPath()
+  for (const m of monsters) {
+    if (m.slowT <= 0) continue
+    const { x, y } = pathPos(m.s)
+    ctx.moveTo(x + monR(m), y)
+    ctx.arc(x, y, monR(m), 0, Math.PI * 2)
+  }
+  ctx.fillStyle = 'rgba(150,220,255,0.38)'
+  ctx.fill()
+  // ice crystals
+  ctx.beginPath()
+  for (const m of monsters) {
+    if (m.slowT <= 0 || busy) continue
+    const { x, y } = pathPos(m.s)
+    const r = monR(m)
+    for (let k = 0; k < 3; k++) {
+      const a = (k * Math.PI * 2) / 3 + m.id
+      const cx = x + Math.cos(a) * r * 0.95
+      const cy = y + Math.sin(a) * r * 0.95
+      const c = Math.cos(a) * 0.045
+      const s = Math.sin(a) * 0.045
+      ctx.moveTo(cx + c, cy + s)
+      ctx.lineTo(cx - s * 0.55, cy + c * 0.55)
+      ctx.lineTo(cx - c, cy - s)
+      ctx.lineTo(cx + s * 0.55, cy - c * 0.55)
+      ctx.closePath()
+    }
+  }
+  ctx.fillStyle = '#e6f8ff'
+  ctx.fill()
+  // stun stars (small diamonds circling the head)
+  ctx.beginPath()
+  for (const m of monsters) {
+    if (m.stunT <= 0) continue
+    const { x, y } = pathPos(m.s)
+    const r = monR(m)
+    for (let k = 0; k < 3; k++) {
+      const a = now * 5 + (k * Math.PI * 2) / 3
+      const sx = x + Math.cos(a) * r * 0.9
+      const sy = y - r - 0.06 + Math.sin(a) * 0.06
+      ctx.moveTo(sx, sy - 0.055)
+      ctx.lineTo(sx + 0.022, sy)
+      ctx.lineTo(sx, sy + 0.055)
+      ctx.lineTo(sx - 0.022, sy)
+      ctx.closePath()
+      ctx.moveTo(sx - 0.055, sy)
+      ctx.lineTo(sx, sy - 0.022)
+      ctx.lineTo(sx + 0.055, sy)
+      ctx.lineTo(sx, sy + 0.022)
+      ctx.closePath()
+    }
+  }
+  ctx.fillStyle = '#ffe066'
+  ctx.fill()
+  // poison bubbles
+  ctx.beginPath()
+  for (const m of monsters) {
+    if (m.poisonT <= 0) continue
+    const { x, y } = pathPos(m.s)
+    const r = monR(m)
+    for (let k = 0; k < (busy ? 1 : 2); k++) {
+      const q = (now * 0.9 + k * 0.5 + (m.id % 1) * 3) % 1
+      const bx = x + (k ? 0.5 : -0.4) * r + Math.sin(now * 5 + k) * 0.03
+      const by = y - r * 0.2 - q * 0.45
+      const br = 0.03 + 0.02 * q
+      ctx.moveTo(bx + br, by)
+      ctx.arc(bx, by, br, 0, Math.PI * 2)
+    }
+  }
+  ctx.fillStyle = 'rgba(125,220,90,0.8)'
+  ctx.fill()
+  // 찌릿찌릿: random crackle around zapped monsters
+  ctx.beginPath()
+  for (const m of monsters) {
+    if (!m.zapT || m.zapT <= 0) continue
+    const { x, y } = pathPos(m.s)
+    const r = monR(m)
+    for (let k = 0; k < 2; k++) {
+      const a = Math.random() * Math.PI * 2
+      let px = x + Math.cos(a) * r * 1.1
+      let py = y + Math.sin(a) * r * 1.1
+      ctx.moveTo(px, py)
+      for (let j = 0; j < 3; j++) {
+        px += (Math.random() - 0.5) * 0.14
+        py += (Math.random() - 0.5) * 0.14
+        ctx.lineTo(px, py)
+      }
+    }
+  }
+  ctx.strokeStyle = '#fff6a8'
+  ctx.lineWidth = 0.025
+  ctx.stroke()
+  ctx.restore()
+}
+
+const FLAME_PUFFS = 6
+/** Above this many monsters on a loop the status looks get simpler. */
+const STATUS_DETAIL_MAX = 50
+const FLAME_COLORS = Array.from({ length: FLAME_PUFFS }, (_, k) => `hsl(${18 + 32 * ((k + 1) / FLAME_PUFFS)} 100% 58%)`)
+
+const lerp = (a: number, b: number, q: number) => a + (b - a) * q
+const rand = (a: number, b: number) => a + Math.random() * (b - a)
+
+/** Radial burst of `n` particles at (x, y). */
+function spray(side: Side, x: number, y: number, n: number, kind: Particle['kind'], color: string, speed: number, r: number, life: number, g = 0) {
+  emit(side, n, () => {
+    const a = Math.random() * Math.PI * 2
+    const v = speed * rand(0.4, 1)
+    return { x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: life * rand(0.7, 1), r, color, kind, g }
+  })
+}
+
+/** Glow line under hidden / awakened attacks so they read as stronger. */
+function glowLine(ctx: CanvasRenderingContext2D, f: Fx, color: string, width: number) {
+  ctx.save()
+  ctx.globalAlpha *= 0.35
+  ctx.strokeStyle = color
+  ctx.lineWidth = width
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(f.x, f.y)
+  ctx.lineTo(f.x2!, f.y2!)
+  ctx.stroke()
+  ctx.restore()
+}
+
+/** A projectile that flies from the spirit to the target over the first `fly` share of the fx. */
+function flight(f: Fx, p: number, fly: number, arc = 0) {
+  const q = Math.min(1, p / fly)
+  return {
+    q,
+    x: lerp(f.x, f.x2!, q),
+    y: lerp(f.y, f.y2!, q) - arc * Math.sin(Math.PI * q),
+    a: Math.atan2(f.y2! - f.y, f.x2! - f.x),
+    hit: q >= 1,
+  }
+}
+
+/** One type-specific attack frame (fancy effects). */
+function drawAttack(ctx: CanvasRenderingContext2D, side: Side, f: Fx, p: number, now: number) {
+  const tier = f.tier ?? 1
+  const sc = 1 + 0.08 * (tier - 1)
+  const awake = tier >= AWAKEN_TIER
+  const tx = f.x2!
+  const ty = f.y2!
+  const fade = Math.max(0, 1 - p)
+  ctx.save()
+  ctx.lineCap = 'round'
+  if (awake) glowLine(ctx, f, '#ffffff', 0.16)
+  switch (f.src) {
+    case 'fire': {
+      // flamethrower: a flickering cone of orange→yellow puffs, embers and a scorch glow
+      const dx = tx - f.x
+      const dy = ty - f.y
+      const len = Math.hypot(dx, dy) || 1
+      const nx = -dy / len
+      const ny = dx / len
+      for (let k = 1; k <= FLAME_PUFFS; k++) {
+        const q = k / FLAME_PUFFS
+        const j = (Math.random() - 0.5) * 0.16 * q
+        ctx.globalAlpha = 0.6 * fade
+        ctx.fillStyle = FLAME_COLORS[k - 1]
+        ctx.beginPath()
+        ctx.arc(f.x + dx * q + nx * j, f.y + dy * q + ny * j, (0.035 + 0.08 * q) * sc, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      // scorch glow: two soft discs (cheaper than a gradient every frame)
+      ctx.fillStyle = '#ff7a1a'
+      ctx.globalAlpha = 0.3 * fade
+      ctx.beginPath()
+      ctx.arc(tx, ty, 0.28 * sc, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#ffe08a'
+      ctx.globalAlpha = 0.5 * fade
+      ctx.beginPath()
+      ctx.arc(tx, ty, 0.13 * sc, 0, Math.PI * 2)
+      ctx.fill()
+      if (once(f, 1))
+        emit(side, 3 + (awake ? 2 : 0), () => ({
+          x: tx + rand(-0.1, 0.1),
+          y: ty + rand(-0.1, 0.1),
+          vx: rand(-0.3, 0.3),
+          vy: rand(-0.9, -0.4),
+          t: 0,
+          life: rand(0.4, 0.7),
+          r: 0.025,
+          color: '#ffb347',
+          kind: 'dot',
+          g: 0.6,
+        }))
+      break
+    }
+    case 'thunder': {
+      // crackling zig-zag (new shape every frame): yellow glow, white core and a side branch
+      const pts: [number, number][] = [[f.x, f.y]]
+      const segs = 6
+      for (let k = 1; k < segs; k++) {
+        const q = k / segs
+        pts.push([lerp(f.x, tx, q) + rand(-0.14, 0.14), lerp(f.y, ty, q) + rand(-0.14, 0.14)])
+      }
+      pts.push([tx, ty])
+      const mid = pts[3]
+      const branch: [number, number] = [mid[0] + rand(-0.35, 0.35), mid[1] + rand(-0.35, 0.35)]
+      for (const [col, lw, al] of [
+        ['#ffd23f', 0.11 * sc, 0.4],
+        ['#ffffff', 0.03 * sc, 1],
+      ] as const) {
+        ctx.globalAlpha = al * fade
+        ctx.strokeStyle = col
+        ctx.lineWidth = lw
+        ctx.beginPath()
+        pts.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)))
+        ctx.moveTo(mid[0], mid[1])
+        ctx.lineTo(branch[0], branch[1])
+        ctx.stroke()
+      }
+      if (once(f, 1)) spray(side, tx, ty, 5 + (awake ? 3 : 0), 'spark', '#fff3a0', 2.4, 0.025, 0.28)
+      break
+    }
+    case 'ice': {
+      // ice shard flies and shatters into crystals
+      const s = flight(f, p, 0.6)
+      if (!s.hit) {
+        ctx.globalAlpha = 0.35
+        ctx.strokeStyle = '#bfefff'
+        ctx.lineWidth = 0.03
+        ctx.beginPath()
+        ctx.moveTo(lerp(f.x, s.x, 0.5), lerp(f.y, s.y, 0.5))
+        ctx.lineTo(s.x, s.y)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+        ctx.fillStyle = '#e6f8ff'
+        diamond(ctx, s.x, s.y, 0.13 * sc, 0.05 * sc, s.a)
+        ctx.strokeStyle = '#7fd6ff'
+        ctx.lineWidth = 0.02
+        ctx.stroke()
+      } else if (once(f, 2)) spray(side, tx, ty, 5 + (awake ? 3 : 0), 'crystal', '#cfefff', 1.1, 0.05, 0.4, 1.2)
+      break
+    }
+    case 'rock': {
+      // a rock lobbed in an arc, dust puff on impact
+      const s = flight(f, p, 0.75, 0.55)
+      if (!s.hit) {
+        ctx.globalAlpha = 1
+        ctx.fillStyle = '#8b6b4f'
+        ctx.beginPath()
+        ctx.arc(s.x, s.y, 0.11 * sc, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#5e4632'
+        ctx.beginPath()
+        ctx.arc(s.x + Math.cos(now * 12) * 0.03, s.y + Math.sin(now * 12) * 0.03, 0.025 * sc, 0, Math.PI * 2)
+        ctx.fill()
+      } else if (once(f, 2)) spray(side, tx, ty + 0.05, 5, 'puff', '#c8b8a2', 0.6, 0.06 * sc, 0.45, -0.4)
+      break
+    }
+    case 'poison': {
+      // spore glob, then a little toxic cloud
+      const s = flight(f, p, 0.65, 0.22)
+      if (!s.hit) {
+        ctx.globalAlpha = 1
+        ctx.fillStyle = '#7ddc5a'
+        ctx.beginPath()
+        ctx.arc(s.x, s.y, 0.09 * sc, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = 'rgba(255,255,255,0.7)'
+        ctx.beginPath()
+        ctx.arc(s.x - 0.02, s.y - 0.025, 0.02, 0, Math.PI * 2)
+        ctx.fill()
+      } else if (once(f, 2)) spray(side, tx, ty, 3, 'puff', '#8fe36a', 0.3, 0.09 * sc, 0.6, -0.3)
+      break
+    }
+    case 'luck': {
+      // a spinning clover with a golden sparkle trail; a gold glint on hit
+      const s = flight(f, p, 0.65)
+      if (!s.hit) {
+        ctx.fillStyle = '#ffe066'
+        for (let k = 1; k <= 3; k++) {
+          ctx.globalAlpha = 0.6 * (1 - k / 4)
+          star(ctx, lerp(f.x, s.x, 1 - 0.12 * k), lerp(f.y, s.y, 1 - 0.12 * k), 0.035)
+        }
+        ctx.globalAlpha = 1
+        ctx.fillStyle = '#3ecf8e'
+        for (let k = 0; k < 4; k++) {
+          const a = now * 10 + (k * Math.PI) / 2
+          ctx.beginPath()
+          ctx.arc(s.x + Math.cos(a) * 0.04 * sc, s.y + Math.sin(a) * 0.04 * sc, 0.035 * sc, 0, Math.PI * 2)
+          ctx.fill()
+        }
+      } else if (once(f, 2)) spray(side, tx, ty, 4, 'star', '#ffd23f', 0.9, 0.05, 0.4)
+      break
+    }
+    case 'wind': {
+      // crescent wind slash with a swirl trail
+      const s = flight(f, p, 0.7)
+      if (!s.hit) {
+        ctx.strokeStyle = '#e3dcff'
+        for (let k = 2; k >= 0; k--) {
+          const q = Math.max(0, s.q - 0.12 * k)
+          ctx.globalAlpha = k ? 0.3 / k : 1
+          ctx.lineWidth = (k ? 0.025 : 0.05) * sc
+          const cx = lerp(f.x, tx, q)
+          const cy = lerp(f.y, ty, q)
+          ctx.beginPath()
+          ctx.arc(cx - Math.cos(s.a) * 0.08, cy - Math.sin(s.a) * 0.08, 0.15 * sc, s.a - 1.1 + now * (k ? 6 : 0), s.a + 1.1 + now * (k ? 6 : 0))
+          ctx.stroke()
+        }
+      } else if (once(f, 2)) spray(side, tx, ty, 3, 'puff', '#d9ceff', 0.5, 0.05, 0.35)
+      break
+    }
+    case 'curse': {
+      // a wavy violet hex bolt
+      glowLine(ctx, f, '#c77dff', 0.16 * sc)
+      ctx.globalAlpha = fade
+      ctx.strokeStyle = '#e2b6ff'
+      ctx.lineWidth = 0.04 * sc
+      ctx.beginPath()
+      const n = 8
+      for (let k = 0; k <= n; k++) {
+        const q = k / n
+        const w = Math.sin(q * Math.PI * 3 + now * 20) * 0.07
+        const x = lerp(f.x, tx, q) - Math.sin(Math.atan2(ty - f.y, tx - f.x)) * w
+        const y = lerp(f.y, ty, q) + Math.cos(Math.atan2(ty - f.y, tx - f.x)) * w
+        if (k) ctx.lineTo(x, y)
+        else ctx.moveTo(x, y)
+      }
+      ctx.stroke()
+      if (once(f, 1)) spray(side, tx, ty, 4, 'puff', '#9b4dff', 0.4, 0.06, 0.5, -0.5)
+      break
+    }
+    case 'rainbow': {
+      // rainbow beam, every segment its own hue
+      glowLine(ctx, f, '#ff7eb6', 0.16 * sc)
+      ctx.globalAlpha = fade
+      ctx.lineWidth = 0.05 * sc
+      const n = 6
+      for (let k = 0; k < n; k++) {
+        ctx.strokeStyle = `hsl(${(k / n) * 360 + now * 400} 95% 65%)`
+        ctx.beginPath()
+        ctx.moveTo(lerp(f.x, tx, k / n), lerp(f.y, ty, k / n))
+        ctx.lineTo(lerp(f.x, tx, (k + 1) / n), lerp(f.y, ty, (k + 1) / n))
+        ctx.stroke()
+      }
+      if (once(f, 1)) spray(side, tx, ty, 4, 'star', '#ffffff', 1, 0.04, 0.35)
+      break
+    }
+    default: {
+      // ☄️ meteor (its blast is a separate fx): a hot glowing streak
+      glowLine(ctx, f, f.color, 0.16 * sc)
+      ctx.globalAlpha = fade
+      ctx.strokeStyle = '#fff1d6'
+      ctx.lineWidth = 0.05 * sc
+      ctx.beginPath()
+      ctx.moveTo(f.x, f.y)
+      ctx.lineTo(tx, ty)
+      ctx.stroke()
+    }
+  }
+  ctx.restore()
 }

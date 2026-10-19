@@ -34,6 +34,7 @@ import {
   Controls,
   Discoveries,
   Hud,
+  FxToggle,
   SkillBar,
   boardDown,
   boardMove,
@@ -43,6 +44,7 @@ import {
   transformSelected,
   unlockSelected,
   uiRngs,
+  useFxSetting,
 } from './parts'
 import type { Cfg } from './index'
 
@@ -67,6 +69,11 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
   const pausedRef = useRef(false)
   const [paused, setPaused] = useState(false)
   const [codex, setCodex] = useState(false)
+  const [fx, setFx] = useFxSetting()
+  const fancyRef = useRef(fx === 'fancy')
+  useEffect(() => {
+    fancyRef.current = fx === 'fancy'
+  }, [fx])
   const [, setTick] = useState(0)
   const [over, setOver] = useState(false)
   const [size, setSize] = useState(0)
@@ -146,7 +153,7 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
           c.height = bh
         }
         const ctx = c.getContext('2d')
-        if (ctx) drawCoop(ctx, w, dpr, g.sides, uiRef.current, now / 1000, facing)
+        if (ctx) drawCoop(ctx, w, dpr, g.sides, uiRef.current, now / 1000, facing, fancyRef.current)
       }
     }
     raf = requestAnimationFrame(frame)
@@ -351,6 +358,7 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
             <button className="btn primary big" onClick={() => pause(false)}>
               계속하기
             </button>
+            <FxToggle value={fx} onChange={setFx} />
             <button className="btn ghost" onClick={() => setCodex(true)}>
               📖 정령 도감
             </button>

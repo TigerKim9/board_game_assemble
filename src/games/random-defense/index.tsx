@@ -36,8 +36,10 @@ import {
   CodexModal,
   Controls,
   Discoveries,
+  FxToggle,
   SkillBar,
   uiRngs,
+  useFxSetting,
   type Rngs,
   Hud,
   InfoLine,
@@ -146,6 +148,7 @@ function Roster({
   today: string
 }) {
   const [codex, setCodex] = useState(false)
+  const [fx, setFx] = useFxSetting()
   return (
     <div className="rd-roster">
       <p className="muted">{MODE_NOTES[mode]}</p>
@@ -168,6 +171,7 @@ function Roster({
           </li>
         ))}
       </ul>
+      <FxToggle value={fx} onChange={setFx} />
       <button type="button" className="btn ghost rd-codex-btn" onClick={() => setCodex(true)}>
         📖 정령 도감
       </button>
@@ -231,6 +235,11 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
   const speedRef = useRef(1)
   const [paused, setPaused] = useState(false)
   const [codex, setCodex] = useState(false)
+  const [fx, setFx] = useFxSetting()
+  const fancyRef = useRef(fx === 'fancy')
+  useEffect(() => {
+    fancyRef.current = fx === 'fancy'
+  }, [fx])
   const [speed, setSpeed] = useState(1)
   const [, setTick] = useState(0)
   const [over, setOver] = useState(false)
@@ -309,7 +318,7 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
           c.height = bh
         }
         const ctx = c.getContext('2d')
-        if (ctx) drawSide(ctx, w, dpr, g.sides[i], uiRef.current[i], now / 1000)
+        if (ctx) drawSide(ctx, w, dpr, g.sides[i], uiRef.current[i], now / 1000, fancyRef.current)
       })
     }
     raf = requestAnimationFrame(frame)
@@ -498,6 +507,7 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
             <button className="btn primary big" onClick={() => pause(false)}>
               계속하기
             </button>
+            <FxToggle value={fx} onChange={setFx} />
             <button className="btn ghost" onClick={() => setCodex(true)}>
               📖 정령 도감
             </button>

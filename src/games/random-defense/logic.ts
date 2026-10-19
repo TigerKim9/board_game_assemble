@@ -226,6 +226,10 @@ export interface Monster {
   curseF?: number
   /** Seconds since it appeared (🎯 fast-kill missions). */
   age?: number
+  /** Visual only: seconds of electric crackle left (⚡ / 🌈 hits). */
+  zapT?: number
+  /** Type of the spirit that hit it last (kill pop-ups). */
+  lastHit?: UnitType
 }
 
 export interface Spawn {
@@ -251,6 +255,24 @@ export interface Fx {
   size?: number
   /** 'pop': a big centre message; pops queue up one after another instead of overlapping. */
   tag?: 'pop'
+  /** 'shot' fx: the attacking spirit's type and ★ (render.ts draws a type-specific attack). */
+  src?: UnitType
+  tier?: number
+}
+
+/** How long an attack's visual lives: projectiles fly a little, beams flash. */
+export const SHOT_LIFE: Record<UnitType, number> = {
+  fire: 0.2,
+  thunder: 0.18,
+  ice: 0.3,
+  rock: 0.34,
+  poison: 0.3,
+  luck: 0.28,
+  wind: 0.26,
+  meteor: 0.14,
+  blizzard: 0.14,
+  curse: 0.22,
+  rainbow: 0.18,
 }
 
 export interface Side {
@@ -1241,6 +1263,7 @@ function tickSide(side: Side, dt: number) {
   for (const m of side.monsters) {
     m.hitT = Math.max(0, m.hitT - dt)
     m.age = (m.age ?? 0) + dt
+    if (m.zapT && m.zapT > 0) m.zapT -= dt
     if (m.curseT && m.curseT > 0) m.curseT -= dt
     if (m.poisonT > 0) {
       m.hp -= m.poisonDps * Math.min(dt, m.poisonT) * cursed(m)
@@ -1346,11 +1369,25 @@ function strike({ g, idx, u, lp, p, r2, rng }: Shot, targets: Target[], k: numbe
       if (o.m.hp <= 0) continue
       const dx = o.x - c.x
       const dy = o.y - c.y
-      if (dx * dx + dy * dy <= R * R) hit(side, idx, o.m, dmg * mult, o.m === m, info.color, local(o))
+      if (dx * dx + dy * dy > R * R) continue
+      hit(side, idx, o.m, dmg * mult, o.m === m, info.color, local(o))
+      if (u.type === 'thunder') o.m.zapT = 0.35
     }
   }
+  m.lastHit = u.type
   if (u.type !== 'blizzard')
-    pushFx(side, { k: 'shot', x: lp.x, y: lp.y, x2: mp.x, y2: mp.y, color: info.color, t: 0, life: 0.14 })
+    pushFx(side, {
+      k: 'shot',
+      x: lp.x,
+      y: lp.y,
+      x2: mp.x,
+      y2: mp.y,
+      color: info.color,
+      t: 0,
+      life: SHOT_LIFE[u.type],
+      src: u.type,
+      tier: u.tier,
+    })
   switch (u.type) {
     case 'thunder': {
       const R = thunderRadius(u.tier) * (1 + CARD_THUNDER * cardN(side, 'thunder'))
@@ -1407,6 +1444,7 @@ function strike({ g, idx, u, lp, p, r2, rng }: Shot, targets: Target[], k: numbe
         const b = local(next)
         pushFx(side, { k: 'chain', x: a.x, y: a.y, x2: b.x, y2: b.y, color: info.color, t: 0, life: 0.25 })
         hit(side, idx, next.m, dmg * mult, false, info.color, b)
+        next.m.zapT = 0.35
         cur = next
       }
       break
@@ -1464,7 +1502,13 @@ function reapSide(g: Game, idx: number, rng: () => number) {
       continue
     }
     const killer = g.coop && m.by != null && g.sides[m.by] ? m.by : idx
-    killRewards(g, idx, killer, m.reward).forEach((c, i) => (g.sides[i].coins += c))
+    const pay = killRewards(g, idx, killer, m.reward)
+    pay.forEach((c, i) => (g.sides[i].coins += c))
+    if ((m.lastHit === 'luck' || m.lastHit === 'rainbow') && pay[killer] >= 1) {
+      // lucky kills show their coins
+      const lp = pathPos(m.s)
+      pushFx(side, { k: 'txt', x: lp.x, y: lp.y - 0.35, text: `+${Math.floor(pay[killer])}🪙`, color: '#ffd23f', t: 0, life: 0.8, size: 0.24 })
+    }
     g.sides[killer].kills++
     g.sides[killer].waveKills++
     if (m.kind === 'elite' && (m.age ?? 0) <= ELITE_FAST) missionEvent(side, 'eliteFast')

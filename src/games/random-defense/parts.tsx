@@ -597,3 +597,35 @@ export function MissionChip({ side }: { side: Side }) {
     </span>
   )
 }
+
+// ---- effects setting ----
+
+export type FxMode = 'fancy' | 'simple'
+
+/** 이펙트 「화려하게 / 간단히」, remembered; reduced-motion users start with 간단히. */
+export function useFxSetting() {
+  return useStored<FxMode>(
+    'random-defense-fx',
+    typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'simple' : 'fancy',
+  )
+}
+
+export function FxToggle({ value, onChange }: { value: FxMode; onChange: (v: FxMode) => void }) {
+  return (
+    <div className="rd-fxrow">
+      <span>✨ 이펙트</span>
+      <div className="segmented" role="radiogroup" aria-label="이펙트">
+        {(
+          [
+            ['fancy', '화려하게'],
+            ['simple', '간단히'],
+          ] as const
+        ).map(([v, label]) => (
+          <button key={v} type="button" role="radio" aria-checked={value === v} className={value === v ? 'active' : ''} onClick={() => onChange(v)}>
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}

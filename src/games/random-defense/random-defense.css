@@ -887,3 +887,21 @@
 .rd-daily-tag {
   font-size: 1rem;
 }
+
+/* ---- effects setting ---- */
+.rd-fxrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.rd-fxrow .segmented button {
+  min-height: 40px;
+  padding: 0 12px;
+}
+.rd-pause .rd-fxrow {
+  margin: 0;
+}
