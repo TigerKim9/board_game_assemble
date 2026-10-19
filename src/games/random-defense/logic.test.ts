@@ -116,6 +116,34 @@ import {
   tierMult,
   transformPrice,
   unitRange,
+  BOSS_FAST,
+  CALM_LIMIT,
+  CALM_WAVES,
+  ELITE_FAST,
+  GAMBLE_MULT,
+  GAMBLE_ODDS,
+  METEOR_BOSS,
+  METEOR_HP,
+  MISSION_IDS,
+  MISSION_SLOTS,
+  SAME_TYPE_GOAL,
+  SKILL_INFO,
+  SKILL_START_CD,
+  UPGRADE_STEP,
+  aiSkill,
+  canGamble,
+  canSkill,
+  castSkill,
+  dailyStreams,
+  dateKey,
+  gamble,
+  gamblePrice,
+  hashSeed,
+  missionReward,
+  refillMissions,
+  rollGamble,
+  skillIndex,
+  type MissionId,
   type CardId,
   type Monster,
   type Side,
@@ -1299,5 +1327,296 @@ describe('★7 awakening', () => {
     r.s.monsters.push(one)
     step(r.g, 0.01, mulberry32(1))
     expect(one.maxHp - one.hp).toBeCloseTo(unitDamage(unit('fire', 6), r.s))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// phase 2: gamble summon, missions, active skills, daily challenge
+// ---------------------------------------------------------------------------
+
+describe('🎰 gamble summon', () => {
+  it('costs GAMBLE_MULT summons (with the 💸 discount) and counts as one summon', () => {
+    const { s } = quiet()
+    expect(gamblePrice(s)).toBe(Math.round(summonCost(0) * GAMBLE_MULT))
+    s.cards.discount = 1
+    expect(gamblePrice(s)).toBe(Math.round(summonPrice(s) * GAMBLE_MULT))
+    s.coins = 500
+    const before = s.coins
+    const price = gamblePrice(s)
+    const slot = gamble(s, mulberry32(4))
+    expect(slot).toBeGreaterThanOrEqual(0)
+    expect(s.coins).toBe(before - price)
+    expect(s.summons).toBe(1)
+    expect(s.gambles).toBe(1)
+    expect(s.units[slot]!.inv).toBe(price)
+    s.coins = gamblePrice(s) - 1
+    expect(canGamble(s)).toBe(false)
+    expect(gamble(s, mulberry32(1))).toBe(-1)
+  })
+  it('rolls ★1 40% · ★2 30% · ★3 20% · ★4 10% of normal types, a bit worse than plain summons on average', () => {
+    const rng = mulberry32(11)
+    const n = [0, 0, 0, 0, 0]
+    const N = 20000
+    for (let i = 0; i < N; i++) {
+      const r = rollGamble(rng)
+      expect(isHidden(r.type)).toBe(false)
+      n[r.tier]++
+    }
+    GAMBLE_ODDS.forEach((p, k) => expect(Math.abs(n[k + 1] / N - p)).toBeLessThan(0.015))
+    // value in ★1 summons (a ★t is worth 2^(t-1) of them) per summon-price paid
+    const ev = GAMBLE_ODDS.reduce((a, p, k) => a + p * 2 ** k, 0) / GAMBLE_MULT
+    expect(ev).toBeLessThan(1)
+    expect(ev).toBeGreaterThan(0.85)
+  })
+  it('shows 대박 / 꽝 and a ★3+ completes the gamble mission', () => {
+    const { s } = quiet()
+    s.coins = 1000
+    s.missions = [{ id: 'gamble3', goal: 1, progress: 0 }]
+    // rng: slot, type, then tier roll 0.95 → ★4
+    const seq = [0, 0, 0.95]
+    gamble(s, () => seq.shift() ?? 0)
+    expect(s.units.find(Boolean)!.tier).toBe(4)
+    expect(s.fx.some((f) => f.text === '초대박!')).toBe(true)
+    expect(s.missions[0].progress).toBe(1)
+    const seq2 = [0, 0, 0.1]
+    gamble(s, () => seq2.shift() ?? 0)
+    expect(s.fx.some((f) => f.text === '꽝…')).toBe(true)
+  })
+})
+
+describe('🎯 missions', () => {
+  it('a side always has 3 distinct missions after the first step, drawn deterministically', () => {
+    const a = quiet()
+    const b = quiet()
+    step(a.g, 0.01, mulberry32(9))
+    step(b.g, 0.01, mulberry32(9))
+    expect(a.s.missions).toHaveLength(MISSION_SLOTS)
+    expect(new Set(a.s.missions.map((m) => m.id)).size).toBe(MISSION_SLOTS)
+    expect(a.s.missions).toEqual(b.s.missions)
+    expect(MISSION_IDS.length).toBeGreaterThanOrEqual(10)
+  })
+  it('completing a mission pays wave-scaled coins and draws a new one', () => {
+    const { g, s } = quiet()
+    s.wave = 12
+    s.missions = [
+      { id: 'hidden', goal: 1, progress: 0 },
+      { id: 'star5', goal: 1, progress: 0 },
+      { id: 'gamble3', goal: 1, progress: 0 },
+    ]
+    s.units[0] = unit('fire', 3, 1)
+    s.units[1] = unit('thunder', 3, 2)
+    merge(s, 0, 1, mulberry32(1))
+    const before = s.coins
+    step(g, 0.01, mulberry32(2))
+    expect(s.coins).toBe(before + missionReward(12))
+    expect(s.missionsDone).toBe(1)
+    expect(s.missions).toHaveLength(MISSION_SLOTS)
+    expect(s.missions.filter((m) => m.id === 'hidden')).toHaveLength(0)
+    expect(missionReward(30)).toBeGreaterThan(missionReward(10))
+  })
+  const run = (id: MissionId, setup: (q: ReturnType<typeof quiet>) => void, goal = 1) => {
+    const q = quiet()
+    q.s.missions = [{ id, goal, progress: 0 }]
+    setup(q)
+    step(q.g, 0.01, mulberry32(1))
+    return q.s.missionsDone
+  }
+  it('★5, fast elite / boss kills', () => {
+    expect(
+      run('star5', ({ s }) => {
+        s.units[0] = unit('ice', 4, 1)
+        s.units[1] = unit('ice', 4, 2)
+        merge(s, 0, 1, mulberry32(1))
+      }),
+    ).toBe(1)
+    const killFast = (kind: 'elite' | 'boss', age: number) =>
+      run(kind === 'elite' ? 'eliteFast' : 'bossFast', ({ s }) => {
+        s.units[0] = unit('fire', 7)
+        const m = monster(1, 10, kind)
+        m.age = age
+        s.monsters.push(m)
+        if (kind === 'boss') s.bossT = 10
+      })
+    expect(killFast('elite', ELITE_FAST - 5)).toBe(1)
+    expect(killFast('elite', ELITE_FAST + 5)).toBe(0)
+    expect(killFast('boss', BOSS_FAST - 5)).toBe(1)
+    expect(killFast('boss', BOSS_FAST + 5)).toBe(0)
+  })
+  it('wave kills, same type, stacked winds, upgrades', () => {
+    expect(run('waveKills', ({ s }) => (s.waveKills = 12), 12)).toBe(1)
+    expect(run('waveKills', ({ s }) => (s.waveKills = 11), 12)).toBe(0)
+    expect(
+      run('sameType', ({ s }) => [0, 3, 8, 12].forEach((i, k) => (s.units[i] = unit('rock', 1 + (k % 3), k + 1))), SAME_TYPE_GOAL),
+    ).toBe(1)
+    expect(
+      run(
+        'wind2',
+        ({ s }) => {
+          s.units[7] = unit('fire', 1)
+          s.units[1] = unit('wind', 1)
+          s.units[13] = unit('wind', 1)
+        },
+        2,
+      ),
+    ).toBe(1)
+    expect(run('upgrades', ({ s }) => (s.upg = [2, 1, 0]), 3)).toBe(1)
+    expect(run('upgrades', ({ s }) => (s.upg = [1, 1, 0]), 3)).toBe(0)
+    // a fresh upgrades mission asks for a few more levels than you have
+    const { s } = quiet()
+    s.upg = [4, 2, 0]
+    s.missions = []
+    while (s.missions.every((m) => m.id !== 'upgrades')) {
+      s.missions = []
+      refillMissions(s, Math.random)
+    }
+    expect(s.missions.find((m) => m.id === 'upgrades')!.goal).toBe(6 + UPGRADE_STEP)
+  })
+  it('calm starts count consecutive waves begun with few monsters', () => {
+    const g = newGame(1)
+    const s = g.sides[0]
+    s.missions = [{ id: 'calmStart', goal: CALM_WAVES, progress: 0 }]
+    const rng = mulberry32(1)
+    startWave(g, rng)
+    s.queue = []
+    expect(s.missions[0].progress).toBe(1)
+    for (let i = 0; i <= CALM_LIMIT; i++) s.monsters.push(monster(i % 20))
+    startWave(g, rng)
+    s.queue = []
+    expect(s.missions[0].progress).toBe(0)
+    s.monsters = []
+    for (let k = 0; k < CALM_WAVES; k++) {
+      startWave(g, rng)
+      s.queue = []
+    }
+    expect(s.missions[0].progress).toBe(CALM_WAVES)
+  })
+})
+
+describe('⚡ skills', () => {
+  it('start on cooldown, then are free to use and go on their own cooldown', () => {
+    const { g, s } = quiet()
+    expect(canSkill(s, 'meteor')).toBe(false)
+    expect(castSkill(s, 'meteor')).toBe(false)
+    for (let t = 0; t < SKILL_START_CD; t += 1) step(g, 1, mulberry32(1))
+    step(g, 0.1, mulberry32(1))
+    expect(canSkill(s, 'meteor')).toBe(true)
+    expect(canSkill(s, 'freeze')).toBe(true)
+    const coins = s.coins
+    expect(castSkill(s, 'meteor')).toBe(true)
+    expect(s.coins).toBe(coins)
+    expect(s.skillCd[skillIndex('meteor')]).toBe(SKILL_INFO.meteor.cd)
+    expect(canSkill(s, 'meteor')).toBe(false)
+    expect(SKILL_INFO.freeze.cd).toBeGreaterThan(SKILL_INFO.meteor.cd)
+  })
+  it('💥 meteor hits every monster on the own loop (bosses a share of max HP)', () => {
+    const g = quietCoop()
+    const [a, b] = g.sides
+    a.skillCd = [0, 0]
+    a.wave = 20
+    const ms = [monster(1, 1e9), monster(9, 1e9, 'elite'), monster(15, 1e9)]
+    const boss = monster(5, 1e6, 'boss')
+    a.monsters.push(...ms, boss)
+    const other = monster(PATH_W + PATH_H + 2, 1e9) // a's shared lane, but b's monster
+    b.monsters.push(other)
+    expect(castSkill(a, 'meteor')).toBe(true)
+    for (const m of ms) expect(m.maxHp - m.hp).toBeCloseTo(waveHp(20) * METEOR_HP)
+    expect(boss.maxHp - boss.hp).toBeCloseTo(1e6 * METEOR_BOSS)
+    expect(other.hp).toBe(other.maxHp)
+    // it kills weak monsters and pays for them
+    const { g: g2, s } = quiet()
+    s.skillCd = [0, 0]
+    s.wave = 5
+    s.monsters.push(monster(3, waveHp(5)), monster(6, waveHp(5)))
+    castSkill(s, 'meteor')
+    step(g2, 0.01, mulberry32(1))
+    expect(s.monsters).toHaveLength(0)
+    expect(s.kills).toBe(2)
+  })
+  it('⏸️ freeze stops the own monsters and the boss clock for a few seconds', () => {
+    const { g, s } = quiet()
+    s.skillCd = [0, 0]
+    const m = monster(3, 1e9)
+    m.speed = 2
+    s.monsters.push(m)
+    s.bossT = 30
+    castSkill(s, 'freeze')
+    for (let i = 0; i < 30; i++) step(g, 0.1, mulberry32(1))
+    expect(m.s).toBe(3)
+    expect(s.bossT).toBe(30)
+    for (let i = 0; i < 20; i++) step(g, 0.1, mulberry32(1))
+    expect(m.s).toBeGreaterThan(3)
+    expect(s.bossT).toBeLessThan(30)
+    expect(s.freezeT).toBe(0)
+  })
+  it('the AI fires meteor on a crowded loop and freeze when the boss clock is nearly out', () => {
+    const { s } = quiet()
+    s.skillCd = [0, 0]
+    for (let i = 0; i < 0.65 * LIMIT; i++) s.monsters.push(monster(i % 20, 1e9))
+    expect(aiSkill(s, 'hard', LIMIT)).toBe('meteor')
+    expect(aiAct(s, 'hard', mulberry32(1))).toBe('skill')
+    expect(canSkill(s, 'meteor')).toBe(false)
+    const q = quiet()
+    q.s.skillCd = [0, 0]
+    q.s.bossT = 5
+    q.s.monsters.push(monster(2, 1e12, 'boss'))
+    expect(aiSkill(q.s, 'hard', LIMIT)).toBe('freeze')
+    const r = quiet()
+    r.s.skillCd = [0, 0]
+    r.s.monsters.push(monster(2, 1e9))
+    expect(aiSkill(r.s, 'hard', LIMIT)).toBeNull()
+  })
+})
+
+describe('🌅 daily challenge', () => {
+  it('dates map to stable seeds and streams', () => {
+    expect(dateKey(new Date(2026, 0, 5))).toBe('2026-01-05')
+    expect(hashSeed('a')).toBe(hashSeed('a'))
+    expect(hashSeed('2026-10-19')).not.toBe(hashSeed('2026-10-20'))
+    const a = dailyStreams('2026-10-19')
+    const b = dailyStreams('2026-10-19')
+    const c = dailyStreams('2026-10-20')
+    const seq = (r: () => number) => Array.from({ length: 5 }, r)
+    expect(seq(a.summon)).toEqual(seq(b.summon))
+    expect(seq(a.card)).not.toEqual(seq(c.card))
+    expect(seq(a.card)).not.toEqual(seq(a.mission))
+  })
+  it('the n-th summon, card offer and mission are the same however the game is played', () => {
+    const play = (combatSeed: number, waitBefore: number) => {
+      const g = newGame(1)
+      g.streams = dailyStreams('2026-10-19')
+      g.waveTimer = 1e9
+      const s = g.sides[0]
+      const combat = mulberry32(combatSeed)
+      for (let i = 0; i < waitBefore; i++) step(g, 0.05, combat)
+      s.coins = 1e6
+      const summons = Array.from({ length: 6 }, () => {
+        const slot = summon(s, g.streams!.summon)
+        return `${s.units[slot]!.type}${s.units[slot]!.tier}`
+      })
+      s.units = s.units.map(() => null)
+      s.units[0] = unit('fire', 7)
+      s.monsters.push(monster(1, 10, 'elite'))
+      step(g, 0.05, combat)
+      return { summons, offer: s.offer, missions: s.missions.map((m) => m.id) }
+    }
+    const a = play(1, 3)
+    const b = play(99, 40)
+    expect(a.summons).toEqual(b.summons)
+    expect(a.offer).toEqual(b.offer)
+    expect(a.missions).toEqual(b.missions)
+  })
+})
+
+describe('pop-ups', () => {
+  it('back-to-back card picks queue their names instead of overlapping', () => {
+    const { s } = quiet()
+    s.offer = ['fire', 'dice', 'gold']
+    s.offerQueue = 1
+    pickCard(s, 'fire', mulberry32(1))
+    pickCard(s, s.offer![0], mulberry32(1))
+    const pops = s.fx.filter((f) => f.tag === 'pop')
+    expect(pops).toHaveLength(2)
+    expect(pops[0].t).toBeCloseTo(0)
+    expect(pops[1].t).toBeCloseTo(-pops[0].life)
   })
 })

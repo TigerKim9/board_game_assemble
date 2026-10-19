@@ -11,6 +11,7 @@
 // Every spirit can hit any monster in range — its own or the partner's. Each side keeps its
 // own loop, coins, upgrades and boss; the monster limit and the defeat are shared.
 
+import { mulberry32 } from '../../lib/random'
 import type { Difficulty } from '../../lib/types'
 
 export const COLS = 6
@@ -223,6 +224,8 @@ export interface Monster {
   /** 💀 curse: seconds left and extra damage taken (0.3 = +30%). */
   curseT?: number
   curseF?: number
+  /** Seconds since it appeared (🎯 fast-kill missions). */
+  age?: number
 }
 
 export interface Spawn {
@@ -242,9 +245,12 @@ export interface Fx {
   r?: number
   text?: string
   color: string
+  /** Negative while waiting to appear (queued pop-ups). */
   t: number
   life: number
   size?: number
+  /** 'pop': a big centre message; pops queue up one after another instead of overlapping. */
+  tag?: 'pop'
 }
 
 export interface Side {
@@ -286,6 +292,18 @@ export interface Side {
   offerQueue: number
   /** Hidden spirits this side made this game (for the codex). */
   found: HiddenType[]
+  /** 🎰 gamble summons used. */
+  gambles: number
+  /** 🎯 active missions (MISSION_SLOTS) and how many were completed. */
+  missions: Mission[]
+  missionsDone: number
+  /** Kills by this side since the current wave started. */
+  waveKills: number
+  /** ⚡ skill cooldowns in seconds (index = SKILLS order). */
+  skillCd: number[]
+  /** ⏸️ seconds left of the time freeze on this side's loop. */
+  freezeT: number
+  skillUses: number
 }
 
 export interface Game {
@@ -300,6 +318,37 @@ export interface Game {
   over: boolean
   /** Winning side index in versus, -1 for a draw, null while playing / solo. */
   winner: number | null
+  /**
+   * 🌅 Daily challenge: separate seeded streams so the n-th card offer / mission is the same for
+   * everyone that day no matter how the game is played (summons and merges use their own
+   * streams passed in by the UI). Absent in normal games.
+   */
+  streams?: Streams
+}
+
+export type StreamName = 'summon' | 'merge' | 'card' | 'mission' | 'combat'
+export type Streams = Record<StreamName, () => number>
+
+/** Stable 32-bit hash of a string (FNV-1a). */
+export function hashSeed(text: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return h >>> 0
+}
+
+/** Seeded random streams of a daily challenge (date as YYYY-MM-DD). */
+export function dailyStreams(date: string): Streams {
+  const mk = (name: StreamName) => mulberry32(hashSeed(`random-defense:${date}:${name}`))
+  return { summon: mk('summon'), merge: mk('merge'), card: mk('card'), mission: mk('mission'), combat: mk('combat') }
+}
+
+/** Local calendar date as YYYY-MM-DD. */
+export function dateKey(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
 // ---------- geometry ----------
@@ -507,6 +556,13 @@ export function newSide(): Side {
     offer: null,
     offerQueue: 0,
     found: [],
+    gambles: 0,
+    missions: [],
+    missionsDone: 0,
+    waveKills: 0,
+    skillCd: SKILLS.map(() => SKILL_START_CD),
+    freezeT: 0,
+    skillUses: 0,
   }
 }
 
@@ -607,7 +663,9 @@ export function merge(side: Side, from: number, to: number, rng: () => number): 
   side.units[to] = { id: side.nextId++, type, tier, cd: 0.3, flash: 0.7, inv: a!.inv + b!.inv }
   const p = slotPos(to)
   pushFx(side, { k: 'boom', x: p.x, y: p.y, r: 0.9, color: TIER_COLORS[tier], t: 0, life: 0.5 })
+  if (tier >= 5) missionEvent(side, 'star5')
   if (recipe) {
+    missionEvent(side, 'hidden')
     if (!side.found.includes(recipe)) side.found.push(recipe)
     pushFx(side, { k: 'nova', x: p.x, y: p.y, r: 1.2, color: INFO[recipe].color, t: 0, life: 0.8 })
     pushFx(side, { k: 'txt', x: p.x, y: p.y - 0.45, text: `${INFO[recipe].emoji} ${INFO[recipe].name}!`, color: '#fff3b0', t: 0, life: 1.4, size: 0.3 })
@@ -754,7 +812,7 @@ export function grantOffer(side: Side, rng: () => number) {
 export function pickCard(side: Side, id: CardId, rng: () => number): boolean {
   if (!side.offer || !side.offer.includes(id) || side.lost) return false
   side.cards[id] = cardN(side, id) + 1
-  if (id === 'chest') side.coins += chestCoins(side.wave)
+  if (id === 'chest') side.coins += Math.round(chestCoins(side.wave) * side.coinRate)
   if (id === 'time' && side.bossT != null) side.bossT += CARD_TIME
   side.offer = null
   if (side.offerQueue > 0) {
@@ -762,17 +820,7 @@ export function pickCard(side: Side, id: CardId, rng: () => number): boolean {
     const next = rollOffer(side, rng)
     side.offer = next.length ? next : null
   }
-  pushFx(side, {
-    k: 'txt',
-    x: FIELD_W / 2,
-    // a quick second pick (queued offer) shows its name a little lower
-    y: FIELD_H / 2 - 0.4 + (side.fx.some((f) => f.k === 'txt' && f.y === FIELD_H / 2 - 0.4 && f.t < 0.8) ? 0.8 : 0),
-    text: `${CARDS[id].emoji} ${CARDS[id].name}`,
-    color: '#ffe066',
-    t: 0,
-    life: 1.3,
-    size: 0.36,
-  })
+  pushPop(side, `${CARDS[id].emoji} ${CARDS[id].name}`, '#ffe066')
   return true
 }
 
@@ -808,6 +856,235 @@ export function aiPickCard(side: Side, diff: Difficulty = 'hard'): CardId {
     swap: 0.04,
   }
   return offer.slice().sort((a, b) => value[b] - value[a])[0]
+}
+
+// ---------- 🎰 gamble summon ----------
+
+/** Gamble price: this many normal summons (the 💸 discount applies through summonPrice). */
+export const GAMBLE_MULT = 2.8
+/** Chance of ★1, ★2, ★3, ★4. */
+export const GAMBLE_ODDS = [0.4, 0.3, 0.2, 0.1]
+export const gamblePrice = (side: Side) => Math.round(summonPrice(side) * GAMBLE_MULT)
+
+export function canGamble(side: Side): boolean {
+  return !side.lost && side.coins >= gamblePrice(side) && side.units.some((u, i) => !u && side.open[i])
+}
+
+export function rollGamble(rng: () => number): { type: UnitType; tier: number } {
+  const type = TYPES[Math.floor(rng() * TYPES.length)]
+  let r = rng()
+  let tier = 1
+  for (let k = 0; k < GAMBLE_ODDS.length; k++) {
+    if (r < GAMBLE_ODDS[k]) {
+      tier = k + 1
+      break
+    }
+    r -= GAMBLE_ODDS[k]
+  }
+  return { type, tier }
+}
+
+/** Pays the gamble price for a random ★1–★4 in a random empty slot (counts as a summon). Returns the slot or -1. */
+export function gamble(side: Side, rng: () => number): number {
+  if (!canGamble(side)) return -1
+  const empty = emptySlots(side)
+  const slot = empty[Math.floor(rng() * empty.length)]
+  const cost = gamblePrice(side)
+  side.coins -= cost
+  side.summons++
+  side.gambles++
+  const { type, tier } = rollGamble(rng)
+  side.units[slot] = { id: side.nextId++, type, tier, cd: 0.3, flash: 0.7, inv: cost }
+  const p = slotPos(slot)
+  const text = tier >= 4 ? '초대박!' : tier >= 3 ? '대박!' : tier === 1 ? '꽝…' : '본전'
+  const color = tier >= 3 ? '#ffe066' : tier === 1 ? '#b9c0cc' : '#ffffff'
+  pushFx(side, { k: 'txt', x: p.x, y: p.y - 0.42, text, color, t: 0, life: 1.1, size: tier >= 3 ? 0.34 : 0.26 })
+  if (tier >= 3) {
+    pushFx(side, { k: 'boom', x: p.x, y: p.y, r: 0.9, color: TIER_COLORS[tier], t: 0, life: 0.5 })
+    missionEvent(side, 'gamble3')
+  }
+  return slot
+}
+
+// ---------- 🎯 missions ----------
+
+export type MissionId =
+  | 'star5'
+  | 'hidden'
+  | 'eliteFast'
+  | 'bossFast'
+  | 'waveKills'
+  | 'sameType'
+  | 'gamble3'
+  | 'wind2'
+  | 'calmStart'
+  | 'upgrades'
+
+export interface Mission {
+  id: MissionId
+  goal: number
+  progress: number
+}
+
+export const MISSION_SLOTS = 3
+export const ELITE_FAST = 20
+export const BOSS_FAST = 30
+export const CALM_LIMIT = 10
+export const CALM_WAVES = 3
+export const SAME_TYPE_GOAL = 4
+export const UPGRADE_STEP = 3
+/** Coins for a completed mission. */
+export const missionReward = (wave: number) => 20 + 3 * Math.max(1, wave)
+
+export const MISSIONS: Record<MissionId, { emoji: string; text: (goal: number) => string }> = {
+  star5: { emoji: '⭐', text: () => '★5 이상 정령 만들기' },
+  hidden: { emoji: '🔮', text: () => '숨겨진 정령 만들기' },
+  eliteFast: { emoji: '👺', text: () => `정예를 나온 지 ${ELITE_FAST}초 안에 처치` },
+  bossFast: { emoji: '👹', text: () => `보스를 나온 지 ${BOSS_FAST}초 안에 처치` },
+  waveKills: { emoji: '⚔️', text: (n) => `한 웨이브 동안 ${n}마리 처치` },
+  sameType: { emoji: '👯', text: (n) => `같은 종류 정령 ${n}마리 모으기` },
+  gamble3: { emoji: '🎰', text: () => '도박 소환으로 ★3 이상 뽑기' },
+  wind2: { emoji: '🌪️', text: () => '바람 2개가 겹친 정령 만들기' },
+  calmStart: { emoji: '🧘', text: (n) => `몬스터 ${CALM_LIMIT}마리 이하로 웨이브 시작 ${n}번 연속` },
+  upgrades: { emoji: '💪', text: (n) => `강화 레벨 합계 ${n} 달성` },
+}
+export const MISSION_IDS = Object.keys(MISSIONS) as MissionId[]
+
+const upgSum = (side: Side) => side.upg.reduce((a, b) => a + b, 0)
+
+function missionGoal(id: MissionId, side: Side): number {
+  switch (id) {
+    case 'waveKills':
+      return Math.max(10, Math.min(25, waveCount(side.wave + 1) - 2))
+    case 'sameType':
+      return SAME_TYPE_GOAL
+    case 'wind2':
+      return 2
+    case 'calmStart':
+      return CALM_WAVES
+    case 'upgrades':
+      return Math.min(3 * MAX_UPGRADE, upgSum(side) + UPGRADE_STEP)
+    default:
+      return 1
+  }
+}
+
+/** Fills the side's mission list up to MISSION_SLOTS with distinct random missions. */
+export function refillMissions(side: Side, rng: () => number) {
+  while (side.missions.length < MISSION_SLOTS) {
+    const pool = MISSION_IDS.filter(
+      (id) => !side.missions.some((m) => m.id === id) && !(id === 'upgrades' && upgSum(side) >= 3 * MAX_UPGRADE),
+    )
+    if (!pool.length) return
+    const id = pool[Math.floor(rng() * pool.length)]
+    side.missions.push({ id, goal: missionGoal(id, side), progress: 0 })
+  }
+}
+
+/** An event happened (e.g. a ★5 was made): bumps every active mission of that kind. */
+export function missionEvent(side: Side, id: MissionId, amount = 1) {
+  for (const m of side.missions) if (m.id === id) m.progress = Math.min(m.goal, m.progress + amount)
+}
+
+/** Missions that track the board / counters rather than events. */
+export function updateMissions(side: Side) {
+  for (const m of side.missions) {
+    if (m.id === 'waveKills') m.progress = Math.min(m.goal, side.waveKills)
+    else if (m.id === 'upgrades') m.progress = Math.min(m.goal, upgSum(side))
+    else if (m.id === 'sameType') {
+      const n = new Map<UnitType, number>()
+      for (const u of side.units) if (u) n.set(u.type, (n.get(u.type) ?? 0) + 1)
+      m.progress = Math.min(m.goal, Math.max(m.progress, ...n.values(), 0))
+    } else if (m.id === 'wind2') {
+      const best = Math.max(0, ...auraInfo(side).map((a, i) => (side.units[i] ? a.count : 0)))
+      m.progress = Math.min(m.goal, Math.max(m.progress, best))
+    }
+  }
+}
+
+/** Pays and replaces finished missions. Returns the coins paid. */
+export function settleMissions(side: Side, rng: () => number): number {
+  let paid = 0
+  for (let k = 0; k < side.missions.length; k++) {
+    const m = side.missions[k]
+    if (m.progress < m.goal) continue
+    const coins = Math.round(missionReward(side.wave) * side.coinRate)
+    side.coins += coins
+    paid += coins
+    side.missionsDone++
+    pushPop(side, `🎯 미션 완료! +${coins}`, '#9ff0b5', 0.32)
+    side.missions.splice(k--, 1)
+  }
+  if (paid) refillMissions(side, rng)
+  return paid
+}
+
+function missionsTick(g: Game, rng: () => number) {
+  const r = g.streams?.mission ?? rng
+  for (const side of g.sides) {
+    if (side.lost) continue
+    if (side.missions.length < MISSION_SLOTS) refillMissions(side, r)
+    updateMissions(side)
+    settleMissions(side, r)
+  }
+}
+
+// ---------- ⚡ active skills ----------
+
+export type SkillId = 'meteor' | 'freeze'
+export const SKILLS: SkillId[] = ['meteor', 'freeze']
+/** Every skill starts on this cooldown. */
+export const SKILL_START_CD = 30
+/** 💥 damage: METEOR_HP × the wave's monster HP to every non-boss, METEOR_BOSS of a boss's max HP. */
+export const METEOR_HP = 1.5
+export const METEOR_BOSS = 0.08
+export const FREEZE_TIME = 4
+export const SKILL_INFO: Record<SkillId, { name: string; emoji: string; cd: number; desc: string }> = {
+  meteor: {
+    name: '메테오',
+    emoji: '💥',
+    cd: 60,
+    desc: `내 길의 모든 몬스터에게 큰 피해 (보스는 최대 체력의 ${METEOR_BOSS * 100}%)`,
+  },
+  freeze: { name: '시간 정지', emoji: '⏸️', cd: 90, desc: `내 길의 몬스터와 보스 시계를 ${FREEZE_TIME}초 멈춰요` },
+}
+export const skillIndex = (k: SkillId) => SKILLS.indexOf(k)
+
+export function canSkill(side: Side, k: SkillId): boolean {
+  return !side.lost && side.skillCd[skillIndex(k)] <= 0
+}
+
+/** Fires a skill on this side's own loop (co-op: the partner's monsters are not touched). */
+export function castSkill(side: Side, k: SkillId): boolean {
+  if (!canSkill(side, k)) return false
+  side.skillCd[skillIndex(k)] = SKILL_INFO[k].cd
+  side.skillUses++
+  if (k === 'freeze') {
+    side.freezeT = FREEZE_TIME
+    pushPop(side, '⏸️ 시간 정지!', '#bfe9ff', 0.4)
+    return true
+  }
+  const dmg = waveHp(Math.max(1, side.wave)) * METEOR_HP
+  side.monsters.forEach((m, n) => {
+    m.hp -= (m.kind === 'boss' ? m.maxHp * METEOR_BOSS : dmg) * (m.curseT && m.curseT > 0 ? 1 + (m.curseF ?? 0) : 1)
+    m.hitT = 0.3
+    if (n < 24) {
+      const p = pathPos(m.s)
+      pushFx(side, { k: 'meteor', x: p.x, y: p.y, r: 0.6, color: '#ff8a3d', t: -0.04 * n, life: 0.5 })
+    }
+  })
+  side.shake = 0.5
+  pushPop(side, '💥 메테오!', '#ffb36b', 0.42)
+  return true
+}
+
+/**
+ * A centre message (card pick, mission done, skill name). Pops queue one after another
+ * instead of drawing on top of each other.
+ */
+export function pushPop(side: Side, text: string, color: string, size = 0.36) {
+  const wait = Math.max(0, ...side.fx.filter((f) => f.tag === 'pop').map((f) => f.life - f.t))
+  pushFx(side, { k: 'txt', x: FIELD_W / 2, y: FIELD_H / 2 - 0.4, text, color, t: -wait, life: 1.1, size, tag: 'pop' })
 }
 
 // ---------- monsters ----------
@@ -861,6 +1138,7 @@ function spawnMonster(side: Side, sp: Spawn) {
     hue: sp.hue,
     curseT: 0,
     curseF: 0,
+    age: 0,
   })
 }
 
@@ -885,6 +1163,9 @@ export function startWave(g: Game, rng: () => number) {
   for (const side of g.sides) {
     if (side.lost) continue
     side.wave = g.wave
+    side.waveKills = 0
+    for (const m of side.missions)
+      if (m.id === 'calmStart') m.progress = side.monsters.length <= CALM_LIMIT ? Math.min(m.goal, m.progress + 1) : 0
     const list = waveSpawns(g.wave, rng)
     if (g.coop)
       for (const sp of list) {
@@ -943,6 +1224,9 @@ function tickSide(side: Side, dt: number) {
   side.shake = Math.max(0, side.shake - dt)
   side.incoming = Math.max(0, side.incoming - dt)
   for (const u of side.units) if (u && u.flash > 0) u.flash = Math.max(0, u.flash - dt)
+  for (let k = 0; k < side.skillCd.length; k++) side.skillCd[k] = Math.max(0, side.skillCd[k] - dt)
+  const frozen = side.freezeT > 0
+  if (frozen) side.freezeT = Math.max(0, side.freezeT - dt)
 
   // spawning
   side.spawnT -= dt
@@ -956,12 +1240,14 @@ function tickSide(side: Side, dt: number) {
   // monster movement and damage over time
   for (const m of side.monsters) {
     m.hitT = Math.max(0, m.hitT - dt)
+    m.age = (m.age ?? 0) + dt
     if (m.curseT && m.curseT > 0) m.curseT -= dt
     if (m.poisonT > 0) {
       m.hp -= m.poisonDps * Math.min(dt, m.poisonT) * cursed(m)
       m.poisonT -= dt
       if (m.hp <= 0 && m.poisonBy != null) m.by = m.poisonBy
     }
+    if (frozen) continue
     if (m.stunT > 0) {
       m.stunT -= dt
       continue
@@ -974,7 +1260,7 @@ function tickSide(side: Side, dt: number) {
     m.s = (m.s + v * dt) % PATH_LEN
     m.dist += v * dt
   }
-  if (side.bossT != null) side.bossT -= dt
+  if (side.bossT != null && !frozen) side.bossT -= dt
 }
 
 /** Spirits of side `idx` shoot at `targets` (shared coordinates; effects drawn in the side's own frame). */
@@ -1180,6 +1466,9 @@ function reapSide(g: Game, idx: number, rng: () => number) {
     const killer = g.coop && m.by != null && g.sides[m.by] ? m.by : idx
     killRewards(g, idx, killer, m.reward).forEach((c, i) => (g.sides[i].coins += c))
     g.sides[killer].kills++
+    g.sides[killer].waveKills++
+    if (m.kind === 'elite' && (m.age ?? 0) <= ELITE_FAST) missionEvent(side, 'eliteFast')
+    if (m.kind === 'boss' && (m.age ?? 0) <= BOSS_FAST) missionEvent(side, 'bossFast')
     const p = pathPos(m.s)
     pushFx(side, { k: 'boom', x: p.x, y: p.y, r: m.kind === 'boss' ? 1.4 : 0.45, color: `hsl(${m.hue} 80% 65%)`, t: 0, life: 0.35 })
     if (killer !== idx) {
@@ -1187,7 +1476,7 @@ function reapSide(g: Game, idx: number, rng: () => number) {
       if (m.kind !== 'normal' || g.sides[killer].helped % 5 === 0)
         pushFx(side, { k: 'txt', x: p.x, y: p.y - 0.3, text: '🤝', color: '#ffe066', t: 0, life: 0.8, size: 0.3 })
     }
-    if (m.kind === 'boss' || m.kind === 'elite') grantOffer(g.sides[killer], rng)
+    if (m.kind === 'boss' || m.kind === 'elite') grantOffer(g.sides[killer], g.streams?.card ?? rng)
     if (m.kind === 'boss') {
       side.bossT = null
       pushFx(side, {
@@ -1278,12 +1567,14 @@ export function step(g: Game, dt: number, rng: () => number): Game {
   if (g.waveTimer <= 0) startWave(g, rng)
   if (g.coop) {
     stepCoop(g, dt, rng)
+    missionsTick(g, rng)
     if (g.coopFail) g.over = true
     return g
   }
   g.sides.forEach((s, i) => {
     if (!s.lost) stepSide(g, i, dt, rng)
   })
+  missionsTick(g, rng)
   const lost = g.sides.map((s) => s.lost)
   if (g.versus) {
     if (lost.some(Boolean)) {
@@ -1301,6 +1592,8 @@ export const wavesCleared = (g: Game) => Math.max(0, g.sides.every((s) => s.lost
 // ---------- AI ----------
 
 export const AI_INTERVAL: Record<Difficulty, number> = { easy: 1.5, normal: 0.75, hard: 0.3 }
+/** The AI only gambles once its board is up and running (this many summons). */
+export const AI_GAMBLE_AFTER = 12
 /** How eagerly the AI merges a recipe pair (in "tiers" of priority over normal merges). */
 export const RECIPE_PRIORITY_HARD = 25
 export const RECIPE_PRIORITY_NORMAL = 5
@@ -1313,7 +1606,33 @@ export function aiPickOffers(g: Game, diffs: (Difficulty | null)[], rng: () => n
   })
 }
 
-export type AiAction = 'summon' | 'merge' | 'upgrade' | 'unlock' | 'transform' | 'sell' | 'move' | 'card' | null
+export type AiAction =
+  | 'summon'
+  | 'gamble'
+  | 'merge'
+  | 'upgrade'
+  | 'unlock'
+  | 'transform'
+  | 'sell'
+  | 'move'
+  | 'card'
+  | 'skill'
+  | null
+
+/**
+ * Which skill the AI should fire now, if any: 💥 when the loop is crowded or the boss clock is
+ * running out, ⏸️ only in an emergency. `limit` is the monster count that loses.
+ */
+export function aiSkill(side: Side, diff: Difficulty, limit: number): SkillId | null {
+  const crowd = side.monsters.length / limit
+  const boss = side.bossT != null && side.monsters.some((m) => m.kind === 'boss')
+  const t = side.bossT ?? Infinity
+  // an easy AI only remembers its meteor when the loop is nearly full
+  if (diff === 'easy') return canSkill(side, 'meteor') && crowd >= 0.85 ? 'meteor' : null
+  if (canSkill(side, 'freeze') && side.freezeT <= 0 && (crowd >= 0.85 || (boss && t < 8))) return 'freeze'
+  if (canSkill(side, 'meteor') && (crowd >= 0.6 || (boss && t < 15))) return 'meteor'
+  return null
+}
 
 /** Chance that rerolling `slot` creates a merge pair (another unit with its ★ but a different type). */
 export function pairChance(side: Side, slot: number): number {
@@ -1444,10 +1763,24 @@ export function aiAct(side: Side, diff: Difficulty, rng: () => number, tools = t
     return 'card'
   }
   if (diff === 'easy' && rng() < 0.3) return null
+  if (tools) {
+    const k = aiSkill(side, diff, edgeRow >= 0 ? COOP_LIMIT / 2 : LIMIT)
+    if (k && castSkill(side, k)) return 'skill'
+  }
   // a nearly full board is worth growing before it jams
   if (tools && diff !== 'easy' && canUnlock(side) && emptySlots(side).length <= 1) {
     unlock(side)
     return 'unlock'
+  }
+  // gamble only with coins to spare (it is a slightly worse deal than plain summons)
+  if (
+    tools &&
+    canGamble(side) &&
+    side.summons >= AI_GAMBLE_AFTER &&
+    (diff === 'easy' ? rng() < 0.1 : side.coins >= gamblePrice(side) * (diff === 'hard' ? 3 : 4))
+  ) {
+    gamble(side, rng)
+    return 'gamble'
   }
   if (canSummon(side)) {
     summon(side, rng)

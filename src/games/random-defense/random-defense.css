@@ -40,7 +40,7 @@
 }
 .rd-arena.solo {
   /* hug the 8:5 field instead of stretching to the full viewport */
-  height: min(calc(100dvh - 92px), calc(min(100vw - 24px, 868px) * 0.625 + 220px));
+  height: min(calc(100dvh - 92px), calc(min(100vw - 24px, 868px) * 0.625 + 266px));
   min-height: 400px;
 }
 .rd-arena.versus {
@@ -391,10 +391,10 @@
   gap: 4px;
   min-height: 480px;
   /* hug the 8:9 field plus the player panels instead of stretching to the full viewport */
-  height: min(calc(100dvh - 92px), calc(min(100vw - 24px, 868px) * 1.125 + 184px));
+  height: min(calc(100dvh - 92px), calc(min(100vw - 24px, 868px) * 1.125 + 228px));
 }
 .rd-arena.coop.two {
-  height: min(calc(100dvh - 92px), calc(min(100vw - 24px, 868px) * 1.125 + 212px));
+  height: min(calc(100dvh - 92px), calc(min(100vw - 24px, 868px) * 1.125 + 300px));
 }
 .rd-coop-panel {
   display: flex;
@@ -593,7 +593,6 @@
 
 /* owned cards in the HUD */
 .rd-chips-wrap {
-  position: relative;
   flex: none;
 }
 .rd-chips {
@@ -624,12 +623,16 @@
   font-weight: 800;
   margin-left: 2px;
 }
+/* drawers open under the whole HUD row so they never leave the screen */
+.rd-hud {
+  position: relative;
+}
 .rd-chips-pop {
   position: absolute;
   right: 0;
   top: calc(100% + 6px);
   z-index: 8;
-  width: min(280px, calc(100vw - 40px));
+  width: min(320px, 100%);
   max-height: 260px;
   overflow: auto;
   padding: 8px 10px;
@@ -710,22 +713,25 @@
   margin: 0;
 }
 
-/* first-discovery toast */
+/* first-discovery banner: slim strip along the top edge of the board */
 .rd-toast {
   position: absolute;
   left: 50%;
-  top: 42%;
+  top: 3px;
   z-index: 9;
   transform: translateX(-50%);
-  max-width: calc(100% - 16px);
-  padding: 8px 14px;
+  max-width: calc(100% - 12px);
+  padding: 3px 12px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #6b2fd6, #d6338f);
+  background: linear-gradient(90deg, rgba(107, 47, 214, 0.92), rgba(214, 51, 143, 0.92));
   color: #fff;
   font-weight: 800;
-  font-size: 0.88rem;
-  text-align: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font-size: 0.74rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   pointer-events: none;
   animation: rd-toast 3s ease-out forwards;
 }
@@ -743,4 +749,141 @@
     opacity: 0;
     transform: translate(-50%, 0) scale(1);
   }
+}
+
+/* ---- 🎰 gamble + ⚡ skills ---- */
+.rd-skillbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+.rd-skillbar .btn {
+  position: relative;
+  overflow: hidden;
+  min-height: 40px;
+  padding: 2px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+  touch-action: none;
+  border-width: 2px;
+}
+.rd-skillbar .btn b {
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+.rd-skillbar .btn small {
+  font-size: 0.72rem;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+.rd-gamble {
+  border-color: #d4a017;
+}
+.rd-skill {
+  border-color: #6f8cff;
+}
+/* cooldown sweep: the dark wedge shrinks clockwise as the skill recharges */
+.rd-skill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: conic-gradient(rgba(0, 0, 0, 0.38) calc(var(--cd, 0) * 360deg), transparent 0);
+}
+.rd-skill.ready {
+  border-color: #ffd23f;
+  animation: rd-nudge 1.6s ease-in-out infinite;
+}
+.rd-skill.active {
+  border-color: #9fdcff;
+}
+.rd-skillbar .btn:disabled {
+  opacity: 0.75;
+}
+.rd-side.compact .rd-skillbar .btn {
+  min-height: 40px;
+}
+
+/* ---- 🎯 mission chip ---- */
+.rd-mchip {
+  gap: 4px;
+  border-color: #3ecf8e;
+}
+.rd-mbars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 16px;
+}
+.rd-mbars > i,
+.rd-mbar {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(127, 127, 127, 0.35);
+  overflow: hidden;
+}
+.rd-mbars > i > i,
+.rd-mbar > i {
+  display: block;
+  height: 100%;
+  background: #3ecf8e;
+}
+.rd-mbar {
+  height: 5px;
+  margin-top: 3px;
+}
+.rd-chips-pop .rd-mrow {
+  align-items: flex-start;
+}
+.rd-chips-pop .rd-mrow > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.rd-chips-pop .rd-mrow b {
+  white-space: nowrap;
+}
+.rd-chips-pop .rd-mhead {
+  display: block;
+}
+
+/* ---- 🌅 daily challenge ---- */
+.rd-daily {
+  margin: 0 0 10px;
+}
+.rd-daily .rd-facing {
+  margin: 0 0 6px;
+}
+.rd-daily.on .rd-facing {
+  outline: 2px solid #ffb347;
+}
+.rd-week {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.rd-week li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 0;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 0.8rem;
+}
+.rd-week li small {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+.rd-week li.today {
+  outline: 2px solid #ffb347;
+}
+.rd-daily-tag {
+  font-size: 1rem;
 }

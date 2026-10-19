@@ -6,6 +6,16 @@ import type { PlayerConfig } from '../../lib/types'
 import {
   AWAKEN_TIER,
   CARDS,
+  MISSIONS,
+  SKILLS,
+  SKILL_INFO,
+  canGamble,
+  canSkill,
+  gamble,
+  gamblePrice,
+  missionReward,
+  skillIndex,
+  castSkill,
   CARD_IDS,
   CLASS_NAMES,
   HIDDEN_TYPES,
@@ -51,6 +61,18 @@ import {
 } from './logic'
 import type { UiState } from './render'
 
+// ---- randomness: daily challenges draw from seeded streams, normal games from Math.random ----
+
+export interface Rngs {
+  summon: () => number
+  merge: () => number
+  card: () => number
+}
+export const uiRngs = (g: Game): Rngs =>
+  g.streams
+    ? { summon: g.streams.summon, merge: g.streams.merge, card: g.streams.card }
+    : { summon: Math.random, merge: Math.random, card: Math.random }
+
 // ---- selection actions shared by the action bar and the keyboard ----
 
 export function select(ui: UiState, slot: number) {
@@ -71,8 +93,8 @@ export function sellSelected(side: Side, ui: UiState): 'sold' | 'confirm' | null
   return 'sold'
 }
 
-export function transformSelected(side: Side, ui: UiState): boolean {
-  if (ui.sel < 0 || !transform(side, ui.sel, Math.random)) return false
+export function transformSelected(side: Side, ui: UiState, rng: () => number = Math.random): boolean {
+  if (ui.sel < 0 || !transform(side, ui.sel, rng)) return false
   ui.confirm = 0
   return true
 }
@@ -88,7 +110,7 @@ export function unlockSelected(side: Side, ui: UiState): boolean {
 // ---- board pointer input, in board-local field coordinates ----
 
 /** Pointer down on a board. Returns true when a drag started (caller should capture the pointer). */
-export function boardDown(side: Side, ui: UiState, x: number, y: number, pointerId: number): boolean {
+export function boardDown(side: Side, ui: UiState, x: number, y: number, pointerId: number, rng: () => number = Math.random): boolean {
   const slot = slotAt(x, y)
   if (slot < 0) {
     select(ui, -1)
@@ -103,7 +125,7 @@ export function boardDown(side: Side, ui: UiState, x: number, y: number, pointer
     return true
   }
   if (ui.sel >= 0) {
-    act(side, ui.sel, slot, Math.random)
+    act(side, ui.sel, slot, rng)
     select(ui, -1)
   }
   return false
@@ -118,19 +140,19 @@ export function boardMove(ui: UiState, x: number, y: number) {
 }
 
 /** Pointer up: finish a drag (move / swap / merge) or treat it as a tap (select / tap-tap merge). */
-export function boardUp(side: Side, ui: UiState, x: number, y: number, blocked: boolean) {
+export function boardUp(side: Side, ui: UiState, x: number, y: number, blocked: boolean, rng: () => number = Math.random) {
   const d = ui.drag
   if (!d) return
   ui.drag = null
   if (blocked) return
   const target = slotAt(x, y)
   if (d.moved) {
-    if (target >= 0 && target !== d.from) act(side, d.from, target, Math.random)
+    if (target >= 0 && target !== d.from) act(side, d.from, target, rng)
     select(ui, -1)
   } else if (ui.sel < 0 || ui.sel === d.from) {
     select(ui, ui.sel === d.from ? -1 : d.from)
   } else if (canMerge(side.units[ui.sel], side.units[d.from])) {
-    act(side, ui.sel, d.from, Math.random)
+    act(side, ui.sel, d.from, rng)
     select(ui, -1)
   } else select(ui, d.from)
 }
@@ -191,17 +213,18 @@ export function Hud({
         <i style={{ width: `${Math.min(100, danger * 100)}%` }} />
       </span>
       {side.bossT != null && <span className="rd-bosst">👹 {Math.max(0, Math.ceil(side.bossT))}초</span>}
+      <MissionChip side={side} />
       <CardChips side={side} />
       <span className="rd-coins">🪙 {Math.floor(side.coins)}</span>
     </div>
   )
 }
 
-export function Controls({ side, press }: { side: Side; press: Press }) {
+export function Controls({ side, press, rngs }: { side: Side; press: Press; rngs: Rngs }) {
   const cost = summonPrice(side)
   return (
     <div className="rd-controls">
-      <button className="btn accent rd-summon" disabled={!canSummon(side)} {...press(() => summon(side, Math.random))}>
+      <button className="btn accent rd-summon" disabled={!canSummon(side)} {...press(() => summon(side, rngs.summon))}>
         <b>소환</b>
         <small>🪙 {cost}</small>
       </button>
@@ -227,25 +250,72 @@ export function Controls({ side, press }: { side: Side; press: Press }) {
   )
 }
 
+/** 🎰 gamble summon and the two ⚡ skills, with a cooldown sweep. */
+export function SkillBar({ side, press, rngs }: { side: Side; press: Press; rngs: Rngs }) {
+  return (
+    <div className="rd-skillbar">
+      <button className="btn rd-gamble" disabled={!canGamble(side)} {...press(() => gamble(side, rngs.summon))} aria-label="도박 소환">
+        <b>🎰 도박</b>
+        <small>🪙 {gamblePrice(side)}</small>
+      </button>
+      {SKILLS.map((k) => {
+        const cd = side.skillCd[skillIndex(k)]
+        const ready = canSkill(side, k)
+        const info = SKILL_INFO[k]
+        const active = k === 'freeze' && side.freezeT > 0
+        return (
+          <button
+            key={k}
+            className={`btn rd-skill ${ready ? 'ready' : ''} ${active ? 'active' : ''}`}
+            disabled={!ready}
+            style={{ '--cd': `${Math.min(1, cd / info.cd)}` } as React.CSSProperties}
+            {...press(() => castSkill(side, k))}
+            aria-label={info.name}
+            title={info.desc}
+          >
+            <b>
+              {info.emoji} {info.name}
+            </b>
+            <small>{ready ? '준비!' : `${Math.ceil(cd)}초`}</small>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function AiNote({ side }: { side: Side }) {
   return <div className="rd-ai-note muted">강화 {CLASS_NAMES.map((n, c) => `${n} ${side.upg[c]}`).join(' · ')}</div>
 }
 
 /** Sell / transform buttons for the selected spirit, the unlock button for a locked slot, or the stuck hint. */
-export function ActionOverlay({ side, ui, press, className = '' }: { side: Side; ui: UiState; press: Press; className?: string }) {
+export function ActionOverlay({
+  side,
+  ui,
+  press,
+  className = '',
+  rngs,
+}: {
+  side: Side
+  ui: UiState
+  press: Press
+  className?: string
+  rngs?: Rngs
+}) {
   const selUnit = ui.sel >= 0 ? side.units[ui.sel] : null
   const selLocked = ui.sel >= 0 && !side.open[ui.sel]
   const stuck = isStuck(side)
   if (selUnit) {
     const confirming = ui.confirm === selUnit.id
     const tCost = transformPrice(side, selUnit.tier)
+    const rng = rngs?.merge ?? Math.random
     return (
       <div className={`rd-actions ${stuck ? 'stuck' : ''} ${className}`}>
         <button className={`btn small rd-act-sell ${confirming ? 'confirm' : ''}`} {...press(() => sellSelected(side, ui))}>
           {confirming ? '한 번 더 누르면 판매' : '💰 판매'} <b>+{refundOf(selUnit)}</b>
         </button>
         {transformable(selUnit) && (
-          <button className="btn small rd-act-swap" disabled={!canTransform(side, ui.sel)} {...press(() => transformSelected(side, ui))}>
+          <button className="btn small rd-act-swap" disabled={!canTransform(side, ui.sel)} {...press(() => transformSelected(side, ui, rng))}>
             🔄 바꾸기 <b>🪙{tCost}</b>
           </button>
         )}
@@ -319,6 +389,7 @@ export function InfoLine({ game, side, ui, idle }: { game: Game; side: Side; ui:
  */
 interface PickerProps {
   side: Side
+  rng?: () => number
   variant: 'center' | 'board' | 'top' | 'bottom'
   flipped?: boolean
   /** Show the 1 / 2 / 3 key hints. */
@@ -333,7 +404,7 @@ export function CardPicker(props: PickerProps) {
   return <OfferPicker key={offer.join(',') + props.side.offerQueue} offer={offer} {...props} />
 }
 
-function OfferPicker({ side, variant, flipped = false, keys = false, onPick, offer }: PickerProps & { offer: CardId[] }) {
+function OfferPicker({ side, variant, flipped = false, keys = false, onPick, offer, rng = Math.random }: PickerProps & { offer: CardId[] }) {
   // ignore taps in the first moment so a tap meant for the board doesn't pick a card by accident
   const shownAt = useRef(Infinity)
   useEffect(() => {
@@ -341,7 +412,7 @@ function OfferPicker({ side, variant, flipped = false, keys = false, onPick, off
   }, [])
   const take = (id: CardId) => {
     if (performance.now() - shownAt.current < 350) return
-    if (pickCard(side, id, Math.random)) onPick()
+    if (pickCard(side, id, rng)) onPick()
   }
   return (
     <div className={`rd-cards ${variant} ${flipped ? 'flipped' : ''}`}>
@@ -454,8 +525,11 @@ export function CodexModal({ onClose }: { onClose: () => void }) {
   )
 }
 
-/** Watches the human sides for hidden spirits made for the first time and celebrates them. */
-export function Discoveries({ sides, humans }: { sides: Side[]; humans: number[] }) {
+/**
+ * Watches the human sides for hidden spirits made for the first time and celebrates them with a
+ * slim banner along the top edge of the board (render it inside `.rd-board`).
+ */
+export function Discoveries({ sides, humans, className = '' }: { sides: Side[]; humans: number[]; className?: string }) {
   const [toast, setToast] = useState<{ types: HiddenType[]; key: number } | null>(null)
   const found = humans.flatMap((i) => sides[i].found).join(',')
   // record new kinds in the codex (localStorage) and celebrate them
@@ -475,8 +549,51 @@ export function Discoveries({ sides, humans }: { sides: Side[]; humans: number[]
   }, [toast])
   if (!toast) return null
   return (
-    <div className="rd-toast" key={toast.key} role="status">
+    <div className={`rd-toast ${className}`} key={toast.key} role="status">
       ✨ 새로운 정령 발견! {toast.types.map((t) => `${INFO[t].emoji} ${INFO[t].name}`).join(' · ')}
     </div>
+  )
+}
+
+// ---- 🎯 missions ----
+
+/** Mission chip: three mini progress bars; tap for the list with progress and rewards. */
+export function MissionChip({ side }: { side: Side }) {
+  const [open, setOpen] = useState(false)
+  if (!side.missions.length) return null
+  return (
+    <span className="rd-chips-wrap">
+      <button className="rd-chips rd-mchip" onClick={() => setOpen((v) => !v)} aria-label="미션" aria-expanded={open}>
+        🎯
+        <span className="rd-mbars">
+          {side.missions.map((m, k) => (
+            <i key={k}>
+              <i style={{ width: `${(100 * m.progress) / m.goal}%` }} />
+            </i>
+          ))}
+        </span>
+      </button>
+      {open && (
+        <div className="rd-chips-pop" onClick={() => setOpen(false)} role="dialog" aria-label="미션">
+          <p className="rd-mhead">
+            <b>🎯 미션</b> <small>완료하면 🪙 {missionReward(side.wave)} · 완료 {side.missionsDone}개</small>
+          </p>
+          {side.missions.map((m, k) => (
+            <p key={k} className="rd-mrow">
+              <span>{MISSIONS[m.id].emoji}</span>
+              <span>
+                {MISSIONS[m.id].text(m.goal)}
+                <span className="rd-mbar">
+                  <i style={{ width: `${(100 * m.progress) / m.goal}%` }} />
+                </span>
+              </span>
+              <b>
+                {m.progress}/{m.goal}
+              </b>
+            </p>
+          ))}
+        </div>
+      )}
+    </span>
   )
 }

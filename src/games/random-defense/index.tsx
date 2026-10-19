@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { PlayerSetup } from '../../components/PlayerSetup'
 import { Result } from '../../components/Result'
-import { useBestScore, useStored } from '../../lib/storage'
+import { load, useBestScore, useStored } from '../../lib/storage'
 import type { Difficulty, PlayerConfig } from '../../lib/types'
 import {
   AI_COIN_RATE,
@@ -15,6 +15,10 @@ import {
   TYPES,
   aiAct,
   aiPickOffers,
+  castSkill,
+  dailyStreams,
+  dateKey,
+  gamble,
   isBossWave,
   newGame,
   pickCard,
@@ -32,6 +36,9 @@ import {
   CodexModal,
   Controls,
   Discoveries,
+  SkillBar,
+  uiRngs,
+  type Rngs,
   Hud,
   InfoLine,
   boardDown,
@@ -51,6 +58,18 @@ export interface Cfg {
   mode: Mode
   /** Co-op with two humans: rotate the top half for players sitting across from each other. */
   facing: boolean
+  /** 🌅 Daily challenge (solo): the local date it was started on, YYYY-MM-DD. */
+  daily?: string
+}
+
+/** Record key of a daily challenge (stored like other best scores: best:<key>). */
+export const dailyKey = (date: string) => `random-defense-daily-${date}`
+const dailyBest = (date: string) => load<number | null>(`best:${dailyKey(date)}`, null)
+
+/** The last `n` local dates, today first. */
+function lastDays(today: string, n: number): string[] {
+  const [y, m, d] = today.split('-').map(Number)
+  return Array.from({ length: n }, (_, k) => dateKey(new Date(y, m - 1, d - k)))
 }
 
 const MODES: { id: Mode; label: string }[] = [
@@ -70,6 +89,8 @@ export default function RandomDefense() {
   const [round, setRound] = useState(0)
   const [mode, setMode] = useStored<Mode>('setup:random-defense:mode', 'solo')
   const [facing, setFacing] = useStored('setup:random-defense:facing', false)
+  const [daily, setDaily] = useStored('setup:random-defense:daily', false)
+  const [today] = useState(() => dateKey(new Date()))
   if (!cfg) {
     return (
       <div className="rd-setup">
@@ -86,9 +107,20 @@ export default function RandomDefense() {
           min={mode === 'solo' ? 1 : 2}
           max={mode === 'solo' ? 1 : 2}
           showDifficulty={mode === 'versus'}
-          startLabel={mode === 'coop' ? '함께 수호 시작!' : '수호 시작!'}
-          extra={<Roster mode={mode} facing={facing} onFacing={setFacing} />}
-          onStart={(players, difficulty) => setCfg({ players, difficulty, mode, facing })}
+          startLabel={mode === 'coop' ? '함께 수호 시작!' : mode === 'solo' && daily ? '🌅 오늘의 도전 시작!' : '수호 시작!'}
+          extra={
+            <Roster
+              mode={mode}
+              facing={facing}
+              onFacing={setFacing}
+              daily={daily}
+              onDaily={setDaily}
+              today={today}
+            />
+          }
+          onStart={(players, difficulty) =>
+            setCfg({ players, difficulty, mode, facing, daily: mode === 'solo' && daily ? today : undefined })
+          }
         />
       </div>
     )
@@ -98,11 +130,26 @@ export default function RandomDefense() {
   return <Match key={round} cfg={cfg} onAgain={() => setRound((r) => r + 1)} onReset={() => setCfg(null)} />
 }
 
-function Roster({ mode, facing, onFacing }: { mode: Mode; facing: boolean; onFacing: (v: boolean) => void }) {
+function Roster({
+  mode,
+  facing,
+  onFacing,
+  daily,
+  onDaily,
+  today,
+}: {
+  mode: Mode
+  facing: boolean
+  onFacing: (v: boolean) => void
+  daily: boolean
+  onDaily: (v: boolean) => void
+  today: string
+}) {
   const [codex, setCodex] = useState(false)
   return (
     <div className="rd-roster">
       <p className="muted">{MODE_NOTES[mode]}</p>
+      {mode === 'solo' && <DailyPanel on={daily} onToggle={onDaily} today={today} />}
       {mode === 'coop' && (
         <label className="rd-facing">
           <input type="checkbox" checked={facing} onChange={(e) => onFacing(e.target.checked)} />
@@ -129,6 +176,40 @@ function Roster({ mode, facing, onFacing }: { mode: Mode; facing: boolean; onFac
   )
 }
 
+/** 🌅 Daily challenge switch with today's record and the last 7 days. */
+function DailyPanel({ on, onToggle, today }: { on: boolean; onToggle: (v: boolean) => void; today: string }) {
+  const days = lastDays(today, 7)
+  const bests = days.map(dailyBest)
+  // consecutive days played, counting back from today (or yesterday if today is not played yet)
+  let streak = 0
+  for (let k = bests[0] == null ? 1 : 0; k < days.length && bests[k] != null; k++) streak++
+  return (
+    <div className={`rd-daily ${on ? 'on' : ''}`}>
+      <label className="rd-facing">
+        <input type="checkbox" checked={on} onChange={(e) => onToggle(e.target.checked)} />
+        <span>
+          <b>🌅 오늘의 도전 · {today}</b>
+          <small className="muted">
+            오늘은 누구나 같은 순서로 정령·카드·미션이 나와요 ·{' '}
+            {bests[0] != null ? `오늘 최고 ${bests[0]}웨이브` : '아직 기록 없음'}
+            {streak > 1 ? ` · 🔥 ${streak}일 연속` : ''}
+          </small>
+        </span>
+      </label>
+      <ol className="rd-week" aria-label="최근 7일 기록">
+        {days
+          .map((d, k) => (
+            <li key={d} className={k === 0 ? 'today' : ''} title={d}>
+              <small>{Number(d.slice(8))}일</small>
+              <b>{bests[k] ?? '–'}</b>
+            </li>
+          ))
+          .reverse()}
+      </ol>
+    </div>
+  )
+}
+
 const DT = 1 / 60
 
 function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onReset: () => void }) {
@@ -138,8 +219,12 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
   if (!gameRef.current) {
     const g = newGame(players.length, cfg.mode)
     if (versus) players.forEach((p, i) => p.isAI && (g.sides[i].coinRate = AI_COIN_RATE[difficulty]))
+    if (cfg.daily && !versus) g.streams = dailyStreams(cfg.daily)
     gameRef.current = g
   }
+  const rngs = uiRngs(gameRef.current)
+  /** Waves, combat and the AI: the daily stream, or Math.random. */
+  const worldRng = gameRef.current.streams?.combat ?? Math.random
   const uiRef = useRef<UiState[]>(players.map(() => ({ sel: -1, drag: null, confirm: 0 })))
   const canvases = useRef<(HTMLCanvasElement | null)[]>([])
   const pausedRef = useRef(false)
@@ -149,7 +234,7 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
   const [speed, setSpeed] = useState(1)
   const [, setTick] = useState(0)
   const [over, setOver] = useState(false)
-  const { best, submit } = useBestScore('random-defense')
+  const { best, submit } = useBestScore(cfg.daily ? dailyKey(cfg.daily) : 'random-defense')
   const [newRecord, setNewRecord] = useState(false)
   const recorded = useRef(false)
 
@@ -165,7 +250,6 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
   const top = versus ? 1 - bottom : -1
   const bothHuman = versus && players.every((p) => !p.isAI)
   const aiDiffs = players.map((p) => (p.isAI ? difficulty : null))
-  const humans = players.map((p, i) => (p.isAI ? -1 : i)).filter((i) => i >= 0)
   /** Solo: the game waits while a card offer is open. */
   const held = (g: Game) => !versus && !!g.sides[0].offer
 
@@ -189,7 +273,7 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
       if (!pausedRef.current && !g.over) {
         acc += elapsed * speedRef.current
         while (acc >= DT) {
-          aiPickOffers(g, aiDiffs, Math.random)
+          aiPickOffers(g, aiDiffs, worldRng)
           if (held(g)) {
             acc = 0
             break
@@ -200,10 +284,10 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
             aiT[i] += DT
             if (aiT[i] >= AI_INTERVAL[difficulty]) {
               aiT[i] = 0
-              aiAct(g.sides[i], difficulty, Math.random)
+              aiAct(g.sides[i], difficulty, worldRng)
             }
           })
-          step(g, DT, Math.random)
+          step(g, DT, worldRng)
           if (g.over) break
         }
         hudT += elapsed
@@ -265,17 +349,20 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
       // 1~3 pick a card while an offer is open (otherwise they buy upgrades)
       if (side.offer && e.key >= '1' && e.key <= '3') {
         const id = side.offer[Number(e.key) - 1]
-        if (id) pickCard(side, id, Math.random)
+        if (id) pickCard(side, id, rngs.card)
         refresh()
         return
       }
       if (held(g)) return
       if (e.key === ' ' || k === 's') {
         e.preventDefault()
-        summon(side, Math.random)
-      } else if (e.key >= '1' && e.key <= '3') upgrade(side, Number(e.key) - 1)
+        summon(side, rngs.summon)
+      } else if (k === 'g') gamble(side, rngs.summon)
+      else if (k === 'q') castSkill(side, 'meteor')
+      else if (k === 'w') castSkill(side, 'freeze')
+      else if (e.key >= '1' && e.key <= '3') upgrade(side, Number(e.key) - 1)
       else if (k === 'x') sellSelected(side, ui)
-      else if (k === 'c') transformSelected(side, ui)
+      else if (k === 'c') transformSelected(side, ui, rngs.merge)
       else if (k === 'u') unlockSelected(side, ui)
       else return
       refresh()
@@ -294,7 +381,7 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
       <Result
         title={
           !versus
-            ? `웨이브 ${g.wave}에서 쓰러졌어요`
+            ? `${cfg.daily ? '🌅 ' : ''}웨이브 ${g.wave}에서 쓰러졌어요`
             : g.winner == null || g.winner < 0
               ? '무승부!'
               : `🏆 ${players[g.winner].name} 승리!`
@@ -313,8 +400,19 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
                 </>
               )}
             </p>
+            {cfg.daily && <p className="muted">🌅 오늘의 도전 · {cfg.daily}</p>}
             {!players[0].isAI && (
-              <p>{newRecord ? '🎉 새로운 최고 기록!' : best != null ? `최고 기록: 웨이브 ${best}` : ''}</p>
+              <p>
+                {cfg.daily
+                  ? newRecord
+                    ? `🎉 오늘 최고 ${g.wave}웨이브!`
+                    : `오늘 최고 ${best ?? g.wave}웨이브`
+                  : newRecord
+                    ? '🎉 새로운 최고 기록!'
+                    : best != null
+                      ? `최고 기록: 웨이브 ${best}`
+                      : ''}
+              </p>
             )}
           </>
         ) : (
@@ -351,6 +449,7 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
       compact={versus}
       paused={paused}
       held={held(g)}
+      rngs={rngs}
       onChange={refresh}
       canvasRef={(c) => (canvases.current[i] = c)}
     />
@@ -364,6 +463,7 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
           {waveLabel}
           {bossSoon && g.wave > 0 ? ' · 다음 보스!' : ''}
         </span>
+        {!versus && cfg.daily && <span className="rd-daily-tag">🌅</span>}
         {!versus && best != null && !players[0].isAI && <span className="muted">최고 {best}</span>}
         <span className="rd-strip-btns">
           {!versus && (
@@ -385,8 +485,9 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
         </span>
       </div>
       {sideView(bottom, false)}
-      <Discoveries sides={g.sides} humans={humans} />
-      {!versus && !players[0].isAI && !paused && <CardPicker side={g.sides[0]} variant="center" keys onPick={refresh} />}
+      {!versus && !players[0].isAI && !paused && (
+        <CardPicker side={g.sides[0]} variant="center" keys rng={rngs.card} onPick={refresh} />
+      )}
       {paused && (
         <div className="rd-pause">
           <div className="card-panel">
@@ -420,6 +521,7 @@ function SideView({
   compact,
   paused,
   held,
+  rngs,
   onChange,
   canvasRef,
 }: {
@@ -432,6 +534,7 @@ function SideView({
   paused: boolean
   /** Solo card offer open: the board waits for the pick. */
   held: boolean
+  rngs: Rngs
   onChange: () => void
   canvasRef: (c: HTMLCanvasElement | null) => void
 }) {
@@ -470,7 +573,7 @@ function SideView({
     if (blocked() || ui.drag) return
     e.preventDefault()
     const { x, y } = toField(e)
-    if (boardDown(side, ui, x, y, e.pointerId)) e.currentTarget.setPointerCapture(e.pointerId)
+    if (boardDown(side, ui, x, y, e.pointerId, rngs.merge)) e.currentTarget.setPointerCapture(e.pointerId)
     else onChange()
   }
   const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -481,7 +584,7 @@ function SideView({
   const onUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!ui.drag || ui.drag.id !== e.pointerId) return
     const { x, y } = toField(e)
-    boardUp(side, ui, x, y, blocked())
+    boardUp(side, ui, x, y, blocked(), rngs.merge)
     onChange()
   }
   const onCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -506,13 +609,17 @@ function SideView({
             onPointerCancel={onCancel}
             onContextMenu={(e) => e.preventDefault()}
           />
-          {interactive && <ActionOverlay side={side} ui={ui} press={press} />}
-          {interactive && compact && !paused && <CardPicker side={side} variant="board" keys={!rotated} onPick={onChange} />}
+          {interactive && <ActionOverlay side={side} ui={ui} press={press} rngs={rngs} />}
+          {interactive && <Discoveries sides={game.sides} humans={[idx]} />}
+          {interactive && compact && !paused && (
+            <CardPicker side={side} variant="board" keys={!rotated} rng={rngs.card} onPick={onChange} />
+          )}
         </div>
       </div>
       {interactive ? (
         <>
-          <Controls side={side} press={press} />
+          <Controls side={side} press={press} rngs={rngs} />
+          <SkillBar side={side} press={press} rngs={rngs} />
           {!compact && <InfoLine game={game} side={side} ui={ui} />}
         </>
       ) : (

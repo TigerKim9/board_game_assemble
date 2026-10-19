@@ -14,7 +14,9 @@ import {
   SHARED_LANE_Y,
   aiAct,
   aiPickOffers,
+  castSkill,
   coopCount,
+  gamble,
   isBossWave,
   newGame,
   pickCard,
@@ -32,6 +34,7 @@ import {
   Controls,
   Discoveries,
   Hud,
+  SkillBar,
   boardDown,
   boardMove,
   boardUp,
@@ -39,6 +42,7 @@ import {
   sellSelected,
   transformSelected,
   unlockSelected,
+  uiRngs,
 } from './parts'
 import type { Cfg } from './index'
 
@@ -189,7 +193,10 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
       if (e.key === ' ' || k === 's') {
         e.preventDefault()
         summon(side, Math.random)
-      } else if (e.key >= '1' && e.key <= '3') upgrade(side, Number(e.key) - 1)
+      } else if (k === 'g') gamble(side, Math.random)
+      else if (k === 'q') castSkill(side, 'meteor')
+      else if (k === 'w') castSkill(side, 'freeze')
+      else if (e.key >= '1' && e.key <= '3') upgrade(side, Number(e.key) - 1)
       else if (k === 'x') sellSelected(side, ui)
       else if (k === 'c') transformSelected(side, ui)
       else if (k === 'u') unlockSelected(side, ui)
@@ -261,6 +268,7 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
   }
 
   const presses = [0, 1].map((i) => makePress(() => blocked(i), refresh))
+  const rngs = uiRngs(g)
   const total = coopCount(g)
   const danger = total / COOP_LIMIT
   const bossSoon = isBossWave(g.wave + 1)
@@ -276,7 +284,14 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
         style={{ '--rd-own': COOP_COLORS[i] } as React.CSSProperties}
       >
         <Hud player={p} side={side} count={side.monsters.length} limit={COOP_LIMIT} label="내 길" color={COOP_COLORS[i]} />
-        {p.isAI ? <AiNote side={side} /> : <Controls side={side} press={presses[i]} />}
+        {p.isAI ? (
+          <AiNote side={side} />
+        ) : (
+          <>
+            <Controls side={side} press={presses[i]} rngs={rngs} />
+            <SkillBar side={side} press={presses[i]} rngs={rngs} />
+          </>
+        )}
       </section>
     )
   }
@@ -320,12 +335,12 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
               <ActionOverlay side={g.sides[0]} ui={uiRef.current[0]} press={presses[0]} className="at-top" />
             ))}
           {!players[1].isAI && <ActionOverlay side={g.sides[1]} ui={uiRef.current[1]} press={presses[1]} />}
+          <Discoveries sides={g.sides} humans={players.map((p, i) => (p.isAI ? -1 : i)).filter((i) => i >= 0)} />
           {!paused && !players[0].isAI && <CardPicker side={g.sides[0]} variant="top" flipped={facing} onPick={refresh} />}
           {!paused && !players[1].isAI && <CardPicker side={g.sides[1]} variant="bottom" keys onPick={refresh} />}
         </div>
       </div>
       {panel(1)}
-      <Discoveries sides={g.sides} humans={players.map((p, i) => (p.isAI ? -1 : i)).filter((i) => i >= 0)} />
       {paused && (
         <div className="rd-pause">
           <div className="card-panel">

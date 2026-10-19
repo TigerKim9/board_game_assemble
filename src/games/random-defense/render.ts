@@ -413,10 +413,40 @@ function drawMonsters(ctx: CanvasRenderingContext2D, side: Side, ring?: string) 
   // bosses last so they sit on top
   for (const m of side.monsters) if (m.kind !== 'boss') drawMonster(ctx, m, ring)
   for (const m of side.monsters) if (m.kind === 'boss') drawMonster(ctx, m, ring)
+  if (side.freezeT > 0) {
+    // ⏸️ time freeze: icy film over every frozen monster
+    ctx.save()
+    ctx.globalAlpha = Math.min(1, side.freezeT * 2) * 0.75
+    ctx.strokeStyle = '#d6f3ff'
+    ctx.fillStyle = 'rgba(160,220,255,0.35)'
+    ctx.lineWidth = 0.035
+    for (const m of side.monsters) {
+      const { x, y } = pathPos(m.s)
+      const r = m.kind === 'boss' ? 0.5 : m.kind === 'elite' ? 0.36 : 0.25
+      ctx.beginPath()
+      ctx.rect(x - r, y - r, 2 * r, 2 * r)
+      ctx.fill()
+      ctx.stroke()
+    }
+    ctx.restore()
+  }
+}
+
+/** ⏸️ frozen loop: a pale blue wash over this board's path (board-local). */
+function drawFreeze(ctx: CanvasRenderingContext2D, side: Side, now: number) {
+  if (side.freezeT <= 0) return
+  ctx.save()
+  ctx.globalAlpha = Math.min(1, side.freezeT * 2) * (0.35 + 0.08 * Math.sin(now * 6))
+  ctx.strokeStyle = '#9fdcff'
+  ctx.lineWidth = 0.66
+  roundRect(ctx, 0.5, 0.5, PATH_W, PATH_H, 0.12)
+  ctx.stroke()
+  ctx.restore()
 }
 
 function drawFx(ctx: CanvasRenderingContext2D, side: Side) {
   for (const f of side.fx) {
+    if (f.t < 0) continue // queued, not shown yet
     const p = f.t / f.life
     ctx.globalAlpha = Math.max(0, 1 - p)
     if (f.k === 'shot') {
@@ -559,6 +589,7 @@ export function drawSide(ctx: CanvasRenderingContext2D, w: number, dpr: number, 
   drawBackground(ctx, FIELD_H)
   drawPath(ctx, 0, now)
   drawPortal(ctx, 0.5, 0.5, now)
+  drawFreeze(ctx, side, now)
   drawSlots(ctx, side, ui, now)
   drawSelRange(ctx, side, ui, now)
   drawUnits(ctx, side, ui, now)
@@ -648,6 +679,7 @@ export function drawCoop(
       fn(s, i)
       ctx.restore()
     })
+  each((s) => drawFreeze(ctx, s, now))
   each((s, i) => drawSlots(ctx, s, uis[i], now))
   each((s, i) => drawUnits(ctx, s, uis[i], now, flipTop && i === 0))
   each((s, i) => drawSelRange(ctx, s, uis[i], now))
