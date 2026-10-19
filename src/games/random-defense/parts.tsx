@@ -1,7 +1,14 @@
 // UI pieces shared by the solo / versus board (index.tsx) and the co-op field (coop.tsx).
+import { useEffect, useRef, useState } from 'react'
+import { Modal } from '../../components/Modal'
+import { load, save, useStored } from '../../lib/storage'
 import type { PlayerConfig } from '../../lib/types'
 import {
+  AWAKEN_TIER,
+  CARDS,
+  CARD_IDS,
   CLASS_NAMES,
+  HIDDEN_TYPES,
   INFO,
   MAX_TIER,
   MAX_UPGRADE,
@@ -10,26 +17,36 @@ import {
   act,
   auraInfo,
   canMerge,
+  canMergeRecipe,
   canSummon,
+  cardDesc,
+  cardN,
   canTransform,
   canUnlock,
   canUpgrade,
   fmt,
+  isHidden,
   isStuck,
+  newDiscoveries,
+  pickCard,
+  recipeFor,
   refundOf,
   sell,
   slotAt,
   summon,
-  summonCost,
+  summonPrice,
   transform,
-  transformCost,
+  transformPrice,
+  transformable,
   unitDamage,
   unitInterval,
   unlock,
   unlockCost,
   upgrade,
   upgradeCost,
+  type CardId,
   type Game,
+  type HiddenType,
   type Side,
 } from './logic'
 import type { UiState } from './render'
@@ -174,13 +191,14 @@ export function Hud({
         <i style={{ width: `${Math.min(100, danger * 100)}%` }} />
       </span>
       {side.bossT != null && <span className="rd-bosst">👹 {Math.max(0, Math.ceil(side.bossT))}초</span>}
+      <CardChips side={side} />
       <span className="rd-coins">🪙 {Math.floor(side.coins)}</span>
     </div>
   )
 }
 
 export function Controls({ side, press }: { side: Side; press: Press }) {
-  const cost = summonCost(side.summons)
+  const cost = summonPrice(side)
   return (
     <div className="rd-controls">
       <button className="btn accent rd-summon" disabled={!canSummon(side)} {...press(() => summon(side, Math.random))}>
@@ -220,15 +238,17 @@ export function ActionOverlay({ side, ui, press, className = '' }: { side: Side;
   const stuck = isStuck(side)
   if (selUnit) {
     const confirming = ui.confirm === selUnit.id
-    const tCost = transformCost(selUnit.tier, side.transforms)
+    const tCost = transformPrice(side, selUnit.tier)
     return (
       <div className={`rd-actions ${stuck ? 'stuck' : ''} ${className}`}>
         <button className={`btn small rd-act-sell ${confirming ? 'confirm' : ''}`} {...press(() => sellSelected(side, ui))}>
           {confirming ? '한 번 더 누르면 판매' : '💰 판매'} <b>+{refundOf(selUnit)}</b>
         </button>
-        <button className="btn small rd-act-swap" disabled={!canTransform(side, ui.sel)} {...press(() => transformSelected(side, ui))}>
-          🔄 바꾸기 <b>🪙{tCost}</b>
-        </button>
+        {transformable(selUnit) && (
+          <button className="btn small rd-act-swap" disabled={!canTransform(side, ui.sel)} {...press(() => transformSelected(side, ui))}>
+            🔄 바꾸기 <b>🪙{tCost}</b>
+          </button>
+        )}
       </div>
     )
   }
@@ -251,13 +271,14 @@ export function InfoLine({ game, side, ui, idle }: { game: Game; side: Side; ui:
   const selAura = selUnit ? auraInfo(side)[ui.sel] : null
   const selLocked = ui.sel >= 0 && !side.open[ui.sel]
   const partners = selUnit ? side.units.filter((u) => u && u !== selUnit && canMerge(selUnit, u)).length : 0
+  const special = selUnit ? side.units.filter((u) => canMergeRecipe(selUnit, u)).length : 0
   const stuck = isStuck(side)
   const freeWave = UNLOCK_WAVES.find((w) => w > game.wave)
   return (
     <p className={`rd-info ${stuck && !selUnit && !selLocked ? 'rd-info-stuck' : ''}`}>
       {selUnit ? (
         <>
-          {INFO[selUnit.type].emoji} <b>{INFO[selUnit.type].name}</b>{' '}
+          {INFO[selUnit.type].emoji} <b>{isHidden(selUnit.type) ? `✨${INFO[selUnit.type].name}` : INFO[selUnit.type].name}</b>{' '}
           <span style={{ color: TIER_COLORS[selUnit.tier] }}>{'★'.repeat(selUnit.tier)}</span> · {INFO[selUnit.type].role} ·
           공격력 {fmt(unitDamage(selUnit, side))} · 초당 {((selAura?.mult ?? 1) / unitInterval(selUnit)).toFixed(1)}회
           {selAura && selAura.count > 0 && (
@@ -266,7 +287,13 @@ export function InfoLine({ game, side, ui, idle }: { game: Game; side: Side; ui:
               · 🌪️×{selAura.count} 공격 속도 +{Math.round((selAura.mult - 1) * 100)}%
             </span>
           )}
-          {selUnit.tier >= MAX_TIER ? ' · 최고 등급' : partners ? ` · 합칠 짝 ${partners}` : ' · 같은 정령·같은 별이 필요해요'}
+          {selUnit.tier >= AWAKEN_TIER
+            ? ' · ✨각성: 공격이 두 번'
+            : partners
+              ? ` · 합칠 짝 ${partners}${special ? ` (✨특별 ${special})` : ''}`
+              : selUnit.tier >= MAX_TIER - 1
+                ? ' · 같은 정령 ★6끼리 합치면 각성!'
+                : ' · 같은 정령·같은 별이 필요해요'}
         </>
       ) : selLocked ? (
         <>
@@ -281,5 +308,175 @@ export function InfoLine({ game, side, ui, idle }: { game: Game; side: Side; ui:
         (idle ?? '같은 정령(같은 별)끼리 끌어 겹치면 합쳐져요 · 정령을 탭하면 판매·바꾸기 · 🔒칸은 코인으로 열 수 있어요')
       )}
     </p>
+  )
+}
+
+// ---- augment cards ----
+
+/**
+ * The 3-pick-1 card offer. `center`: solo, over the whole arena (the game waits);
+ * `board`: over a versus board; `top` / `bottom`: over one half of the co-op field.
+ */
+interface PickerProps {
+  side: Side
+  variant: 'center' | 'board' | 'top' | 'bottom'
+  flipped?: boolean
+  /** Show the 1 / 2 / 3 key hints. */
+  keys?: boolean
+  onPick: () => void
+}
+
+export function CardPicker(props: PickerProps) {
+  const offer = props.side.offer
+  if (!offer) return null
+  // a fresh picker (and arming delay) for every offer
+  return <OfferPicker key={offer.join(',') + props.side.offerQueue} offer={offer} {...props} />
+}
+
+function OfferPicker({ side, variant, flipped = false, keys = false, onPick, offer }: PickerProps & { offer: CardId[] }) {
+  // ignore taps in the first moment so a tap meant for the board doesn't pick a card by accident
+  const shownAt = useRef(Infinity)
+  useEffect(() => {
+    shownAt.current = performance.now()
+  }, [])
+  const take = (id: CardId) => {
+    if (performance.now() - shownAt.current < 350) return
+    if (pickCard(side, id, Math.random)) onPick()
+  }
+  return (
+    <div className={`rd-cards ${variant} ${flipped ? 'flipped' : ''}`}>
+      <div className="rd-cards-box">
+        <div className="rd-cards-title">
+          🃏 증강 카드 — 하나를 골라요
+          {side.offerQueue > 0 && <span className="rd-cards-more"> +{side.offerQueue}장 더</span>}
+        </div>
+        <div className="rd-cards-row">
+          {offer.map((id, k) => {
+            const n = cardN(side, id)
+            return (
+              <button
+                key={id}
+                className="rd-card"
+                onPointerDown={(e) => {
+                  if (e.button !== 0) return
+                  e.preventDefault()
+                  take(id)
+                }}
+                onClick={(e) => e.detail === 0 && take(id)}
+              >
+                <span className="rd-card-emoji">{CARDS[id].emoji}</span>
+                <b>{CARDS[id].name}</b>
+                <small>{cardDesc(id, side)}</small>
+                {n > 0 && <i className="rd-card-own">보유 {n}</i>}
+                {keys && <kbd>{k + 1}</kbd>}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Owned cards as small emoji chips; tapping opens the list with descriptions. */
+export function CardChips({ side }: { side: Side }) {
+  const [open, setOpen] = useState(false)
+  const owned = CARD_IDS.filter((id) => cardN(side, id) > 0)
+  if (!owned.length) return null
+  const shown = owned.slice(0, 3)
+  return (
+    <span className="rd-chips-wrap">
+      <button className="rd-chips" onClick={() => setOpen((v) => !v)} aria-label="내 증강 카드" aria-expanded={open}>
+        {shown.map((id) => (
+          <span key={id}>
+            {CARDS[id].emoji}
+            {cardN(side, id) > 1 && <sub>{cardN(side, id)}</sub>}
+          </span>
+        ))}
+        {owned.length > shown.length && <span className="rd-chips-more">+{owned.length - shown.length}</span>}
+      </button>
+      {open && (
+        <div className="rd-chips-pop" onClick={() => setOpen(false)} role="dialog" aria-label="내 증강 카드">
+          {owned.map((id) => (
+            <p key={id}>
+              <span>{CARDS[id].emoji}</span>
+              <span>
+                <b>
+                  {CARDS[id].name}
+                  {cardN(side, id) > 1 ? ` ×${cardN(side, id)}` : ''}
+                </b>{' '}
+                <small>{id === 'chest' ? '코인을 받았어요' : CARDS[id].desc}</small>
+              </span>
+            </p>
+          ))}
+        </div>
+      )}
+    </span>
+  )
+}
+
+// ---- codex (도감) ----
+
+/** Discovered hidden spirits, kept across games. */
+const CODEX_KEY = 'random-defense-codex'
+
+export function CodexModal({ onClose }: { onClose: () => void }) {
+  const [known] = useStored<string[]>(CODEX_KEY, [])
+  const count = HIDDEN_TYPES.filter((h) => known.includes(h)).length
+  return (
+    <Modal title="📖 정령 도감" onClose={onClose}>
+      <p className="muted rd-codex-note">
+        특정한 두 정령을 같은 별(★3 이상)로 합치면 숨겨진 정령이 태어나요. 발견 <b>{count}</b>/{HIDDEN_TYPES.length}
+      </p>
+      <ul className="rd-codex">
+        {HIDDEN_TYPES.map((h) => {
+          const r = recipeFor(h)
+          const found = known.includes(h)
+          return (
+            <li key={h} className={found ? 'found' : 'unknown'}>
+              <span className="rd-codex-emoji" style={found ? { background: INFO[h].color } : undefined}>
+                {found ? INFO[h].emoji : '❔'}
+              </span>
+              <span>
+                <b>{found ? INFO[h].name : '???'}</b>
+                <small>{found ? INFO[h].role : '아직 발견하지 못했어요'}</small>
+                <small className="rd-codex-recipe">
+                  {INFO[r.a].emoji} + {found ? INFO[r.b].emoji : '❓'}
+                  {found ? '' : ' …?'}
+                </small>
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      <p className="muted rd-codex-note">✨ ★7 각성: 같은 정령 ★6 두 마리를 합치면 종류가 그대로인 ★7이 돼요. 공격이 두 번씩!</p>
+    </Modal>
+  )
+}
+
+/** Watches the human sides for hidden spirits made for the first time and celebrates them. */
+export function Discoveries({ sides, humans }: { sides: Side[]; humans: number[] }) {
+  const [toast, setToast] = useState<{ types: HiddenType[]; key: number } | null>(null)
+  const found = humans.flatMap((i) => sides[i].found).join(',')
+  // record new kinds in the codex (localStorage) and celebrate them
+  useEffect(() => {
+    if (!found) return
+    const known = load<string[]>(CODEX_KEY, [])
+    const fresh = newDiscoveries(known, found.split(',') as HiddenType[])
+    if (!fresh.length) return
+    save(CODEX_KEY, [...known, ...fresh])
+    const show = setTimeout(() => setToast({ types: fresh, key: Date.now() }), 0)
+    return () => clearTimeout(show)
+  }, [found])
+  useEffect(() => {
+    if (!toast) return
+    const id = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(id)
+  }, [toast])
+  if (!toast) return null
+  return (
+    <div className="rd-toast" key={toast.key} role="status">
+      ✨ 새로운 정령 발견! {toast.types.map((t) => `${INFO[t].emoji} ${INFO[t].name}`).join(' · ')}
+    </div>
   )
 }

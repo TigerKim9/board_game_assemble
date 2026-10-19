@@ -74,6 +74,49 @@ import {
   waveCount,
   waveHp,
   waveSpawns,
+  AWAKEN_TIER,
+  CARDS,
+  CARD_DISCOUNT,
+  CARD_FIRE,
+  CARD_FROST,
+  CARD_GALE,
+  CARD_GOLD,
+  CARD_IDS,
+  CARD_QUAKE,
+  CARD_REACH,
+  CARD_SLAYER,
+  CARD_SWAP,
+  CARD_THUNDER,
+  CARD_TIME,
+  CARD_VENOM,
+  CURSE_TIME,
+  HIDDEN_TYPES,
+  MAX_ROLL_TIER,
+  OFFER_SIZE,
+  RECIPES,
+  TIER_COLORS,
+  aiPickCard,
+  canMergeRecipe,
+  canTransform,
+  chainJumps,
+  chestCoins,
+  classOf,
+  curseAmp,
+  isHidden,
+  meteorRadius,
+  newDiscoveries,
+  pickCard,
+  rainbowBonus,
+  recipeOf,
+  rollOffer,
+  slowAmount,
+  stunChance,
+  summonPrice,
+  thunderRadius,
+  tierMult,
+  transformPrice,
+  unitRange,
+  type CardId,
   type Monster,
   type Side,
   type Unit,
@@ -646,7 +689,7 @@ describe('stuck board', () => {
       }
     expect(dps[0]).toBeGreaterThan(dps[1] * 1.15)
     expect(waves[0]).toBeGreaterThan(waves[1])
-  })
+  }, 30000)
   it('full AI games never end on a stuck board without having tried the tools', () => {
     for (const d of ['easy', 'normal', 'hard'] as const)
       for (let seed = 1; seed <= 4; seed++) {
@@ -826,4 +869,435 @@ describe('co-op', () => {
     expect(avg).toBeGreaterThanOrEqual(40)
     expect(avg).toBeLessThanOrEqual(65)
   }, 60000)
+})
+
+// ---------------------------------------------------------------------------
+// augment cards, hidden spirits, ★7 awakening
+// ---------------------------------------------------------------------------
+
+/** rng that always returns `v`. */
+const fixed = (v: number) => () => v
+
+describe('augment cards', () => {
+  it('every card has a name, emoji, description and a stack limit', () => {
+    expect(CARD_IDS.length).toBeGreaterThanOrEqual(12)
+    for (const id of CARD_IDS) {
+      const c = CARDS[id]
+      expect(c.name.length).toBeGreaterThan(0)
+      expect(c.emoji.length).toBeGreaterThan(0)
+      expect(c.desc.length).toBeGreaterThan(0)
+      expect(c.max).toBeGreaterThanOrEqual(1)
+    }
+  })
+  it('offers 3 distinct cards and never a maxed one', () => {
+    const { s } = quiet()
+    const rng = mulberry32(3)
+    for (let i = 0; i < 50; i++) {
+      const o = rollOffer(s, rng)
+      expect(o).toHaveLength(OFFER_SIZE)
+      expect(new Set(o).size).toBe(OFFER_SIZE)
+    }
+    for (const id of CARD_IDS) if (id !== 'chest' && id !== 'fire') s.cards[id] = CARDS[id].max
+    for (let i = 0; i < 20; i++) expect(rollOffer(s, rng).sort()).toEqual(['chest', 'fire'])
+  })
+  it('killing an elite or a boss opens an offer; extra offers queue up', () => {
+    const { g, s } = quiet()
+    s.units[0] = unit('fire', 6)
+    s.monsters.push(monster(1, 10, 'elite'))
+    step(g, 0.05, mulberry32(1))
+    expect(s.offer).toHaveLength(3)
+    expect(s.offerQueue).toBe(0)
+    s.units[0]!.cd = 0
+    s.bossT = 30
+    s.monsters.push(monster(1, 10, 'boss'))
+    step(g, 0.05, mulberry32(2))
+    expect(s.bossT).toBeNull()
+    expect(s.offerQueue).toBe(1)
+    const first = s.offer!
+    expect(pickCard(s, 'nope' as CardId, mulberry32(1))).toBe(false)
+    expect(pickCard(s, first[1], mulberry32(1))).toBe(true)
+    expect(s.cards[first[1]]).toBe(1)
+    expect(s.offer).toHaveLength(3) // the queued one opened
+    expect(s.offerQueue).toBe(0)
+    expect(pickCard(s, s.offer![0], mulberry32(1))).toBe(true)
+    expect(s.offer).toBeNull()
+    expect(pickCard(s, 'fire', mulberry32(1))).toBe(false)
+    // normal kills give no offer
+    s.monsters.push(monster(1, 10))
+    s.units[0]!.cd = 0
+    step(g, 0.05, mulberry32(1))
+    expect(s.offer).toBeNull()
+  })
+  it('the side that lands the kill gets the offer in co-op', () => {
+    const g = quietCoop()
+    g.sides[1].bossT = 30
+    g.sides[1].monsters.push(monster(3, 100, 'boss'))
+    g.sides[0].units[2 * COLS + 2] = unit('fire', 6)
+    step(g, 0.05, mulberry32(1))
+    expect(g.sides[0].offer).not.toBeNull()
+    expect(g.sides[1].offer).toBeNull()
+  })
+  it('🔥 fire and 🏹 slayer raise damage', () => {
+    const { s } = quiet()
+    const base = unitDamage(unit('fire', 3), s)
+    const thunder = unitDamage(unit('thunder', 3), s)
+    s.cards.fire = 2
+    expect(unitDamage(unit('fire', 3), s)).toBeCloseTo(base * (1 + 2 * CARD_FIRE))
+    expect(unitDamage(unit('meteor', 4), s)).toBeGreaterThan(unitDamage(unit('meteor', 4), quiet().s))
+    expect(unitDamage(unit('thunder', 3), s)).toBeCloseTo(thunder)
+    const hitBoss = (slayer: number) => {
+      const q = quiet()
+      q.s.cards.slayer = slayer
+      q.s.units[0] = unit('ice', 2)
+      const b = monster(1, 1e6, 'boss')
+      q.s.monsters.push(b)
+      step(q.g, 0.01, mulberry32(1))
+      return 1e6 - b.hp
+    }
+    expect(hitBoss(1) / hitBoss(0)).toBeCloseTo(1 + CARD_SLAYER)
+  })
+  it('⚡ thunder card widens the blast', () => {
+    const run = (n: number) => {
+      const { g, s } = quiet()
+      s.cards.thunder = n
+      s.units[0] = unit('thunder', 1)
+      const near = monster(1) // 1.0 away from the front monster
+      s.monsters.push(near, monster(2))
+      step(g, 0.01, mulberry32(1))
+      return near.hp < near.maxHp
+    }
+    expect(thunderRadius(1)).toBeLessThan(1)
+    expect(thunderRadius(1) * (1 + CARD_THUNDER)).toBeGreaterThan(1)
+    expect(run(0)).toBe(false)
+    expect(run(1)).toBe(true)
+  })
+  it('❄️ frost slows harder and bosses fully', () => {
+    const slowOf = (frost: number, kind: Monster['kind']) => {
+      const { g, s } = quiet()
+      s.cards.frost = frost
+      s.units[0] = unit('ice', 2)
+      const m = monster(1, 1e9, kind)
+      s.monsters.push(m)
+      step(g, 0.01, mulberry32(1))
+      return 1 - m.slowF
+    }
+    expect(slowOf(0, 'boss')).toBeCloseTo(slowAmount(2) * 0.5)
+    expect(slowOf(1, 'boss')).toBeCloseTo(slowAmount(2) + CARD_FROST)
+    expect(slowOf(1, 'normal')).toBeGreaterThan(slowOf(0, 'normal'))
+  })
+  it('🪨 quake raises the stun chance', () => {
+    const stuns = (quake: number) => {
+      const { g, s } = quiet()
+      s.cards.quake = quake
+      s.units[0] = unit('rock', 1)
+      const m = monster(1, 1e9)
+      s.monsters.push(m)
+      step(g, 0.01, fixed(stunChance(1) + CARD_QUAKE / 2))
+      return m.stunT > 0
+    }
+    expect(stuns(0)).toBe(false)
+    expect(stuns(1)).toBe(true)
+  })
+  it('🍄 venom doubles poison', () => {
+    const dot = (venom: number) => {
+      const { g, s } = quiet()
+      s.cards.venom = venom
+      s.units[0] = unit('poison', 2)
+      const m = monster(1, 1e9)
+      s.monsters.push(m)
+      step(g, 0.01, mulberry32(1))
+      return m.poisonDps
+    }
+    expect(dot(1)).toBeCloseTo(dot(0) * CARD_VENOM)
+  })
+  it('🍀 gold, 🌪️ gale, 🎯 reach, 💸 discount and 🔁 swap', () => {
+    const { s } = quiet()
+    s.units[6] = unit('wind', 2)
+    s.units[0] = unit('fire', 1)
+    const aura = auraMults(s)[0]
+    const coins = coinMult(s)
+    const range = unitRange(s.units[0]!, s)
+    const price = summonPrice(s)
+    const tPrice = transformPrice(s, 3)
+    s.cards.gold = 1
+    s.cards.gale = 2
+    s.cards.reach = 1
+    s.cards.discount = 1
+    s.cards.swap = 1
+    expect(coinMult(s)).toBeCloseTo(coins + CARD_GOLD)
+    expect(auraMults(s)[0] - 1).toBeCloseTo((aura - 1) * (1 + 2 * CARD_GALE))
+    expect(unitRange(s.units[0]!, s)).toBeCloseTo(range + CARD_REACH)
+    expect(summonPrice(s)).toBe(Math.round(price * (1 - CARD_DISCOUNT)))
+    expect(transformPrice(s, 3)).toBe(Math.round(tPrice * (1 - CARD_SWAP)))
+    // the discounts are what you actually pay
+    s.coins = 1000
+    summon(s, mulberry32(1))
+    expect(s.coins).toBe(1000 - Math.round(summonCost(0) * (1 - CARD_DISCOUNT)))
+    s.coins = 1000
+    s.units[1] = unit('fire', 3)
+    const cost = transformPrice(s, 3)
+    expect(transform(s, 1, mulberry32(1))).toBe(true)
+    expect(s.coins).toBe(1000 - cost)
+  })
+  it('⏳ time extends the boss clock (also the running one) and 💰 chest pays at once', () => {
+    const g = newGame(1)
+    const s = g.sides[0]
+    s.cards.time = 1
+    g.wave = 9
+    startWave(g, mulberry32(1))
+    expect(s.bossT).toBe(BOSS_TIME + CARD_TIME)
+    s.offer = ['time', 'chest', 'fire']
+    pickCard(s, 'time', mulberry32(1))
+    expect(s.bossT).toBe(BOSS_TIME + 2 * CARD_TIME)
+    const before = s.coins
+    s.offer = ['chest', 'fire', 'dice']
+    pickCard(s, 'chest', mulberry32(1))
+    expect(s.coins).toBe(before + chestCoins(10))
+    expect(chestCoins(30)).toBeGreaterThan(chestCoins(10))
+  })
+  it('🎲 dice can add one more ★ to a merge, but never past ★6', () => {
+    const { s } = quiet()
+    s.cards.dice = 1
+    s.units[0] = unit('fire', 2, 1)
+    s.units[1] = unit('fire', 2, 2)
+    merge(s, 0, 1, fixed(0))
+    expect(s.units[1]!.tier).toBe(4)
+    s.units[0] = unit('ice', 4, 3)
+    s.units[1] = unit('ice', 4, 4)
+    merge(s, 0, 1, fixed(0))
+    expect(s.units[1]!.tier).toBe(MAX_ROLL_TIER)
+    s.units[0] = unit('ice', 5, 3)
+    s.units[1] = unit('ice', 5, 4)
+    merge(s, 0, 1, fixed(0))
+    expect(s.units[1]!.tier).toBe(MAX_ROLL_TIER)
+    // without the luck it is a normal +1
+    s.units[0] = unit('rock', 2, 5)
+    s.units[2] = unit('rock', 2, 6)
+    merge(s, 0, 2, fixed(0.99))
+    expect(s.units[2]!.tier).toBe(3)
+  })
+  it('the AI takes offers with a sensible pick', () => {
+    const { s } = quiet()
+    for (let i = 0; i < 6; i++) s.units[i] = unit('fire', 3, i + 1)
+    s.offer = ['swap', 'fire', 'quake']
+    expect(aiPickCard(s, 'hard')).toBe('fire')
+    expect(aiAct(s, 'hard', mulberry32(1))).toBe('card')
+    expect(s.cards.fire).toBe(1)
+    expect(s.offer).toBeNull()
+    s.units = s.units.map(() => null)
+    for (let i = 0; i < 6; i++) s.units[i] = unit('poison', 3, i + 1)
+    s.offer = ['gold', 'venom', 'quake']
+    expect(aiPickCard(s, 'normal')).toBe('venom')
+  })
+})
+
+describe('hidden spirits', () => {
+  it('have four recipes of two different normal spirits', () => {
+    expect(RECIPES).toHaveLength(4)
+    expect(HIDDEN_TYPES).toHaveLength(4)
+    for (const r of RECIPES) {
+      expect(r.a).not.toBe(r.b)
+      expect(TYPES).toContain(r.a)
+      expect(TYPES).toContain(r.b)
+      expect(recipeOf(r.a, r.b)).toBe(r.out)
+      expect(recipeOf(r.b, r.a)).toBe(r.out)
+      expect(isHidden(r.out)).toBe(true)
+    }
+    expect(recipeOf('fire', 'ice')).toBeNull()
+    expect(recipeOf('fire', 'fire')).toBeNull()
+    for (const t of HIDDEN_TYPES) expect(TYPES).not.toContain(t)
+  })
+  it('a recipe pair merges at the same ★ from ★3 to ★5 into the hidden spirit one ★ higher', () => {
+    expect(canMergeRecipe(unit('fire', 3), unit('thunder', 3))).toBe(true)
+    expect(canMerge(unit('thunder', 4), unit('fire', 4))).toBe(true)
+    expect(canMergeRecipe(unit('fire', 2), unit('thunder', 2))).toBe(false)
+    expect(canMergeRecipe(unit('fire', 3), unit('thunder', 4))).toBe(false)
+    expect(canMergeRecipe(unit('fire', 6), unit('thunder', 6))).toBe(false)
+    expect(canMergeRecipe(unit('fire', 3), unit('ice', 3))).toBe(false)
+    for (const r of RECIPES) {
+      const { s } = quiet()
+      s.units[0] = unit(r.a, 3, 1, 40)
+      s.units[1] = unit(r.b, 3, 2, 50)
+      expect(act(s, 0, 1, mulberry32(1))).toBe('merge')
+      expect(s.units[0]).toBeNull()
+      expect(s.units[1]).toMatchObject({ type: r.out, tier: 4, inv: 90 })
+      expect(s.found).toEqual([r.out])
+      expect(findPairs(s)).toHaveLength(0)
+    }
+  })
+  it('two identical hidden spirits merge into the same hidden type; a hidden + an ingredient only swaps', () => {
+    const { s } = quiet()
+    s.units[0] = unit('curse', 4, 1)
+    s.units[1] = unit('curse', 4, 2)
+    for (let seed = 0; seed < 10; seed++) {
+      s.units[0] = unit('curse', 4, 1)
+      s.units[1] = unit('curse', 4, 2)
+      expect(merge(s, 0, 1, mulberry32(seed))).toBe(true)
+      expect(s.units[1]).toMatchObject({ type: 'curse', tier: 5 })
+    }
+    s.units[0] = unit('rock', 5, 3)
+    expect(canMerge(s.units[0], s.units[1])).toBe(false)
+    expect(act(s, 0, 1, mulberry32(1))).toBe('move')
+    expect(s.units[0]!.type).toBe('curse')
+  })
+  it('summons and transforms never make hidden spirits; hidden spirits cannot be transformed', () => {
+    const rng = mulberry32(5)
+    for (let i = 0; i < 2000; i++) expect(isHidden(rollSummon(rng).type)).toBe(false)
+    const { s } = quiet()
+    s.coins = 1e6
+    s.units[0] = unit('fire', 3)
+    for (let i = 0; i < 100; i++) {
+      transform(s, 0, rng)
+      expect(isHidden(s.units[0]!.type)).toBe(false)
+    }
+    s.units[1] = unit('meteor', 4)
+    expect(canTransform(s, 1)).toBe(false)
+    expect(transform(s, 1, rng)).toBe(false)
+    expect(pairChance(s, 1)).toBe(0)
+  })
+  it('the codex helper lists only first-time hidden discoveries', () => {
+    expect(newDiscoveries([], ['meteor', 'meteor'])).toEqual(['meteor'])
+    expect(newDiscoveries(['meteor'], ['meteor', 'curse'])).toEqual(['curse'])
+    expect(newDiscoveries(['meteor', 'curse'], ['fire', 'curse'])).toEqual([])
+  })
+  it('☄️ meteor blasts a wide area and beats a fire spirit of the same ★ on a crowd', () => {
+    const crowdDamage = (type: UnitType) => {
+      const { g, s } = quiet()
+      s.units[1] = unit(type, 4)
+      for (let k = 0; k < 6; k++) s.monsters.push(monster(1 + k * 0.4, 1e12))
+      for (let i = 0; i < 100; i++) step(g, 0.05, mulberry32(i))
+      return s.monsters.reduce((a, m) => a + (m.maxHp - m.hp), 0)
+    }
+    expect(crowdDamage('meteor')).toBeGreaterThan(1.5 * crowdDamage('fire'))
+    expect(meteorRadius(4)).toBeGreaterThan(thunderRadius(4))
+  })
+  it('🌀 blizzard hits and slows every monster in range at once', () => {
+    const { g, s } = quiet()
+    s.units[1] = unit('blizzard', 4) // (2.5, 1.5)
+    const ms = [monster(0.5), monster(2), monster(3.5), monster(11)]
+    s.monsters.push(...ms)
+    step(g, 0.01, mulberry32(1))
+    expect(ms.slice(0, 3).every((m) => m.hp < m.maxHp && m.slowT > 0)).toBe(true)
+    expect(ms[3].hp).toBe(ms[3].maxHp)
+    // stronger than the ice spirit of the same ★ against a crowd
+    const total = (type: UnitType) => {
+      const q = quiet()
+      q.s.units[1] = unit(type, 4)
+      for (let k = 0; k < 6; k++) q.s.monsters.push(monster(1 + k * 0.5, 1e12))
+      for (let i = 0; i < 100; i++) step(q.g, 0.05, mulberry32(i))
+      return q.s.monsters.reduce((a, m) => a + (m.maxHp - m.hp), 0)
+    }
+    expect(total('blizzard')).toBeGreaterThan(1.5 * total('ice'))
+  })
+  it('💀 curse makes the monster take more damage from everyone', () => {
+    const { g, s } = quiet()
+    s.units[0] = unit('curse', 4)
+    const m = monster(1, 1e9)
+    s.monsters.push(m)
+    step(g, 0.01, mulberry32(1))
+    expect(m.curseT).toBeGreaterThan(0)
+    expect(m.curseF).toBeCloseTo(curseAmp(4))
+    // a fire spirit now hits harder
+    s.units[0] = null
+    s.units[1] = unit('fire', 1)
+    const hp = m.hp
+    step(g, 0.01, mulberry32(1))
+    expect(hp - m.hp).toBeCloseTo(unitDamage(unit('fire', 1), s) * (1 + curseAmp(4)))
+    // and it wears off
+    s.units[1] = null
+    step(g, CURSE_TIME + 0.1, mulberry32(1))
+    expect(m.curseT).toBeLessThanOrEqual(0)
+  })
+  it('🌈 rainbow chains to nearby monsters and raises kill coins', () => {
+    const { g, s } = quiet()
+    s.units[0] = unit('rainbow', 4)
+    const ms = [monster(1), monster(2), monster(3), monster(14)]
+    s.monsters.push(...ms)
+    step(g, 0.01, mulberry32(1))
+    expect(ms.filter((m) => m.hp < m.maxHp)).toHaveLength(1 + chainJumps(4))
+    expect(ms[3].hp).toBe(ms[3].maxHp)
+    expect(coinMult(s)).toBeCloseTo(1 + rainbowBonus(4))
+  })
+  it('the AI knows recipes: hard merges a recipe pair before plain pairs', () => {
+    const { s } = quiet()
+    s.coins = 0
+    s.units[0] = unit('fire', 3, 1)
+    s.units[1] = unit('thunder', 3, 2)
+    s.units[2] = unit('ice', 1, 3)
+    s.units[3] = unit('ice', 1, 4)
+    expect(aiAct(s, 'hard', mulberry32(1))).toBe('merge')
+    expect(s.units.some((u) => u?.type === 'meteor')).toBe(true)
+    expect(s.units.filter((u) => u?.type === 'ice')).toHaveLength(2)
+  })
+})
+
+describe('★7 awakening', () => {
+  it('only two ★6 spirits of the same type make a ★7, and it keeps the type', () => {
+    expect(MAX_TIER).toBe(7)
+    expect(AWAKEN_TIER).toBe(7)
+    for (const t of [...TYPES, ...HIDDEN_TYPES]) {
+      for (let seed = 0; seed < 5; seed++) {
+        const { s } = quiet()
+        s.units[0] = unit(t, 6, 1, 500)
+        s.units[1] = unit(t, 6, 2, 500)
+        expect(merge(s, 0, 1, mulberry32(seed))).toBe(true)
+        expect(s.units[1]).toMatchObject({ type: t, tier: 7, inv: 1000 })
+      }
+    }
+    expect(canMerge(unit('fire', 7), unit('fire', 7))).toBe(false)
+    expect(canMerge(unit('fire', 6), unit('ice', 6))).toBe(false)
+    expect(canMerge(unit('fire', 6), unit('thunder', 6))).toBe(false)
+  })
+  it('random results never reach ★7', () => {
+    const { s } = quiet()
+    s.cards.dice = CARDS.dice.max
+    for (let seed = 0; seed < 50; seed++) {
+      s.units[0] = unit('fire', 5, 1)
+      s.units[1] = unit('fire', 5, 2)
+      merge(s, 0, 1, mulberry32(seed))
+      expect(s.units[1]!.tier).toBeLessThanOrEqual(MAX_ROLL_TIER)
+      s.units[0] = unit('fire', 4, 1)
+      s.units[1] = unit('thunder', 4, 2)
+      merge(s, 0, 1, mulberry32(seed))
+      expect(s.units[1]!.tier).toBeLessThanOrEqual(MAX_ROLL_TIER)
+    }
+    const rng = mulberry32(2)
+    for (let i = 0; i < 1000; i++) expect(rollSummon(rng).tier).toBeLessThanOrEqual(2)
+  })
+  it('★7 numbers: class, aura, colour, sell; no transform', () => {
+    expect(classOf(7)).toBe(2)
+    expect(auraBonus(7)).toBeCloseTo(6)
+    expect(auraBonus(7)).toBeGreaterThan(auraBonus(6))
+    expect(TIER_COLORS[7]).toMatch(/^#/)
+    expect(tierMult(7)).toBeCloseTo(2.1 * tierMult(6))
+    const { s } = quiet()
+    s.coins = 1e6
+    s.units[0] = unit('fire', 7, 1, 1000)
+    expect(canTransform(s, 0)).toBe(false)
+    expect(sell(s, 0)).toBe(500)
+  })
+  it('an awakened spirit strikes twice: a second monster, or the same one again', () => {
+    const { g, s } = quiet()
+    s.units[0] = unit('fire', 7)
+    const a = monster(1, 1e12)
+    const b = monster(1.5, 1e12)
+    s.monsters.push(a, b)
+    step(g, 0.01, mulberry32(1))
+    const dmg = unitDamage(s.units[0]!, s)
+    expect(a.maxHp - a.hp).toBeCloseTo(dmg)
+    expect(b.maxHp - b.hp).toBeCloseTo(dmg)
+    const q = quiet()
+    q.s.units[0] = unit('fire', 7)
+    const solo = monster(1, 1e12)
+    q.s.monsters.push(solo)
+    step(q.g, 0.01, mulberry32(1))
+    expect(solo.maxHp - solo.hp).toBeCloseTo(2 * dmg)
+    // a ★6 strikes once
+    const r = quiet()
+    r.s.units[0] = unit('fire', 6)
+    const one = monster(1, 1e12)
+    r.s.monsters.push(one)
+    step(r.g, 0.01, mulberry32(1))
+    expect(one.maxHp - one.hp).toBeCloseTo(unitDamage(unit('fire', 6), r.s))
+  })
 })

@@ -14,8 +14,10 @@ import {
   LIMIT,
   TYPES,
   aiAct,
+  aiPickOffers,
   isBossWave,
   newGame,
+  pickCard,
   step,
   summon,
   upgrade,
@@ -26,7 +28,10 @@ import { drawSide, type UiState } from './render'
 import {
   ActionOverlay,
   AiNote,
+  CardPicker,
+  CodexModal,
   Controls,
+  Discoveries,
   Hud,
   InfoLine,
   boardDown,
@@ -94,6 +99,7 @@ export default function RandomDefense() {
 }
 
 function Roster({ mode, facing, onFacing }: { mode: Mode; facing: boolean; onFacing: (v: boolean) => void }) {
+  const [codex, setCodex] = useState(false)
   return (
     <div className="rd-roster">
       <p className="muted">{MODE_NOTES[mode]}</p>
@@ -115,6 +121,10 @@ function Roster({ mode, facing, onFacing }: { mode: Mode; facing: boolean; onFac
           </li>
         ))}
       </ul>
+      <button type="button" className="btn ghost rd-codex-btn" onClick={() => setCodex(true)}>
+        📖 정령 도감
+      </button>
+      {codex && <CodexModal onClose={() => setCodex(false)} />}
     </div>
   )
 }
@@ -135,6 +145,7 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
   const pausedRef = useRef(false)
   const speedRef = useRef(1)
   const [paused, setPaused] = useState(false)
+  const [codex, setCodex] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [, setTick] = useState(0)
   const [over, setOver] = useState(false)
@@ -153,6 +164,10 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
   const bottom = Math.max(0, players.findIndex((p) => !p.isAI))
   const top = versus ? 1 - bottom : -1
   const bothHuman = versus && players.every((p) => !p.isAI)
+  const aiDiffs = players.map((p) => (p.isAI ? difficulty : null))
+  const humans = players.map((p, i) => (p.isAI ? -1 : i)).filter((i) => i >= 0)
+  /** Solo: the game waits while a card offer is open. */
+  const held = (g: Game) => !versus && !!g.sides[0].offer
 
   // dev hook for automated checks
   useEffect(() => {
@@ -174,6 +189,11 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
       if (!pausedRef.current && !g.over) {
         acc += elapsed * speedRef.current
         while (acc >= DT) {
+          aiPickOffers(g, aiDiffs, Math.random)
+          if (held(g)) {
+            acc = 0
+            break
+          }
           acc -= DT
           players.forEach((p, i) => {
             if (!p.isAI) return
@@ -242,6 +262,14 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
       const side = g.sides[bottom]
       const ui = uiRef.current[bottom]
       const k = e.key.toLowerCase()
+      // 1~3 pick a card while an offer is open (otherwise they buy upgrades)
+      if (side.offer && e.key >= '1' && e.key <= '3') {
+        const id = side.offer[Number(e.key) - 1]
+        if (id) pickCard(side, id, Math.random)
+        refresh()
+        return
+      }
+      if (held(g)) return
       if (e.key === ' ' || k === 's') {
         e.preventDefault()
         summon(side, Math.random)
@@ -322,6 +350,7 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
       rotated={rotated}
       compact={versus}
       paused={paused}
+      held={held(g)}
       onChange={refresh}
       canvasRef={(c) => (canvases.current[i] = c)}
     />
@@ -356,6 +385,8 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
         </span>
       </div>
       {sideView(bottom, false)}
+      <Discoveries sides={g.sides} humans={humans} />
+      {!versus && !players[0].isAI && !paused && <CardPicker side={g.sides[0]} variant="center" keys onPick={refresh} />}
       {paused && (
         <div className="rd-pause">
           <div className="card-panel">
@@ -366,12 +397,16 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
             <button className="btn primary big" onClick={() => pause(false)}>
               계속하기
             </button>
+            <button className="btn ghost" onClick={() => setCodex(true)}>
+              📖 정령 도감
+            </button>
             <button className="btn ghost" onClick={onReset}>
               그만하고 나가기
             </button>
           </div>
         </div>
       )}
+      {codex && <CodexModal onClose={() => setCodex(false)} />}
     </div>
   )
 }
@@ -384,6 +419,7 @@ function SideView({
   rotated,
   compact,
   paused,
+  held,
   onChange,
   canvasRef,
 }: {
@@ -394,6 +430,8 @@ function SideView({
   rotated: boolean
   compact: boolean
   paused: boolean
+  /** Solo card offer open: the board waits for the pick. */
+  held: boolean
   onChange: () => void
   canvasRef: (c: HTMLCanvasElement | null) => void
 }) {
@@ -426,7 +464,7 @@ function SideView({
     return { x: px * FIELD_W, y: py * FIELD_H }
   }
 
-  const blocked = () => !interactive || paused || game.over || side.lost
+  const blocked = () => !interactive || paused || held || game.over || side.lost
 
   const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (blocked() || ui.drag) return
@@ -469,6 +507,7 @@ function SideView({
             onContextMenu={(e) => e.preventDefault()}
           />
           {interactive && <ActionOverlay side={side} ui={ui} press={press} />}
+          {interactive && compact && !paused && <CardPicker side={side} variant="board" keys={!rotated} onPick={onChange} />}
         </div>
       </div>
       {interactive ? (

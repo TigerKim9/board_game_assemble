@@ -449,3 +449,298 @@
   transform: rotate(180deg);
   pointer-events: none;
 }
+
+/* ---- augment cards (증강 카드) ---- */
+.rd-cards {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background: rgba(10, 6, 24, 0.55);
+  border-radius: 12px;
+  animation: rd-fade 0.18s ease-out;
+}
+.rd-cards.center {
+  inset: 0;
+  padding: 12px;
+  border-radius: var(--radius);
+}
+.rd-cards.board {
+  inset: 0;
+}
+.rd-cards.top,
+.rd-cards.bottom {
+  left: 0;
+  right: 0;
+  height: 50%;
+}
+.rd-cards.top {
+  top: 0;
+}
+.rd-cards.bottom {
+  bottom: 0;
+}
+.rd-cards.flipped {
+  transform: rotate(180deg);
+}
+.rd-cards-box {
+  width: 100%;
+  max-width: 460px;
+  max-height: 100%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rd-cards.center .rd-cards-box {
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 12px 10px;
+  box-shadow: var(--shadow);
+  animation: pop 0.2s ease-out;
+}
+.rd-cards-title {
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.rd-cards:not(.center) .rd-cards-title {
+  color: #fff3b0;
+  font-size: 0.8rem;
+  text-shadow: 0 1px 2px #000;
+}
+.rd-cards-more {
+  font-weight: 600;
+  opacity: 0.8;
+}
+.rd-cards-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.rd-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 8px 4px 6px;
+  border-radius: 12px;
+  border: 2px solid #c9a227;
+  background: linear-gradient(160deg, #3b2a66, #1f1838);
+  color: #fff;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  touch-action: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+.rd-card:hover,
+.rd-card:focus-visible {
+  border-color: #ffe066;
+  filter: brightness(1.15);
+}
+.rd-card-emoji {
+  font-size: 1.7rem;
+  line-height: 1.1;
+}
+.rd-card b {
+  font-size: 0.82rem;
+  line-height: 1.15;
+  word-break: keep-all;
+}
+.rd-card small {
+  font-size: 0.7rem;
+  line-height: 1.2;
+  opacity: 0.9;
+  word-break: keep-all;
+}
+.rd-card-own {
+  font-style: normal;
+  font-size: 0.65rem;
+  color: #ffe066;
+}
+.rd-card kbd {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  font-size: 0.65rem;
+  opacity: 0.6;
+  font-family: inherit;
+}
+.rd-cards:not(.center) .rd-card {
+  padding: 4px 3px;
+  gap: 1px;
+}
+.rd-cards:not(.center) .rd-card-emoji {
+  font-size: 1.25rem;
+}
+.rd-cards:not(.center) .rd-card b {
+  font-size: 0.72rem;
+}
+.rd-cards:not(.center) .rd-card small {
+  font-size: 0.62rem;
+}
+@keyframes rd-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* owned cards in the HUD */
+.rd-chips-wrap {
+  position: relative;
+  flex: none;
+}
+.rd-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  min-height: 32px;
+  min-width: 40px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1.5px solid #c9a227;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  /* bigger invisible hit area */
+  margin: -4px 0;
+}
+.rd-chips sub {
+  font-size: 0.62rem;
+  font-weight: 800;
+  vertical-align: -2px;
+  margin-left: -1px;
+}
+.rd-chips-more {
+  font-size: 0.7rem;
+  font-weight: 800;
+  margin-left: 2px;
+}
+.rd-chips-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 8;
+  width: min(280px, calc(100vw - 40px));
+  max-height: 260px;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow), 0 0 0 1px rgba(0, 0, 0, 0.1);
+  white-space: normal;
+  font-weight: 400;
+  font-size: 0.8rem;
+  text-align: left;
+}
+.rd-chips-pop p {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 5px;
+  line-height: 1.3;
+}
+.rd-chips-pop p:last-child {
+  margin: 0;
+}
+.rd-chips-pop small {
+  color: var(--muted);
+}
+
+/* ---- codex (도감) ---- */
+.rd-codex-btn {
+  margin-top: 10px;
+  width: 100%;
+  min-height: 44px;
+}
+.rd-codex {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.rd-codex li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.rd-codex li > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.rd-codex li small {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.rd-codex .rd-codex-recipe {
+  color: var(--text);
+  font-size: 0.85rem;
+}
+.rd-codex-emoji {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  background: rgba(127, 127, 127, 0.25);
+}
+.rd-codex li.found .rd-codex-emoji {
+  box-shadow: 0 0 12px 2px rgba(255, 224, 102, 0.6);
+}
+.rd-codex li.unknown b {
+  letter-spacing: 2px;
+}
+.rd-codex-note {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* first-discovery toast */
+.rd-toast {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  z-index: 9;
+  transform: translateX(-50%);
+  max-width: calc(100% - 16px);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6b2fd6, #d6338f);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.88rem;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  animation: rd-toast 3s ease-out forwards;
+}
+@keyframes rd-toast {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -10px) scale(0.9);
+  }
+  10%,
+  80% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(1);
+  }
+}

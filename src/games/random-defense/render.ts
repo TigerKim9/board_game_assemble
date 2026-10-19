@@ -10,8 +10,11 @@ import {
   SHARED_LANE_Y,
   SLOTS,
   TIER_COLORS,
+  AWAKEN_TIER,
   auraInfo,
   canMerge,
+  canMergeRecipe,
+  isHidden,
   neighbors,
   unitRange,
   isStuck,
@@ -81,7 +84,7 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 }
 
 /** Attack range circle (and, for wind spirits, the 8 boosted neighbour tiles). */
-function drawRange(ctx: CanvasRenderingContext2D, u: Unit, x: number, y: number, slot: number, now: number) {
+function drawRange(ctx: CanvasRenderingContext2D, side: Side, u: Unit, x: number, y: number, slot: number, now: number) {
   const color = INFO[u.type].color
   if (u.type === 'wind' && slot >= 0) {
     ctx.save()
@@ -96,7 +99,7 @@ function drawRange(ctx: CanvasRenderingContext2D, u: Unit, x: number, y: number,
     }
     ctx.restore()
   }
-  const r = unitRange(u)
+  const r = unitRange(u, side)
   ctx.save()
   ctx.beginPath()
   ctx.arc(x, y, r, 0, Math.PI * 2)
@@ -133,11 +136,45 @@ function drawHaste(ctx: CanvasRenderingContext2D, x: number, y: number, count: n
   ctx.restore()
 }
 
-export function drawUnit(ctx: CanvasRenderingContext2D, u: Unit, x: number, y: number, scale = 1, alpha = 1) {
+/** Soft pulsing glow and orbiting sparkles behind a hidden spirit. */
+function drawHiddenGlow(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, r: number, now: number) {
+  const pulse = 0.5 + 0.5 * Math.sin(now * 3)
+  const g = ctx.createRadialGradient(x, y, r * 0.6, x, y, r * 1.55)
+  g.addColorStop(0, hexA(color, 0.55 + 0.25 * pulse))
+  g.addColorStop(1, hexA(color, 0))
+  ctx.fillStyle = g
+  ctx.beginPath()
+  ctx.arc(x, y, r * 1.55, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = '#ffffff'
+  for (let k = 0; k < 3; k++) {
+    const a = now * 1.8 + (k * Math.PI * 2) / 3
+    ctx.beginPath()
+    ctx.arc(x + Math.cos(a) * r * 1.22, y + Math.sin(a) * r * 1.22, 0.035, 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
+/** Spinning rainbow ring of an awakened (★7) spirit. */
+function drawAwakenRing(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, now: number) {
+  const n = 18
+  ctx.lineWidth = 0.075
+  ctx.lineCap = 'butt'
+  for (let k = 0; k < n; k++) {
+    const a0 = (k / n) * Math.PI * 2 + now * 1.6
+    ctx.strokeStyle = `hsl(${(k / n) * 360 + now * 120} 95% 62%)`
+    ctx.beginPath()
+    ctx.arc(x, y, r + 0.07, a0, a0 + (Math.PI * 2) / n + 0.02)
+    ctx.stroke()
+  }
+}
+
+export function drawUnit(ctx: CanvasRenderingContext2D, u: Unit, x: number, y: number, scale = 1, alpha = 1, now = 0) {
   const info = INFO[u.type]
   const r = 0.36 * scale
   ctx.save()
   ctx.globalAlpha = alpha
+  if (isHidden(u.type)) drawHiddenGlow(ctx, info.color, x, y, r, now)
   const grad = ctx.createRadialGradient(x - r * 0.3, y - r * 0.4, r * 0.1, x, y, r)
   grad.addColorStop(0, '#ffffff')
   grad.addColorStop(0.25, info.color)
@@ -149,7 +186,8 @@ export function drawUnit(ctx: CanvasRenderingContext2D, u: Unit, x: number, y: n
   ctx.lineWidth = 0.035 + 0.012 * u.tier
   ctx.strokeStyle = TIER_COLORS[u.tier]
   ctx.stroke()
-  if (u.tier >= 5) {
+  if (u.tier >= AWAKEN_TIER) drawAwakenRing(ctx, x, y, r, now)
+  else if (u.tier >= 5) {
     ctx.lineWidth = 0.025
     ctx.strokeStyle = 'rgba(255,240,180,0.8)'
     ctx.beginPath()
@@ -159,9 +197,12 @@ export function drawUnit(ctx: CanvasRenderingContext2D, u: Unit, x: number, y: n
   text(ctx, info.emoji, x, y - 0.03 * scale, 0.36 * scale, '#fff', { emoji: true })
   // stars
   const n = u.tier
-  const sw = 0.12 * scale
+  const sw = (n >= AWAKEN_TIER ? 0.1 : 0.12) * scale
   const sx = x - ((n - 1) * sw) / 2
-  for (let i = 0; i < n; i++) text(ctx, '★', sx + i * sw, y + r * 0.82, 0.16 * scale, TIER_COLORS[u.tier], { outline: true })
+  for (let i = 0; i < n; i++) {
+    const c = n >= AWAKEN_TIER ? `hsl(${(i / n) * 360 + now * 120} 95% 68%)` : TIER_COLORS[u.tier]
+    text(ctx, '★', sx + i * sw, y + r * 0.82, (n >= AWAKEN_TIER ? 0.14 : 0.16) * scale, c, { outline: true })
+  }
   if (u.flash > 0) {
     const p = u.flash
     ctx.globalAlpha = alpha * Math.min(1, p * 1.6)
@@ -229,6 +270,16 @@ function drawMonster(ctx: CanvasRenderingContext2D, m: Monster, ring?: string) {
     ctx.beginPath()
     ctx.arc(x + r * 0.8, y + r * 0.6, 0.05, 0, Math.PI * 2)
     ctx.fill()
+  }
+  if (m.curseT && m.curseT > 0) {
+    ctx.strokeStyle = 'rgba(199,125,255,0.95)'
+    ctx.lineWidth = 0.045
+    ctx.setLineDash([0.06, 0.05])
+    ctx.beginPath()
+    ctx.arc(x, y, r + 0.09, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.setLineDash([])
+    text(ctx, '💀', x - r * 0.9, y - r * 0.8, 0.15, '#fff', { emoji: true })
   }
   if (m.stunT > 0) text(ctx, '💫', x, y - r - 0.1, 0.2, '#fff', { emoji: true })
   if (m.hp < m.maxHp) {
@@ -308,7 +359,8 @@ function drawSlots(ctx: CanvasRenderingContext2D, side: Side, ui: UiState, now: 
       ctx.stroke()
       ctx.setLineDash([])
     } else if (src && i !== from && canMerge(src, side.units[i])) {
-      ctx.strokeStyle = `rgba(255,224,102,${pulse})`
+      // recipe partners glow pink (a hidden spirit), normal partners gold
+      ctx.strokeStyle = canMergeRecipe(src, side.units[i]) ? `rgba(255,120,220,${pulse})` : `rgba(255,224,102,${pulse})`
       ctx.lineWidth = 0.07
       ctx.stroke()
     } else if (i === from) {
@@ -326,7 +378,7 @@ function drawSelRange(ctx: CanvasRenderingContext2D, side: Side, ui: UiState, no
   if (!src) return
   const dragging = ui.drag && ui.drag.moved
   const c = dragging ? { x: ui.drag!.x, y: ui.drag!.y } : slotPos(from)
-  drawRange(ctx, src, c.x, c.y, dragging ? -1 : from, now)
+  drawRange(ctx, side, src, c.x, c.y, dragging ? -1 : from, now)
 }
 
 /** Spirits with their wind halos. `flip` turns them upside down (co-op top player facing the other way). */
@@ -341,7 +393,7 @@ function drawUnits(ctx: CanvasRenderingContext2D, side: Side, ui: UiState, now: 
     ctx.save()
     ctx.translate(p.x, p.y)
     if (flip) ctx.rotate(Math.PI)
-    drawUnit(ctx, u, 0, 0, 1, dragging ? 0.3 : 1)
+    drawUnit(ctx, u, 0, 0, 1, dragging ? 0.3 : 1, now)
     if (aura[i].count > 1 && !dragging) {
       // stacked wind: small badge with the number of winds feeding this spirit
       ctx.fillStyle = 'rgba(40,24,80,0.9)'
@@ -398,6 +450,60 @@ function drawFx(ctx: CanvasRenderingContext2D, side: Side) {
       ctx.beginPath()
       ctx.arc(f.x, f.y, R * 0.8, p * 6, p * 6 + Math.PI * 1.2)
       ctx.stroke()
+    } else if (f.k === 'meteor') {
+      // a fireball drops in, then a big filled blast
+      if (p < 0.35) {
+        const q = p / 0.35
+        const fx = f.x + 0.9 * (1 - q)
+        const fy = f.y - 1.4 * (1 - q)
+        ctx.globalAlpha = 1
+        ctx.strokeStyle = 'rgba(255,200,120,0.7)'
+        ctx.lineWidth = 0.08
+        ctx.beginPath()
+        ctx.moveTo(fx + 0.35, fy - 0.5)
+        ctx.lineTo(fx, fy)
+        ctx.stroke()
+        ctx.fillStyle = '#ffd27a'
+        ctx.beginPath()
+        ctx.arc(fx, fy, 0.12, 0, Math.PI * 2)
+        ctx.fill()
+      } else {
+        const q = (p - 0.35) / 0.65
+        ctx.globalAlpha = Math.max(0, 0.7 * (1 - q))
+        const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r!)
+        g.addColorStop(0, '#fff3c4')
+        g.addColorStop(0.45, f.color)
+        g.addColorStop(1, 'rgba(255,80,0,0)')
+        ctx.fillStyle = g
+        ctx.beginPath()
+        ctx.arc(f.x, f.y, f.r! * (0.4 + 0.6 * q), 0, Math.PI * 2)
+        ctx.fill()
+      }
+    } else if (f.k === 'chain') {
+      // jagged rainbow bolt
+      const segs = 5
+      ctx.lineWidth = 0.05
+      ctx.strokeStyle = `hsl(${(f.x * 97 + f.t * 900) % 360} 95% 70%)`
+      ctx.beginPath()
+      ctx.moveTo(f.x, f.y)
+      for (let k = 1; k < segs; k++) {
+        const t = k / segs
+        const j = (k % 2 ? 1 : -1) * 0.12
+        ctx.lineTo(f.x + (f.x2! - f.x) * t - (f.y2! - f.y) * j * 0.6, f.y + (f.y2! - f.y) * t + (f.x2! - f.x) * j * 0.6)
+      }
+      ctx.lineTo(f.x2!, f.y2!)
+      ctx.stroke()
+    } else if (f.k === 'nova') {
+      // icy / magic shockwave filling the spirit's range
+      ctx.globalAlpha = Math.max(0, 0.45 * (1 - p))
+      ctx.fillStyle = f.color
+      ctx.beginPath()
+      ctx.arc(f.x, f.y, f.r! * (0.25 + 0.75 * p), 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = Math.max(0, 1 - p)
+      ctx.strokeStyle = '#ffffff'
+      ctx.lineWidth = 0.04
+      ctx.stroke()
     } else if (f.k === 'txt') {
       text(ctx, f.text!, f.x, Math.max(0.22, f.y - p * 0.45), f.size ?? 0.26, f.color, { bold: true, outline: true })
     }
@@ -433,9 +539,9 @@ function drawBanners(ctx: CanvasRenderingContext2D, side: Side, now: number, fli
   ctx.restore()
 }
 
-function drawGhost(ctx: CanvasRenderingContext2D, side: Side, ui: UiState) {
+function drawGhost(ctx: CanvasRenderingContext2D, side: Side, ui: UiState, now: number) {
   const src = ui.drag ? side.units[ui.drag.from] : null
-  if (ui.drag && ui.drag.moved && src) drawUnit(ctx, src, ui.drag.x, ui.drag.y, 1.15, 0.9)
+  if (ui.drag && ui.drag.moved && src) drawUnit(ctx, src, ui.drag.x, ui.drag.y, 1.15, 0.9, now)
 }
 
 function shake(ctx: CanvasRenderingContext2D, t: number) {
@@ -459,7 +565,7 @@ export function drawSide(ctx: CanvasRenderingContext2D, w: number, dpr: number, 
   drawMonsters(ctx, side)
   drawFx(ctx, side)
   drawBanners(ctx, side, now)
-  drawGhost(ctx, side, ui)
+  drawGhost(ctx, side, ui, now)
 }
 
 /** The golden shared lane between the two co-op boards. */
@@ -548,5 +654,5 @@ export function drawCoop(
   each((s, i) => drawMonsters(ctx, s, COOP_COLORS[i]))
   each((s) => drawFx(ctx, s))
   each((s, i) => drawBanners(ctx, s, now, flipTop && i === 0))
-  each((s, i) => drawGhost(ctx, s, uis[i]))
+  each((s, i) => drawGhost(ctx, s, uis[i], now))
 }

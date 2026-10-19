@@ -13,16 +13,33 @@ import {
   FIELD_W,
   SHARED_LANE_Y,
   aiAct,
+  aiPickOffers,
   coopCount,
   isBossWave,
   newGame,
+  pickCard,
   step,
   summon,
   upgrade,
   type Game,
 } from './logic'
 import { COOP_COLORS, drawCoop, type UiState } from './render'
-import { ActionOverlay, AiNote, Controls, Hud, boardDown, boardMove, boardUp, makePress, sellSelected, transformSelected, unlockSelected } from './parts'
+import {
+  ActionOverlay,
+  AiNote,
+  CardPicker,
+  CodexModal,
+  Controls,
+  Discoveries,
+  Hud,
+  boardDown,
+  boardMove,
+  boardUp,
+  makePress,
+  sellSelected,
+  transformSelected,
+  unlockSelected,
+} from './parts'
 import type { Cfg } from './index'
 
 const DT = 1 / 60
@@ -45,6 +62,7 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
   const wrapRef = useRef<HTMLDivElement>(null)
   const pausedRef = useRef(false)
   const [paused, setPaused] = useState(false)
+  const [codex, setCodex] = useState(false)
   const [, setTick] = useState(0)
   const [over, setOver] = useState(false)
   const [size, setSize] = useState(0)
@@ -90,6 +108,11 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
         acc += elapsed
         while (acc >= DT) {
           acc -= DT
+          aiPickOffers(
+            g,
+            players.map((p) => (p.isAI ? PARTNER_DIFF : null)),
+            Math.random,
+          )
           players.forEach((p, i) => {
             if (!p.isAI) return
             aiT[i] += DT
@@ -156,6 +179,13 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
       const side = g.sides[1]
       const ui = uiRef.current[1]
       const k = e.key.toLowerCase()
+      // 1~3 pick a card while an offer is open (otherwise they buy upgrades)
+      if (side.offer && e.key >= '1' && e.key <= '3') {
+        const id = side.offer[Number(e.key) - 1]
+        if (id) pickCard(side, id, Math.random)
+        refresh()
+        return
+      }
       if (e.key === ' ' || k === 's') {
         e.preventDefault()
         summon(side, Math.random)
@@ -290,9 +320,12 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
               <ActionOverlay side={g.sides[0]} ui={uiRef.current[0]} press={presses[0]} className="at-top" />
             ))}
           {!players[1].isAI && <ActionOverlay side={g.sides[1]} ui={uiRef.current[1]} press={presses[1]} />}
+          {!paused && !players[0].isAI && <CardPicker side={g.sides[0]} variant="top" flipped={facing} onPick={refresh} />}
+          {!paused && !players[1].isAI && <CardPicker side={g.sides[1]} variant="bottom" keys onPick={refresh} />}
         </div>
       </div>
       {panel(1)}
+      <Discoveries sides={g.sides} humans={players.map((p, i) => (p.isAI ? -1 : i)).filter((i) => i >= 0)} />
       {paused && (
         <div className="rd-pause">
           <div className="card-panel">
@@ -303,12 +336,16 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
             <button className="btn primary big" onClick={() => pause(false)}>
               계속하기
             </button>
+            <button className="btn ghost" onClick={() => setCodex(true)}>
+              📖 정령 도감
+            </button>
             <button className="btn ghost" onClick={onReset}>
               그만하고 나가기
             </button>
           </div>
         </div>
       )}
+      {codex && <CodexModal onClose={() => setCodex(false)} />}
     </div>
   )
 }

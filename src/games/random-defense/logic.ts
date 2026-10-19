@@ -29,7 +29,11 @@ export const PATH_H = FIELD_H - 1
 export const PATH_LEN = 2 * (PATH_W + PATH_H)
 
 export const LIMIT = 100
-export const MAX_TIER = 6
+/** Highest ★. ★7 (각성) only comes from merging two ★6 spirits of the same type. */
+export const MAX_TIER = 7
+export const AWAKEN_TIER = 7
+/** Highest ★ that random results (merges, the 🎲 card) can reach. */
+export const MAX_ROLL_TIER = AWAKEN_TIER - 1
 export const WAVE_TIME = 15
 export const FIRST_WAVE_DELAY = 6
 export const BOSS_EVERY = 10
@@ -40,10 +44,13 @@ export const SPAWN_GAP = 0.45
 export const LUCKY_CHANCE = 0.06
 export const MAX_UPGRADE = 10
 /** Single-target spirits aim at a boss in range before anything else (the boss is on a clock). */
-export const BOSS_HUNTERS: UnitType[] = ['fire', 'rock', 'poison']
+export const BOSS_HUNTERS: UnitType[] = ['fire', 'rock', 'poison', 'meteor', 'curse']
 export const UPGRADE_BONUS = 0.2
 
-export type UnitType = 'fire' | 'thunder' | 'ice' | 'rock' | 'poison' | 'luck' | 'wind'
+export type BaseType = 'fire' | 'thunder' | 'ice' | 'rock' | 'poison' | 'luck' | 'wind'
+/** Hidden spirits: only made by merging a recipe pair (see RECIPES). */
+export type HiddenType = 'meteor' | 'blizzard' | 'curse' | 'rainbow'
+export type UnitType = BaseType | HiddenType
 
 export interface TypeInfo {
   name: string
@@ -55,7 +62,10 @@ export interface TypeInfo {
   range: number
 }
 
+/** Types that summons, random merges and transforms can produce. */
 export const TYPES: UnitType[] = ['fire', 'thunder', 'ice', 'rock', 'poison', 'luck', 'wind']
+export const HIDDEN_TYPES: HiddenType[] = ['meteor', 'blizzard', 'curse', 'rainbow']
+export const isHidden = (t: UnitType): t is HiddenType => (HIDDEN_TYPES as UnitType[]).includes(t)
 
 export const INFO: Record<UnitType, TypeInfo> = {
   fire: { name: '불꽃 정령', emoji: '🔥', color: '#ff6b3d', role: '강한 단일 공격', dmg: 26, interval: 0.8, range: 2.6 },
@@ -65,10 +75,99 @@ export const INFO: Record<UnitType, TypeInfo> = {
   poison: { name: '독버섯 정령', emoji: '🍄', color: '#7ddc5a', role: '지속 독 피해', dmg: 10, interval: 1.0, range: 2.6 },
   luck: { name: '행운 정령', emoji: '🍀', color: '#3ecf8e', role: '처치 코인 증가', dmg: 10, interval: 1.0, range: 2.2 },
   wind: { name: '바람 정령', emoji: '🌪️', color: '#c9b8ff', role: '주변 공격 속도 증가', dmg: 14, interval: 0.6, range: 2.2 },
+  meteor: { name: '운석 정령', emoji: '☄️', color: '#ff8a3d', role: '넓은 범위 대폭발', dmg: 24, interval: 1.1, range: 2.6 },
+  blizzard: { name: '눈보라 정령', emoji: '🌀', color: '#9fe8ff', role: '사거리 안 모두 공격·둔화', dmg: 8, interval: 1.2, range: 2.4 },
+  curse: { name: '저주 정령', emoji: '💀', color: '#c77dff', role: '맞은 적이 받는 피해 증가', dmg: 24, interval: 1.0, range: 2.5 },
+  rainbow: { name: '무지개 정령', emoji: '🌈', color: '#ff7eb6', role: '연쇄 번개 · 처치 코인 증가', dmg: 18, interval: 0.9, range: 2.6 },
 }
 
-export const TIER_COLORS = ['', '#9aa5b1', '#4cc26a', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444']
+/** Recipe merges: two DIFFERENT spirits with the same ★ (★3+) make a hidden spirit one ★ higher. */
+export const RECIPE_MIN_TIER = 3
+export const RECIPES: { a: BaseType; b: BaseType; out: HiddenType }[] = [
+  { a: 'fire', b: 'thunder', out: 'meteor' },
+  { a: 'ice', b: 'wind', out: 'blizzard' },
+  { a: 'rock', b: 'poison', out: 'curse' },
+  { a: 'luck', b: 'thunder', out: 'rainbow' },
+]
+/** Hidden spirit made from two types (either order), or null. */
+export function recipeOf(a: UnitType, b: UnitType): HiddenType | null {
+  for (const r of RECIPES) if ((r.a === a && r.b === b) || (r.a === b && r.b === a)) return r.out
+  return null
+}
+export const recipeFor = (h: HiddenType) => RECIPES.find((r) => r.out === h)!
+/** Hidden types in `found` that are not in the codex yet (codex = list of discovered type ids). */
+export function newDiscoveries(known: readonly string[], found: readonly UnitType[]): HiddenType[] {
+  const out: HiddenType[] = []
+  for (const t of found) if (isHidden(t) && !known.includes(t) && !out.includes(t)) out.push(t)
+  return out
+}
+
+export const TIER_COLORS = ['', '#9aa5b1', '#4cc26a', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444', '#ff4fd8']
 export const CLASS_NAMES = ['일반', '희귀', '전설']
+
+// ---------- augment cards (증강 카드) ----------
+
+export type CardId =
+  | 'fire'
+  | 'thunder'
+  | 'frost'
+  | 'quake'
+  | 'venom'
+  | 'gold'
+  | 'gale'
+  | 'dice'
+  | 'discount'
+  | 'time'
+  | 'reach'
+  | 'chest'
+  | 'slayer'
+  | 'swap'
+
+export const CARD_FIRE = 0.4
+export const CARD_THUNDER = 0.3
+export const CARD_FROST = 0.15
+export const CARD_QUAKE = 0.1
+export const CARD_VENOM = 2
+export const CARD_GOLD = 0.25
+export const CARD_GALE = 0.25
+export const CARD_DICE = 0.15
+export const CARD_DISCOUNT = 0.2
+export const CARD_TIME = 15
+export const CARD_REACH = 0.4
+export const CARD_SLAYER = 0.3
+export const CARD_SWAP = 0.5
+/** 💰 card: coins paid at once, growing with the wave. */
+export const chestCoins = (wave: number) => 60 + 10 * Math.max(1, wave)
+
+export interface CardInfo {
+  name: string
+  emoji: string
+  desc: string
+  /** Most copies one side can own. */
+  max: number
+}
+
+export const CARDS: Record<CardId, CardInfo> = {
+  fire: { name: '불꽃 강화', emoji: '🔥', desc: `불꽃·운석 정령 공격력 +${CARD_FIRE * 100}%`, max: 3 },
+  thunder: { name: '번개 확장', emoji: '⚡', desc: `번개·운석 폭발 범위 +${CARD_THUNDER * 100}%`, max: 2 },
+  frost: { name: '혹한', emoji: '❄️', desc: `둔화 +${CARD_FROST * 100}%p, 보스도 온전히 느려져요`, max: 1 },
+  quake: { name: '지진', emoji: '🪨', desc: `바위 정령 기절 확률 +${CARD_QUAKE * 100}%p`, max: 2 },
+  venom: { name: '맹독', emoji: '🍄', desc: `독 피해 ${CARD_VENOM}배`, max: 1 },
+  gold: { name: '황금손', emoji: '🍀', desc: `처치 코인 +${CARD_GOLD * 100}%`, max: 2 },
+  gale: { name: '순풍', emoji: '🌪️', desc: `바람 정령 속도 버프 +${CARD_GALE * 100}%`, max: 2 },
+  dice: { name: '행운의 합성', emoji: '🎲', desc: `합성할 때 ${CARD_DICE * 100}% 확률로 ★이 2단계 올라요 (★${MAX_ROLL_TIER}까지)`, max: 2 },
+  discount: { name: '할인', emoji: '💸', desc: `소환 비용 −${CARD_DISCOUNT * 100}%`, max: 1 },
+  time: { name: '시간 연장', emoji: '⏳', desc: `보스 제한 시간 +${CARD_TIME}초`, max: 2 },
+  reach: { name: '매의 눈', emoji: '🎯', desc: `모든 정령 사거리 +${CARD_REACH}`, max: 2 },
+  chest: { name: '보물 상자', emoji: '💰', desc: '지금 바로 코인 (웨이브가 높을수록 많이)', max: 99 },
+  slayer: { name: '보스 사냥꾼', emoji: '🏹', desc: `보스에게 주는 피해 +${CARD_SLAYER * 100}%`, max: 3 },
+  swap: { name: '변신술', emoji: '🔁', desc: `바꾸기 비용 −${CARD_SWAP * 100}%`, max: 1 },
+}
+export const CARD_IDS = Object.keys(CARDS) as CardId[]
+export const OFFER_SIZE = 3
+
+export const emptyCards = (): Record<CardId, number> =>
+  Object.fromEntries(CARD_IDS.map((id) => [id, 0])) as Record<CardId, number>
 
 export interface Unit {
   id: number
@@ -93,7 +192,7 @@ export const COOP_EDGE_ROW = [ROWS - 1, 0]
 /** Shared monster limit across both co-op loops (meta.ts rules quote it). */
 export const COOP_LIMIT = 160
 /** Co-op waves are a bit tougher than solo ones because the partner helps on the shared lane. */
-export const COOP_HP = 1.25
+export const COOP_HP = 1.6
 /** Body hue of each co-op board's normal monsters (matches the players' colours in render.ts). */
 export const COOP_HUES = [28, 205]
 /** Share of a partner-monster kill reward the killer gets (the owner gets the rest). */
@@ -121,6 +220,9 @@ export interface Monster {
   by?: number
   /** Side whose poison is ticking on it. */
   poisonBy?: number
+  /** 💀 curse: seconds left and extra damage taken (0.3 = +30%). */
+  curseT?: number
+  curseF?: number
 }
 
 export interface Spawn {
@@ -132,7 +234,7 @@ export interface Spawn {
 }
 
 export interface Fx {
-  k: 'shot' | 'txt' | 'boom' | 'swap'
+  k: 'shot' | 'txt' | 'boom' | 'swap' | 'meteor' | 'chain' | 'nova'
   x: number
   y: number
   x2?: number
@@ -174,6 +276,16 @@ export interface Side {
   spawnS: number
   /** Co-op: partner monsters this side finished off. */
   helped: number
+  /** Wave this side has reached (for wave-scaled card rewards). */
+  wave: number
+  /** Augment cards owned (copies per card). */
+  cards: Record<CardId, number>
+  /** Open card offer (3 choices), or null. */
+  offer: CardId[] | null
+  /** Offers earned while one was already open; each opens after the current pick. */
+  offerQueue: number
+  /** Hidden spirits this side made this game (for the codex). */
+  found: HiddenType[]
 }
 
 export interface Game {
@@ -243,23 +355,33 @@ export function monsterPos(g: Pick<Game, 'coop'>, idx: number, m: Monster): { x:
 
 export const classOf = (tier: number) => (tier <= 2 ? 0 : tier <= 4 ? 1 : 2)
 export const tierMult = (tier: number) => Math.pow(2.1, tier - 1)
-/** Attack-speed multiplier from stars: +10% per star above ★1 (★6 = +50%). */
+/** Copies of an augment card a side owns. */
+export const cardN = (side: Side, id: CardId) => side.cards?.[id] ?? 0
+/** Attack-speed multiplier from stars: +10% per star above ★1 (★6 = +50%, ★7 = +60%). */
 export const tierSpeed = (tier: number) => 1 + 0.1 * (tier - 1)
 export const SUMMON_COST_CAP = 60
 export const summonCost = (summons: number) => Math.min(SUMMON_COST_CAP, 10 + summons * 2)
+/** What the next summon actually costs this side (💸 card discount). */
+export const summonPrice = (side: Side) =>
+  Math.max(1, Math.round(summonCost(side.summons) * (1 - CARD_DISCOUNT * cardN(side, 'discount'))))
 /** Sell refund: half of what went into the unit, so selling never beats keeping coins. */
 export const SELL_RATE = 0.5
 export const refundOf = (u: Unit) => Math.floor(u.inv * SELL_RATE)
 /** Reroll price: doubles per ★ and rises 10% with every transform used this game. */
 export const transformCost = (tier: number, uses: number) => Math.round(15 * Math.pow(2, tier - 1) * (1 + 0.1 * uses))
+/** What rerolling a spirit of this ★ costs this side (🔁 card discount). */
+export const transformPrice = (side: Side, tier: number) =>
+  Math.max(1, Math.round(transformCost(tier, side.transforms) * (1 - CARD_SWAP * cardN(side, 'swap'))))
 export const UNLOCK_COSTS = [120, 200, 320]
 /** Price of the next locked slot, given how many extra slots are already open. */
 export const unlockCost = (opened: number) => UNLOCK_COSTS[Math.min(opened, UNLOCK_COSTS.length - 1)]
 export const upgradeCost = (level: number) => Math.round(60 * Math.pow(1.55, level) / 5) * 5
 /** Waves after this one grow more slowly, so the late game is a long climb instead of a wall. */
 export const HP_SOFT_WAVE = 30
+/** HP growth per wave after HP_SOFT_WAVE (cards, hidden spirits and ★7 carry the late game). */
+export const HP_LATE_GROWTH = 1.13
 export const waveHp = (w: number) =>
-  Math.round(28 * Math.pow(1.15, Math.min(w, HP_SOFT_WAVE) - 1) * Math.pow(1.1, Math.max(0, w - HP_SOFT_WAVE)) * (1 + w * 0.03))
+  Math.round(28 * Math.pow(1.15, Math.min(w, HP_SOFT_WAVE) - 1) * Math.pow(HP_LATE_GROWTH, Math.max(0, w - HP_SOFT_WAVE)) * (1 + w * 0.03))
 export const waveCount = (w: number) => 12 + Math.floor(w * 0.4)
 export const waveSpeed = (w: number) => Math.min(3.2, 1.9 + w * 0.03)
 export const waveReward = (w: number) => 3 + Math.floor(w / 4)
@@ -267,16 +389,28 @@ export const isBossWave = (w: number) => w > 0 && w % BOSS_EVERY === 0
 export const isEliteWave = (w: number) => w > 0 && w % ELITE_EVERY === 0 && !isBossWave(w)
 export const slowAmount = (tier: number) => Math.min(0.6, 0.25 + 0.05 * tier)
 export const stunChance = (tier: number) => 0.1 + 0.03 * tier
-/** Wind attack-speed bonus by star: grows steeply so high-star winds feel dramatic (★6 = +400%). */
-export const AURA_BY_TIER = [0.3, 0.6, 1.0, 1.7, 2.7, 4.0]
+/** Wind attack-speed bonus by star: grows steeply so high-star winds feel dramatic (★6 = +400%, ★7 = +600%). */
+export const AURA_BY_TIER = [0.3, 0.6, 1.0, 1.7, 2.7, 4.0, 6.0]
 export const auraBonus = (tier: number) => AURA_BY_TIER[Math.min(AURA_BY_TIER.length, Math.max(1, tier)) - 1]
 export const luckBonus = (tier: number) => 0.12 * tier
+/** 🌈 rainbow spirits also raise kill coins, a bit less than luck spirits. */
+export const rainbowBonus = (tier: number) => 0.08 * tier
+/** 💀 extra damage a cursed monster takes from every source. */
+export const curseAmp = (tier: number) => 0.2 + 0.02 * tier
+export const CURSE_TIME = 4
+/** ☄️ explosion radius / 🌈 chain jumps. */
+export const meteorRadius = (tier: number) => 0.9 + 0.06 * tier
+export const thunderRadius = (tier: number) => 0.8 + 0.06 * tier
+export const chainJumps = (tier: number) => (tier >= 6 ? 3 : 2)
+export const CHAIN_RANGE = 1.6
+export const CHAIN_FALLOFF = 0.6
 /** Monsters sent to the opponent when killing a boss / elite in versus. */
 export const sendCount = (kind: MonsterKind, wave: number) =>
   kind === 'boss' ? 8 + Math.floor(wave / 5) : kind === 'elite' ? 4 : 0
 
 export function unitDamage(u: Unit, side: Side): number {
-  return INFO[u.type].dmg * tierMult(u.tier) * (1 + UPGRADE_BONUS * side.upg[classOf(u.tier)])
+  const fire = u.type === 'fire' || u.type === 'meteor' ? 1 + CARD_FIRE * cardN(side, 'fire') : 1
+  return INFO[u.type].dmg * tierMult(u.tier) * (1 + UPGRADE_BONUS * side.upg[classOf(u.tier)]) * fire
 }
 
 /** Seconds between attacks (before wind auras). */
@@ -284,13 +418,16 @@ export function unitInterval(u: Unit): number {
   return INFO[u.type].interval / tierSpeed(u.tier)
 }
 
-export function unitRange(u: Unit): number {
-  return INFO[u.type].range + 0.1 * u.tier
+export function unitRange(u: Unit, side?: Side): number {
+  return INFO[u.type].range + 0.1 * u.tier + (side ? CARD_REACH * cardN(side, 'reach') : 0)
 }
 
 export function coinMult(side: Side): number {
-  let m = 1
-  for (const u of side.units) if (u && u.type === 'luck') m += luckBonus(u.tier)
+  let m = 1 + CARD_GOLD * cardN(side, 'gold')
+  for (const u of side.units) {
+    if (u && u.type === 'luck') m += luckBonus(u.tier)
+    else if (u && u.type === 'rainbow') m += rainbowBonus(u.tier)
+  }
   return m
 }
 
@@ -311,9 +448,10 @@ export interface AuraInfo {
 
 export function auraInfo(side: Side): AuraInfo[] {
   const bonuses: number[][] = Array.from({ length: SLOTS }, () => [])
+  const gale = 1 + CARD_GALE * cardN(side, 'gale')
   side.units.forEach((u, i) => {
     if (!u || u.type !== 'wind') return
-    for (const n of neighbors(i)) bonuses[n].push(auraBonus(u.tier))
+    for (const n of neighbors(i)) bonuses[n].push(auraBonus(u.tier) * gale)
   })
   return bonuses.map((list) => {
     list.sort((a, b) => b - a)
@@ -328,9 +466,13 @@ export function auraMults(side: Side): number[] {
   return auraInfo(side).map((a) => a.mult)
 }
 
-/** Damage-per-second estimate (ignores effects), used by the AI and the info panel. */
+/** Rough worth of a hidden spirit's special attack (extra targets / amplification) for the AI. */
+const HIDDEN_WORTH: Record<HiddenType, number> = { meteor: 2, blizzard: 3, curse: 1.6, rainbow: 2 }
+
+/** Damage-per-second estimate (ignores most effects), used by the AI and the info panel. */
 export function unitDps(u: Unit, side: Side): number {
-  return unitDamage(u, side) / unitInterval(u)
+  const extra = (isHidden(u.type) ? HIDDEN_WORTH[u.type] : 1) * (u.tier >= AWAKEN_TIER ? 2 : 1)
+  return (unitDamage(u, side) / unitInterval(u)) * extra
 }
 
 // ---------- setup ----------
@@ -360,6 +502,11 @@ export function newSide(): Side {
     sold: 0,
     spawnS: 0,
     helped: 0,
+    wave: 0,
+    cards: emptyCards(),
+    offer: null,
+    offerQueue: 0,
+    found: [],
   }
 }
 
@@ -393,7 +540,7 @@ export const emptySlots = (side: Side) => side.units.map((u, i) => (u || !side.o
 export const openCount = (side: Side) => side.open.filter(Boolean).length
 
 export function canSummon(side: Side): boolean {
-  return !side.lost && side.coins >= summonCost(side.summons) && side.units.some((u, i) => !u && side.open[i])
+  return !side.lost && side.coins >= summonPrice(side) && side.units.some((u, i) => !u && side.open[i])
 }
 
 /** Summons into a random empty slot. Returns the slot or -1. */
@@ -401,7 +548,7 @@ export function summon(side: Side, rng: () => number): number {
   if (!canSummon(side)) return -1
   const empty = emptySlots(side)
   const slot = empty[Math.floor(rng() * empty.length)]
-  const cost = summonCost(side.summons)
+  const cost = summonPrice(side)
   side.coins -= cost
   side.summons++
   const { type, tier } = rollSummon(rng)
@@ -411,20 +558,64 @@ export function summon(side: Side, rng: () => number): number {
   return slot
 }
 
-export function canMerge(a: Unit | null, b: Unit | null): boolean {
-  return !!a && !!b && a !== b && a.type === b.type && a.tier === b.tier && a.tier < MAX_TIER
+/** Two different spirits of a recipe pair with the same ★ (★3–★5) can merge into a hidden spirit. */
+export function canMergeRecipe(a: Unit | null, b: Unit | null): boolean {
+  return (
+    !!a &&
+    !!b &&
+    a !== b &&
+    a.type !== b.type &&
+    a.tier === b.tier &&
+    a.tier >= RECIPE_MIN_TIER &&
+    a.tier < MAX_ROLL_TIER &&
+    recipeOf(a.type, b.type) != null
+  )
 }
 
-/** Merges `from` into `to`: both disappear, a random unit of the next tier appears at `to`. */
+/** Same type and same ★ (★7 is the top), or a recipe pair. */
+export function canMerge(a: Unit | null, b: Unit | null): boolean {
+  if (!a || !b || a === b) return false
+  if (a.type === b.type) return a.tier === b.tier && a.tier < MAX_TIER
+  return canMergeRecipe(a, b)
+}
+
+/**
+ * Merges `from` into `to`; both disappear and one spirit a ★ higher appears at `to`:
+ * - recipe pair → that hidden spirit;
+ * - two ★6 of one type → ★7 (각성) of the SAME type;
+ * - two hidden spirits of one type → the same hidden type;
+ * - otherwise a random (normal) type.
+ * The 🎲 card may add one more ★, never past MAX_ROLL_TIER.
+ */
 export function merge(side: Side, from: number, to: number, rng: () => number): boolean {
   const a = side.units[from]
   const b = side.units[to]
   if (from === to || side.lost || !canMerge(a, b)) return false
-  const type = TYPES[Math.floor(rng() * TYPES.length)]
+  const recipe = a!.type !== b!.type ? recipeOf(a!.type, b!.type) : null
+  let tier = b!.tier + 1
+  let type: UnitType
+  if (recipe) type = recipe
+  else if (tier >= AWAKEN_TIER || isHidden(b!.type)) type = b!.type
+  else type = TYPES[Math.floor(rng() * TYPES.length)]
+  const dice = cardN(side, 'dice')
+  let lucky = false
+  if (dice > 0 && tier < MAX_ROLL_TIER && rng() < CARD_DICE * dice) {
+    tier++
+    lucky = true
+  }
   side.units[from] = null
-  side.units[to] = { id: side.nextId++, type, tier: b!.tier + 1, cd: 0.3, flash: 0.7, inv: a!.inv + b!.inv }
+  side.units[to] = { id: side.nextId++, type, tier, cd: 0.3, flash: 0.7, inv: a!.inv + b!.inv }
   const p = slotPos(to)
-  pushFx(side, { k: 'boom', x: p.x, y: p.y, r: 0.9, color: TIER_COLORS[b!.tier + 1], t: 0, life: 0.5 })
+  pushFx(side, { k: 'boom', x: p.x, y: p.y, r: 0.9, color: TIER_COLORS[tier], t: 0, life: 0.5 })
+  if (recipe) {
+    if (!side.found.includes(recipe)) side.found.push(recipe)
+    pushFx(side, { k: 'nova', x: p.x, y: p.y, r: 1.2, color: INFO[recipe].color, t: 0, life: 0.8 })
+    pushFx(side, { k: 'txt', x: p.x, y: p.y - 0.45, text: `${INFO[recipe].emoji} ${INFO[recipe].name}!`, color: '#fff3b0', t: 0, life: 1.4, size: 0.3 })
+  } else if (tier >= AWAKEN_TIER) {
+    pushFx(side, { k: 'nova', x: p.x, y: p.y, r: 1.4, color: TIER_COLORS[AWAKEN_TIER], t: 0, life: 1 })
+    pushFx(side, { k: 'txt', x: p.x, y: p.y - 0.45, text: '각성!', color: '#ffd6f5', t: 0, life: 1.4, size: 0.34 })
+  }
+  if (lucky) pushFx(side, { k: 'txt', x: p.x, y: p.y + 0.3, text: '🎲 ★+2!', color: '#ffe066', t: 0, life: 1.2, size: 0.26 })
   return true
 }
 
@@ -476,16 +667,19 @@ export function sell(side: Side, slot: number): number {
   return refund
 }
 
+/** Hidden and ★7 (각성) spirits can't be rerolled. */
+export const transformable = (u: Unit | null) => !!u && !isHidden(u.type) && u.tier < AWAKEN_TIER
+
 export function canTransform(side: Side, slot: number): boolean {
   const u = side.units[slot]
-  return !side.lost && !!u && side.coins >= transformCost(u.tier, side.transforms)
+  return !side.lost && transformable(u) && side.coins >= transformPrice(side, u!.tier)
 }
 
-/** Rerolls the unit into a random different type with the same ★. */
+/** Rerolls the unit into a random different (normal) type with the same ★. */
 export function transform(side: Side, slot: number, rng: () => number): boolean {
   const u = side.units[slot]
   if (!u || !canTransform(side, slot)) return false
-  const cost = transformCost(u.tier, side.transforms)
+  const cost = transformPrice(side, u.tier)
   const others = TYPES.filter((t) => t !== u.type)
   const old = u.type
   side.coins -= cost
@@ -529,6 +723,91 @@ export function findPairs(side: Side): [number, number][] {
   for (let i = 0; i < SLOTS; i++)
     for (let j = i + 1; j < SLOTS; j++) if (canMerge(side.units[i], side.units[j])) out.push([i, j])
   return out
+}
+
+// ---------- augment card offers ----------
+
+/** One-line description of a card for this side (💰 shows the actual coins). */
+export function cardDesc(id: CardId, side: Side): string {
+  return id === 'chest' ? `지금 바로 코인 +${chestCoins(side.wave)}` : CARDS[id].desc
+}
+
+/** Up to OFFER_SIZE distinct cards this side can still take, drawn with `rng`. */
+export function rollOffer(side: Side, rng: () => number): CardId[] {
+  const pool = CARD_IDS.filter((id) => cardN(side, id) < CARDS[id].max)
+  const out: CardId[] = []
+  while (out.length < OFFER_SIZE && pool.length) out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0])
+  return out
+}
+
+/** Earned an offer (elite / boss kill): opens it, or queues it behind the one already open. */
+export function grantOffer(side: Side, rng: () => number) {
+  if (side.lost) return
+  if (side.offer) side.offerQueue++
+  else {
+    const offer = rollOffer(side, rng)
+    side.offer = offer.length ? offer : null
+  }
+}
+
+/** Takes card `id` from the open offer; the next queued offer (if any) opens right away. */
+export function pickCard(side: Side, id: CardId, rng: () => number): boolean {
+  if (!side.offer || !side.offer.includes(id) || side.lost) return false
+  side.cards[id] = cardN(side, id) + 1
+  if (id === 'chest') side.coins += chestCoins(side.wave)
+  if (id === 'time' && side.bossT != null) side.bossT += CARD_TIME
+  side.offer = null
+  if (side.offerQueue > 0) {
+    side.offerQueue--
+    const next = rollOffer(side, rng)
+    side.offer = next.length ? next : null
+  }
+  pushFx(side, {
+    k: 'txt',
+    x: FIELD_W / 2,
+    // a quick second pick (queued offer) shows its name a little lower
+    y: FIELD_H / 2 - 0.4 + (side.fx.some((f) => f.k === 'txt' && f.y === FIELD_H / 2 - 0.4 && f.t < 0.8) ? 0.8 : 0),
+    text: `${CARDS[id].emoji} ${CARDS[id].name}`,
+    color: '#ffe066',
+    t: 0,
+    life: 1.3,
+    size: 0.36,
+  })
+  return true
+}
+
+/** AI card choice: the card that helps its current board the most (easy: the first one offered). */
+export function aiPickCard(side: Side, diff: Difficulty = 'hard'): CardId {
+  const offer = side.offer ?? []
+  if (diff === 'easy' || offer.length <= 1) return offer[0]
+  let total = 0
+  const by: Partial<Record<UnitType, number>> = {}
+  let winds = 0
+  side.units.forEach((u) => {
+    if (!u) return
+    const d = unitDps(u, side)
+    total += d
+    by[u.type] = (by[u.type] ?? 0) + d
+    if (u.type === 'wind') winds++
+  })
+  const share = (...ts: UnitType[]) => (total > 0 ? ts.reduce((a, t) => a + (by[t] ?? 0), 0) / total : 0)
+  const value: Record<CardId, number> = {
+    fire: CARD_FIRE * share('fire', 'meteor'),
+    thunder: 0.25 * share('thunder', 'meteor'),
+    frost: 0.4 * share('ice', 'blizzard') + (by.ice || by.blizzard ? 0.05 : 0),
+    quake: 0.3 * share('rock'),
+    venom: 0.9 * share('poison'),
+    gold: 0.14,
+    gale: winds ? 0.08 + 0.06 * winds : 0,
+    dice: 0.18,
+    discount: 0.12,
+    time: side.wave >= 30 ? 0.12 : 0.06,
+    reach: 0.12,
+    chest: 0.1,
+    slayer: 0.1 + 0.05 * Math.floor(side.wave / 20),
+    swap: 0.04,
+  }
+  return offer.slice().sort((a, b) => value[b] - value[a])[0]
 }
 
 // ---------- monsters ----------
@@ -580,6 +859,8 @@ function spawnMonster(side: Side, sp: Spawn) {
     poisonT: 0,
     hitT: 0,
     hue: sp.hue,
+    curseT: 0,
+    curseF: 0,
   })
 }
 
@@ -603,6 +884,7 @@ export function startWave(g: Game, rng: () => number) {
   g.waveTimer = WAVE_TIME
   for (const side of g.sides) {
     if (side.lost) continue
+    side.wave = g.wave
     const list = waveSpawns(g.wave, rng)
     if (g.coop)
       for (const sp of list) {
@@ -612,7 +894,7 @@ export function startWave(g: Game, rng: () => number) {
       }
     side.queue.push(...list)
     if (isBossWave(g.wave)) {
-      side.bossT = BOSS_TIME
+      side.bossT = BOSS_TIME + CARD_TIME * cardN(side, 'time')
       side.warn = 2.5
     } else if (isEliteWave(g.wave)) side.warn = 1.6
     if (UNLOCK_WAVES.includes(g.wave)) {
@@ -622,7 +904,12 @@ export function startWave(g: Game, rng: () => number) {
   }
 }
 
+/** Damage multiplier on a monster from its curse (any attacker). */
+const cursed = (m: Monster) => (m.curseT && m.curseT > 0 ? 1 + (m.curseF ?? 0) : 1)
+
 function hit(side: Side, by: number, m: Monster, dmg: number, show: boolean, color: string, pos: { x: number; y: number }) {
+  dmg *= cursed(m)
+  if (m.kind === 'boss') dmg *= 1 + CARD_SLAYER * cardN(side, 'slayer')
   m.hp -= dmg
   m.hitT = 0.12
   m.by = by
@@ -669,8 +956,9 @@ function tickSide(side: Side, dt: number) {
   // monster movement and damage over time
   for (const m of side.monsters) {
     m.hitT = Math.max(0, m.hitT - dt)
+    if (m.curseT && m.curseT > 0) m.curseT -= dt
     if (m.poisonT > 0) {
-      m.hp -= m.poisonDps * Math.min(dt, m.poisonT)
+      m.hp -= m.poisonDps * Math.min(dt, m.poisonT) * cursed(m)
       m.poisonT -= dt
       if (m.hp <= 0 && m.poisonBy != null) m.by = m.poisonBy
     }
@@ -693,7 +981,6 @@ function tickSide(side: Side, dt: number) {
 function attackSide(g: Game, idx: number, targets: Target[], dt: number, rng: () => number) {
   const side = g.sides[idx]
   const off = boardOffset(g, idx)
-  const local = (t: { x: number; y: number }) => ({ x: t.x - off.x, y: t.y - off.y })
   const aura = auraMults(side)
   for (let i = 0; i < SLOTS; i++) {
     const u = side.units[i]
@@ -702,72 +989,165 @@ function attackSide(g: Game, idx: number, targets: Target[], dt: number, rng: ()
     if (u.cd > 0) continue
     const lp = slotPos(i)
     const p = { x: lp.x + off.x, y: lp.y + off.y }
-    const r2 = unitRange(u) ** 2
+    const r2 = unitRange(u, side) ** 2
     const hunter = BOSS_HUNTERS.includes(u.type)
-    let best = -1
-    for (let k = 0; k < targets.length; k++) {
+    const better = (k: number, j: number) => {
+      if (j < 0) return true
       const m = targets[k].m
-      if (m.hp <= 0) continue
+      const b = targets[j].m
+      const mb = hunter && m.kind === 'boss'
+      const bb = hunter && b.kind === 'boss'
+      return mb !== bb ? mb : m.dist > b.dist
+    }
+    let best = -1
+    let second = -1
+    for (let k = 0; k < targets.length; k++) {
+      if (targets[k].m.hp <= 0) continue
       const dx = targets[k].x - p.x
       const dy = targets[k].y - p.y
       if (dx * dx + dy * dy > r2) continue
-      if (best < 0) best = k
-      else {
-        const b = targets[best].m
-        const mb = hunter && m.kind === 'boss'
-        const bb = hunter && b.kind === 'boss'
-        if (mb !== bb ? mb : m.dist > b.dist) best = k
-      }
+      if (better(k, best)) {
+        second = best
+        best = k
+      } else if (better(k, second)) second = k
     }
     if (best < 0) {
       u.cd = 0
       continue
     }
-    const info = INFO[u.type]
     u.cd += unitInterval(u)
-    const m = targets[best].m
-    const mp = local(targets[best])
-    const dmg = unitDamage(u, side)
-    const boss = m.kind === 'boss'
-    pushFx(side, { k: 'shot', x: lp.x, y: lp.y, x2: mp.x, y2: mp.y, color: info.color, t: 0, life: 0.14 })
-    switch (u.type) {
-      case 'thunder': {
-        const R = 0.8 + 0.06 * u.tier
-        pushFx(side, { k: 'boom', x: mp.x, y: mp.y, r: R, color: info.color, t: 0, life: 0.25 })
-        const c = targets[best]
-        for (const o of targets) {
-          if (o.m.hp <= 0) continue
-          const dx = o.x - c.x
-          const dy = o.y - c.y
-          if (dx * dx + dy * dy <= R * R) hit(side, idx, o.m, dmg, o.m === m, info.color, local(o))
-        }
-        break
-      }
-      case 'ice': {
-        hit(side, idx, m, dmg, true, info.color, mp)
-        const f = 1 - slowAmount(u.tier) * (boss ? 0.5 : 1)
-        m.slowF = m.slowT > 0 ? Math.min(m.slowF, f) : f
-        m.slowT = 1.5
-        break
-      }
-      case 'rock': {
-        hit(side, idx, m, dmg, true, info.color, mp)
-        if (rng() < stunChance(u.tier)) {
-          m.stunT = Math.max(m.stunT, (0.5 + 0.1 * u.tier) * (boss ? 0.5 : 1))
-          pushFx(side, { k: 'txt', x: mp.x, y: mp.y - 0.5, text: '기절!', color: '#ffe066', t: 0, life: 0.7, size: 0.24 })
-        }
-        break
-      }
-      case 'poison': {
-        hit(side, idx, m, dmg, true, info.color, mp)
-        m.poisonDps = m.poisonT > 0 ? Math.max(m.poisonDps, dmg * 1.5) : dmg * 1.5
-        m.poisonT = 3
-        m.poisonBy = idx
-        break
-      }
-      default:
-        hit(side, idx, m, dmg, true, info.color, mp)
+    const shot: Shot = { g, idx, u, lp, p, r2, rng }
+    strike(shot, targets, best)
+    // 각성 (★7): every attack strikes twice — another monster if there is one
+    if (u.tier >= AWAKEN_TIER) {
+      const k = second >= 0 ? second : best
+      if (targets[k].m.hp > 0) strike(shot, targets, k)
     }
+  }
+}
+
+interface Shot {
+  g: Game
+  idx: number
+  u: Unit
+  /** Spirit position, board-local and shared. */
+  lp: { x: number; y: number }
+  p: { x: number; y: number }
+  r2: number
+  rng: () => number
+}
+
+/** One attack of spirit `u` at targets[k], with its type's special effect. */
+function strike({ g, idx, u, lp, p, r2, rng }: Shot, targets: Target[], k: number) {
+  const side = g.sides[idx]
+  const off = boardOffset(g, idx)
+  const local = (t: { x: number; y: number }) => ({ x: t.x - off.x, y: t.y - off.y })
+  const info = INFO[u.type]
+  const m = targets[k].m
+  const mp = local(targets[k])
+  const dmg = unitDamage(u, side)
+  const boss = m.kind === 'boss'
+  const slow = (o: Monster) => {
+    const frost = cardN(side, 'frost')
+    const f = 1 - Math.min(0.75, slowAmount(u.tier) + CARD_FROST * frost) * (o.kind === 'boss' && !frost ? 0.5 : 1)
+    o.slowF = o.slowT > 0 ? Math.min(o.slowF, f) : f
+    o.slowT = 1.5
+  }
+  /** Everything within R of the centre target (thunder / meteor). */
+  const splash = (R: number, mult: number) => {
+    const c = targets[k]
+    for (const o of targets) {
+      if (o.m.hp <= 0) continue
+      const dx = o.x - c.x
+      const dy = o.y - c.y
+      if (dx * dx + dy * dy <= R * R) hit(side, idx, o.m, dmg * mult, o.m === m, info.color, local(o))
+    }
+  }
+  if (u.type !== 'blizzard')
+    pushFx(side, { k: 'shot', x: lp.x, y: lp.y, x2: mp.x, y2: mp.y, color: info.color, t: 0, life: 0.14 })
+  switch (u.type) {
+    case 'thunder': {
+      const R = thunderRadius(u.tier) * (1 + CARD_THUNDER * cardN(side, 'thunder'))
+      pushFx(side, { k: 'boom', x: mp.x, y: mp.y, r: R, color: info.color, t: 0, life: 0.25 })
+      splash(R, 1)
+      break
+    }
+    case 'meteor': {
+      const R = meteorRadius(u.tier) * (1 + CARD_THUNDER * cardN(side, 'thunder'))
+      pushFx(side, { k: 'meteor', x: mp.x, y: mp.y, r: R, color: info.color, t: 0, life: 0.45 })
+      splash(R, 1)
+      break
+    }
+    case 'blizzard': {
+      // a freezing wave: every monster in range is hit and slowed
+      pushFx(side, { k: 'nova', x: lp.x, y: lp.y, r: Math.sqrt(r2), color: info.color, t: 0, life: 0.4 })
+      for (const o of targets) {
+        if (o.m.hp <= 0) continue
+        const dx = o.x - p.x
+        const dy = o.y - p.y
+        if (dx * dx + dy * dy > r2) continue
+        hit(side, idx, o.m, dmg, o.m === m, info.color, local(o))
+        slow(o.m)
+      }
+      break
+    }
+    case 'curse': {
+      hit(side, idx, m, dmg, true, info.color, mp)
+      m.curseF = Math.max(m.curseT && m.curseT > 0 ? (m.curseF ?? 0) : 0, curseAmp(u.tier))
+      m.curseT = CURSE_TIME
+      break
+    }
+    case 'rainbow': {
+      // chain lightning: jumps to the nearest un-hit monsters, a bit weaker each time
+      const hitSet = new Set<Monster>([m])
+      hit(side, idx, m, dmg, true, info.color, mp)
+      let cur = targets[k]
+      let mult = 1
+      for (let j = 0; j < chainJumps(u.tier); j++) {
+        let next: Target | null = null
+        let bd = CHAIN_RANGE * CHAIN_RANGE
+        for (const o of targets) {
+          if (o.m.hp <= 0 || hitSet.has(o.m)) continue
+          const d = (o.x - cur.x) ** 2 + (o.y - cur.y) ** 2
+          if (d <= bd) {
+            bd = d
+            next = o
+          }
+        }
+        if (!next) break
+        mult *= CHAIN_FALLOFF
+        hitSet.add(next.m)
+        const a = local(cur)
+        const b = local(next)
+        pushFx(side, { k: 'chain', x: a.x, y: a.y, x2: b.x, y2: b.y, color: info.color, t: 0, life: 0.25 })
+        hit(side, idx, next.m, dmg * mult, false, info.color, b)
+        cur = next
+      }
+      break
+    }
+    case 'ice': {
+      hit(side, idx, m, dmg, true, info.color, mp)
+      slow(m)
+      break
+    }
+    case 'rock': {
+      hit(side, idx, m, dmg, true, info.color, mp)
+      if (rng() < stunChance(u.tier) + CARD_QUAKE * cardN(side, 'quake')) {
+        m.stunT = Math.max(m.stunT, (0.5 + 0.1 * u.tier) * (boss ? 0.5 : 1))
+        pushFx(side, { k: 'txt', x: mp.x, y: mp.y - 0.5, text: '기절!', color: '#ffe066', t: 0, life: 0.7, size: 0.24 })
+      }
+      break
+    }
+    case 'poison': {
+      hit(side, idx, m, dmg, true, info.color, mp)
+      const dps = dmg * 1.5 * (cardN(side, 'venom') ? CARD_VENOM : 1)
+      m.poisonDps = m.poisonT > 0 ? Math.max(m.poisonDps, dps) : dps
+      m.poisonT = 3
+      m.poisonBy = idx
+      break
+    }
+    default:
+      hit(side, idx, m, dmg, true, info.color, mp)
   }
 }
 
@@ -787,8 +1167,8 @@ export function killRewards(g: Game, owner: number, killer: number, reward: numb
   return out
 }
 
-/** Removes side `idx`'s dead monsters and pays out. */
-function reapSide(g: Game, idx: number) {
+/** Removes side `idx`'s dead monsters and pays out (elite / boss kills earn a card offer). */
+function reapSide(g: Game, idx: number, rng: () => number) {
   const side = g.sides[idx]
   if (!side.monsters.some((m) => m.hp <= 0)) return
   const alive: Monster[] = []
@@ -807,6 +1187,7 @@ function reapSide(g: Game, idx: number) {
       if (m.kind !== 'normal' || g.sides[killer].helped % 5 === 0)
         pushFx(side, { k: 'txt', x: p.x, y: p.y - 0.3, text: '🤝', color: '#ffe066', t: 0, life: 0.8, size: 0.3 })
     }
+    if (m.kind === 'boss' || m.kind === 'elite') grantOffer(g.sides[killer], rng)
     if (m.kind === 'boss') {
       side.bossT = null
       pushFx(side, {
@@ -852,7 +1233,7 @@ function stepCoop(g: Game, dt: number, rng: () => number) {
   for (const i of idxs) tickSide(g.sides[i], dt)
   const targets = targetsOf(g, idxs)
   for (const i of idxs) attackSide(g, i, targets, dt, rng)
-  for (const i of idxs) reapSide(g, i)
+  for (const i of idxs) reapSide(g, i, rng)
   let fail: Game['coopFail'] = null
   const late = g.sides.findIndex((s) => s.bossT != null && s.bossT <= 0)
   if (coopCount(g) >= COOP_LIMIT) {
@@ -873,7 +1254,7 @@ function stepSide(g: Game, idx: number, dt: number, rng: () => number) {
   const side = g.sides[idx]
   tickSide(side, dt)
   attackSide(g, idx, targetsOf(g, [idx]), dt, rng)
-  reapSide(g, idx)
+  reapSide(g, idx, rng)
   checkLose(side)
 }
 
@@ -920,16 +1301,27 @@ export const wavesCleared = (g: Game) => Math.max(0, g.sides.every((s) => s.lost
 // ---------- AI ----------
 
 export const AI_INTERVAL: Record<Difficulty, number> = { easy: 1.5, normal: 0.75, hard: 0.3 }
+/** How eagerly the AI merges a recipe pair (in "tiers" of priority over normal merges). */
+export const RECIPE_PRIORITY_HARD = 25
+export const RECIPE_PRIORITY_NORMAL = 5
 
-export type AiAction = 'summon' | 'merge' | 'upgrade' | 'unlock' | 'transform' | 'sell' | 'move' | null
+/** AI sides take an open card offer at once (the UI does the same for AI seats). */
+export function aiPickOffers(g: Game, diffs: (Difficulty | null)[], rng: () => number) {
+  g.sides.forEach((s, i) => {
+    const d = diffs[i]
+    if (d && s.offer && !s.lost) pickCard(s, aiPickCard(s, d), rng)
+  })
+}
+
+export type AiAction = 'summon' | 'merge' | 'upgrade' | 'unlock' | 'transform' | 'sell' | 'move' | 'card' | null
 
 /** Chance that rerolling `slot` creates a merge pair (another unit with its ★ but a different type). */
 export function pairChance(side: Side, slot: number): number {
   const u = side.units[slot]
-  if (!u || u.tier >= MAX_TIER) return 0
+  if (!u || !transformable(u)) return 0
   const types = new Set<UnitType>()
   side.units.forEach((o, i) => {
-    if (o && i !== slot && o.tier === u.tier && o.type !== u.type) types.add(o.type)
+    if (o && i !== slot && o.tier === u.tier && o.type !== u.type && !isHidden(o.type)) types.add(o.type)
   })
   return types.size / (TYPES.length - 1)
 }
@@ -941,8 +1333,8 @@ export function bestTransform(side: Side, diff: Difficulty, rng: () => number): 
   side.units.forEach((u, i) => {
     if (!u) return
     const p = pairChance(side, i)
-    if (p <= 0 || side.coins < transformCost(u.tier, side.transforms)) return
-    let score = diff === 'easy' ? rng() : p / transformCost(u.tier, side.transforms)
+    if (p <= 0 || side.coins < transformPrice(side, u.tier)) return
+    let score = diff === 'easy' ? rng() : p / transformPrice(side, u.tier)
     if (diff !== 'easy' && (u.type === 'wind' || u.type === 'luck')) score *= 0.6
     if (score > bestScore) {
       bestScore = score
@@ -1047,6 +1439,10 @@ export function coopArrange(side: Side, edgeRow: number): boolean {
  */
 export function aiAct(side: Side, diff: Difficulty, rng: () => number, tools = true, edgeRow = -1): AiAction {
   if (side.lost) return null
+  if (side.offer) {
+    pickCard(side, aiPickCard(side, diff), rng)
+    return 'card'
+  }
   if (diff === 'easy' && rng() < 0.3) return null
   // a nearly full board is worth growing before it jams
   if (tools && diff !== 'easy' && canUnlock(side) && emptySlots(side).length <= 1) {
@@ -1057,14 +1453,18 @@ export function aiAct(side: Side, diff: Difficulty, rng: () => number, tools = t
     summon(side, rng)
     return 'summon'
   }
-  const pairs = findPairs(side)
+  let pairs = findPairs(side)
+  // an easy AI only sometimes notices a recipe pair
+  if (diff === 'easy' && rng() < 0.7) pairs = pairs.filter(([a, b]) => !canMergeRecipe(side.units[a], side.units[b]))
   if (pairs.length) {
     let pair: [number, number]
     if (diff === 'easy') pair = pairs[Math.floor(rng() * pairs.length)]
     else {
-      // merge the lowest tier first; keep wind/luck spirits when possible
-      const score = ([a]: [number, number]) => {
+      // merge the lowest tier first; keep wind/luck spirits when possible; hard loves recipes
+      const recipeBonus = diff === 'hard' ? RECIPE_PRIORITY_HARD : RECIPE_PRIORITY_NORMAL
+      const score = ([a, b]: [number, number]) => {
         const u = side.units[a]!
+        if (canMergeRecipe(u, side.units[b])) return u.tier * 10 - recipeBonus
         return u.tier * 10 + (u.type === 'wind' || u.type === 'luck' ? 3 : 0)
       }
       pair = pairs.slice().sort((p, q) => score(p) - score(q))[0]
@@ -1092,7 +1492,7 @@ export function aiAct(side: Side, diff: Difficulty, rng: () => number, tools = t
   if (diff === 'easy' && rng() < 0.5) return aiUpgrade(side, diff, rng)
   const t = bestTransform(side, diff, rng)
   if (t >= 0) {
-    const cost = transformCost(side.units[t]!.tier, side.transforms)
+    const cost = transformPrice(side, side.units[t]!.tier)
     // a much better deal on an upgrade wins over a pricey reroll
     const up = Math.min(...[0, 1, 2].map((c) => (side.upg[c] < MAX_UPGRADE ? upgradeCost(side.upg[c]) : Infinity)))
     if (diff === 'easy' || cost <= up * 0.6 || side.coins < up) {
@@ -1106,7 +1506,7 @@ export function aiAct(side: Side, diff: Difficulty, rng: () => number, tools = t
   if (w >= 0) {
     const refund = refundOf(side.units[w]!)
     const ones = new Set(side.units.filter((u, i) => u && i !== w && u.tier === 1).map((u) => u!.type))
-    if (ones.size > 0 && side.coins + refund >= summonCost(side.summons)) {
+    if (ones.size > 0 && side.coins + refund >= summonPrice(side)) {
       sell(side, w)
       return 'sell'
     }
@@ -1134,6 +1534,7 @@ export function simulate(
         aiAct(g.sides[i], d, rng, tools)
       }
     })
+    aiPickOffers(g, diffs, rng)
     step(g, dt, rng)
   }
   return g
@@ -1151,6 +1552,7 @@ export function simulateCoop(diffs: Difficulty[], rng: () => number, maxTime = 3
         aiAct(g.sides[i], d, rng, true, aware ? COOP_EDGE_ROW[i] : -1)
       }
     })
+    aiPickOffers(g, diffs, rng)
     step(g, dt, rng)
   }
   return g
