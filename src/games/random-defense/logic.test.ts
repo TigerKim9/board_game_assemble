@@ -50,6 +50,8 @@ import {
   AURA_CAP,
   auraBonus,
   auraInfo,
+  isAuraSource,
+  BLIZZARD_AURA,
   auraMults,
   canMerge,
   coinMult,
@@ -737,6 +739,23 @@ function quietCoop() {
   return g
 }
 
+describe('blizzard aura', () => {
+  it('a blizzard passes on part of the aura of the wind it was made from (one star lower)', () => {
+    const a = quiet()
+    a.s.units[7] = unit('blizzard', 5, 1)
+    a.s.units[8] = unit('fire', 3, 2)
+    const b = quiet()
+    b.s.units[7] = unit('wind', 4, 1)
+    b.s.units[8] = unit('fire', 3, 2)
+    const boost = auraInfo(a.s)[8].mult - 1
+    expect(boost).toBeGreaterThan(0)
+    expect(boost).toBeCloseTo((auraInfo(b.s)[8].mult - 1) * BLIZZARD_AURA)
+    expect(auraInfo(a.s)[8].count).toBe(1)
+    expect(isAuraSource('blizzard')).toBe(true)
+    expect(isAuraSource('ice')).toBe(false)
+  })
+})
+
 describe('co-op', () => {
   it('stacks the boards so both loops share one lane', () => {
     const g = quietCoop()
@@ -896,7 +915,7 @@ describe('co-op', () => {
     const avg = waves.reduce((a, b) => a + b, 0) / waves.length
     console.log(`co-op AI+AI waves: ${waves.join(', ')} (avg ${avg.toFixed(1)})`)
     expect(avg).toBeGreaterThanOrEqual(40)
-    expect(avg).toBeLessThanOrEqual(65)
+    expect(avg).toBeLessThanOrEqual(75)
   }, 60000)
 })
 

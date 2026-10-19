@@ -12,6 +12,7 @@ import {
   TIER_COLORS,
   AWAKEN_TIER,
   auraInfo,
+  isAuraSource,
   canMerge,
   canMergeRecipe,
   isHidden,
@@ -87,7 +88,7 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 /** Attack range circle (and, for wind spirits, the 8 boosted neighbour tiles). */
 function drawRange(ctx: CanvasRenderingContext2D, side: Side, u: Unit, x: number, y: number, slot: number, now: number) {
   const color = INFO[u.type].color
-  if (u.type === 'wind' && slot >= 0) {
+  if (isAuraSource(u.type) && slot >= 0) {
     ctx.save()
     ctx.fillStyle = 'rgba(201,184,255,0.22)'
     ctx.strokeStyle = 'rgba(201,184,255,0.75)'

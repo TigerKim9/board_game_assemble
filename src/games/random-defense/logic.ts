@@ -77,7 +77,7 @@ export const INFO: Record<UnitType, TypeInfo> = {
   luck: { name: '행운 정령', emoji: '🍀', color: '#3ecf8e', role: '처치 코인 증가', dmg: 10, interval: 1.0, range: 2.2 },
   wind: { name: '바람 정령', emoji: '🌪️', color: '#c9b8ff', role: '주변 공격 속도 증가', dmg: 14, interval: 0.6, range: 2.2 },
   meteor: { name: '운석 정령', emoji: '☄️', color: '#ff8a3d', role: '넓은 범위 대폭발', dmg: 24, interval: 1.1, range: 2.6 },
-  blizzard: { name: '눈보라 정령', emoji: '🌀', color: '#9fe8ff', role: '사거리 안 모두 공격·둔화', dmg: 8, interval: 1.2, range: 2.4 },
+  blizzard: { name: '눈보라 정령', emoji: '🌀', color: '#9fe8ff', role: '사거리 안 모두 공격·둔화·주변 공격 속도 증가', dmg: 8, interval: 1.2, range: 2.4 },
   curse: { name: '저주 정령', emoji: '💀', color: '#c77dff', role: '맞은 적이 받는 피해 증가', dmg: 24, interval: 1.0, range: 2.5 },
   rainbow: { name: '무지개 정령', emoji: '🌈', color: '#ff7eb6', role: '연쇄 번개 · 처치 코인 증가', dmg: 18, interval: 0.9, range: 2.6 },
 }
@@ -517,12 +517,19 @@ export interface AuraInfo {
   count: number
 }
 
+/** Spirits whose aura speeds up their 8 neighbours: wind, and the blizzard born from it. */
+export const isAuraSource = (t: UnitType) => t === 'wind' || t === 'blizzard'
+/** A blizzard keeps the aura of the wind it was made from: one star below its own. */
+export const auraTier = (u: Unit) => (u.type === 'blizzard' ? u.tier - 1 : u.tier)
+/** Share of that wind aura a blizzard passes on (it also freezes and hits everything in range). */
+export const BLIZZARD_AURA = 0.75
+
 export function auraInfo(side: Side): AuraInfo[] {
   const bonuses: number[][] = Array.from({ length: SLOTS }, () => [])
   const gale = 1 + CARD_GALE * cardN(side, 'gale')
   side.units.forEach((u, i) => {
-    if (!u || u.type !== 'wind') return
-    for (const n of neighbors(i)) bonuses[n].push(auraBonus(u.tier) * gale)
+    if (!u || !isAuraSource(u.type)) return
+    for (const n of neighbors(i)) bonuses[n].push(auraBonus(auraTier(u)) * gale * (u.type === 'blizzard' ? BLIZZARD_AURA : 1))
   })
   return bonuses.map((list) => {
     list.sort((a, b) => b - a)
@@ -858,7 +865,7 @@ export function aiPickCard(side: Side, diff: Difficulty = 'hard'): CardId {
     const d = unitDps(u, side)
     total += d
     by[u.type] = (by[u.type] ?? 0) + d
-    if (u.type === 'wind') winds++
+    if (isAuraSource(u.type)) winds++
   })
   const share = (...ts: UnitType[]) => (total > 0 ? ts.reduce((a, t) => a + (by[t] ?? 0), 0) / total : 0)
   const value: Record<CardId, number> = {
@@ -1698,7 +1705,7 @@ export function bestTransform(side: Side, diff: Difficulty, rng: () => number): 
     const p = pairChance(side, i)
     if (p <= 0 || side.coins < transformPrice(side, u.tier)) return
     let score = diff === 'easy' ? rng() : p / transformPrice(side, u.tier)
-    if (diff !== 'easy' && (u.type === 'wind' || u.type === 'luck')) score *= 0.6
+    if (diff !== 'easy' && (isAuraSource(u.type) || u.type === 'luck')) score *= 0.6
     if (score > bestScore) {
       bestScore = score
       best = i
@@ -1842,7 +1849,7 @@ export function aiAct(side: Side, diff: Difficulty, rng: () => number, tools = t
       const score = ([a, b]: [number, number]) => {
         const u = side.units[a]!
         if (canMergeRecipe(u, side.units[b])) return u.tier * 10 - recipeBonus
-        return u.tier * 10 + (u.type === 'wind' || u.type === 'luck' ? 3 : 0)
+        return u.tier * 10 + (isAuraSource(u.type) || u.type === 'luck' ? 3 : 0)
       }
       pair = pairs.slice().sort((p, q) => score(p) - score(q))[0]
     }
