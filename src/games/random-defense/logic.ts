@@ -1730,12 +1730,15 @@ function aiUpgrade(side: Side, diff: Difficulty, rng: () => number): AiAction {
   side.units.forEach((u) => {
     if (u) power[classOf(u.tier)] += unitDps(u, side)
   })
+  // classes already at the max level are skipped (a maxed class used to stall every upgrade)
+  const open = [0, 1, 2].filter((c) => side.upg[c] < MAX_UPGRADE)
+  if (!open.length) return null
   const cls =
     diff === 'easy'
       ? Math.floor(rng() * 3)
       : diff === 'normal'
-        ? [0, 1, 2].sort((a, b) => power[b] - power[a])[0]
-        : [0, 1, 2].sort((a, b) => power[b] / (side.upg[b] + 1) - power[a] / (side.upg[a] + 1))[0]
+        ? open.sort((a, b) => power[b] - power[a])[0]
+        : open.sort((a, b) => power[b] / (side.upg[b] + 1) - power[a] / (side.upg[a] + 1))[0]
   if (power[cls] > 0 && canUpgrade(side, cls)) {
     upgrade(side, cls)
     return 'upgrade'
