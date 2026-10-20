@@ -438,8 +438,15 @@ export function play(s0: GState, action: PlayAction): GState {
   p.hand = p.hand.filter((c) => c !== card)
   s.floor.push(card)
   s.ctx = { played: [card], playMonth: m, fpBefore: fp, playTarget: fp.length === 1 ? fp[0] : null, flipped: null, flipTarget: null, bomb: false }
-  s.phase = fp.length === 2 ? { kind: 'chooseHand', options: fp } : { kind: 'flip' }
+  if (fp.length === 2 && interchangeable(fp)) s.ctx.playTarget = fp[0]
+  s.phase = fp.length === 2 && !interchangeable(fp) ? { kind: 'chooseHand', options: fp } : { kind: 'flip' }
   return s
+}
+
+/** Two floor cards that score exactly the same (e.g. two plain 피): no point asking which one to take. */
+export function interchangeable(ids: number[]): boolean {
+  const [a, b] = ids.map(getCard)
+  return ids.length === 2 && a.kind === 'pi' && b.kind === 'pi' && a.piValue === b.piValue
 }
 
 /** 같은 달 두 장 중 가져올 카드 고르기 */
@@ -475,7 +482,8 @@ export function flip(s0: GState): GState {
     return s
   }
   const m = ofMonth(s.floor, mf)
-  s.phase = m.length === 2 ? { kind: 'chooseFlip', options: m } : { kind: 'resolve' }
+  if (m.length === 2 && interchangeable(m)) ctx.flipTarget = m[0]
+  s.phase = m.length === 2 && !interchangeable(m) ? { kind: 'chooseFlip', options: m } : { kind: 'resolve' }
   return s
 }
 

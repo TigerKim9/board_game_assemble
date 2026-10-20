@@ -3,6 +3,7 @@ import { getCard } from '../../hwatu'
 import { mulberry32 } from '../../lib/random'
 import type { Difficulty } from '../../lib/types'
 import {
+  interchangeable,
   advance,
   aiAction,
   aiChoose,
@@ -187,6 +188,26 @@ describe('차례 진행', () => {
     expect(r.phase).toEqual({ kind: 'chooseFlip', options: [c(1, 0), c(1, 1)] })
     r = advance(choose(r, c(1, 1)))
     expect(r.players[0].captured.sort()).toEqual([c(1, 1), c(1, 2)].sort())
+  })
+
+  it('바닥 두 장이 같은 피면 묻지 않고 바로 가져감 (낸 카드·뒤집은 카드 모두)', () => {
+    const s = mk('matgo', { hands: [[c(1, 0), c(5, 0)], [c(6, 0)]], floor: [c(1, 2), c(1, 3), c(3, 2)], deck: [c(8, 2), c(9, 2)] })
+    const r = play(s, card(c(1, 0)))
+    expect(r.phase.kind).toBe('flip')
+    const done = run(s, card(c(1, 0)))
+    expect(done.players[0].captured).toContain(c(1, 0))
+    expect(done.players[0].captured.filter((id) => id === c(1, 2) || id === c(1, 3))).toHaveLength(1)
+
+    const f = mk('matgo', { hands: [[c(5, 0), c(6, 0)], [c(7, 0)]], floor: [c(11, 2), c(11, 3), c(3, 2)], deck: [c(11, 0), c(9, 2)] })
+    const r2 = advance(play(f, card(c(5, 0))))
+    expect(r2.phase.kind).toBe('resolve')
+  })
+
+  it('쌍피와 피처럼 점수가 다르면 여전히 고름', () => {
+    const s = mk('matgo', { hands: [[c(11, 0), c(5, 0)], [c(6, 0)]], floor: [c(11, 1), c(11, 2), c(3, 2)], deck: [c(8, 2), c(9, 2)] })
+    expect(play(s, card(c(11, 0))).phase).toEqual({ kind: 'chooseHand', options: [c(11, 1), c(11, 2)] })
+    expect(interchangeable([c(1, 2), c(1, 3)])).toBe(true)
+    expect(interchangeable([c(1, 1), c(1, 2)])).toBe(false)
   })
 
   it('싹쓸이: 바닥을 모두 비우면 피 1장씩 뺏음 (고스톱은 두 사람에게서)', () => {
