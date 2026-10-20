@@ -123,6 +123,7 @@ export type CardId =
   | 'chest'
   | 'slayer'
   | 'swap'
+  | 'compound'
 
 export const CARD_FIRE = 0.4
 export const CARD_THUNDER = 0.3
@@ -137,6 +138,7 @@ export const CARD_TIME = 15
 export const CARD_REACH = 0.4
 export const CARD_SLAYER = 0.3
 export const CARD_SWAP = 0.5
+export const CARD_COMPOUND = 0.3
 /** 💰 card: coins paid at once, growing with the wave. */
 export const chestCoins = (wave: number) => 60 + 10 * Math.max(1, wave)
 
@@ -163,6 +165,7 @@ export const CARDS: Record<CardId, CardInfo> = {
   chest: { name: '보물 상자', emoji: '💰', desc: '지금 바로 코인 (웨이브가 높을수록 많이)', max: 99 },
   slayer: { name: '보스 사냥꾼', emoji: '🏹', desc: `보스에게 주는 피해 +${CARD_SLAYER * 100}%`, max: 3 },
   swap: { name: '변신술', emoji: '🔁', desc: `바꾸기 비용 −${CARD_SWAP * 100}%`, max: 1 },
+  compound: { name: '복리', emoji: '💹', desc: `자동 수입 +${CARD_COMPOUND * 100}%`, max: 2 },
 }
 export const CARD_IDS = Object.keys(CARDS) as CardId[]
 export const OFFER_SIZE = 3
@@ -326,6 +329,13 @@ export interface Side {
   /** ⏸️ seconds left of the time freeze on this side's loop. */
   freezeT: number
   skillUses: number
+  /** 💹 income investment level (0..MAX_INCOME). */
+  incomeLvl: number
+  /** Coins earned so far: passively (💰 auto income) and from kills (stats / balancing). */
+  passiveEarned: number
+  killEarned: number
+  /** Seconds of income ticking (drives the HUD's small pulse). */
+  incomeT: number
 }
 
 export interface Game {
@@ -493,6 +503,56 @@ export function unitRange(u: Unit, side?: Side): number {
   return INFO[u.type].range + 0.1 * u.tier + (side ? CARD_REACH * cardN(side, 'reach') : 0)
 }
 
+// ---------- 💰 passive income ----------
+
+/** Coins per second before boosts: grows with the wave. */
+export const PASSIVE_BASE = 1
+export const PASSIVE_WAVE = 0.2
+export const passiveBase = (wave: number) => PASSIVE_BASE + PASSIVE_WAVE * Math.max(0, wave)
+/** 💹 each investment level adds this share of the base rate. */
+export const INCOME_STEP = 0.4
+export const MAX_INCOME = 10
+export const investCost = (level: number) => Math.round((80 * Math.pow(1.6, level)) / 5) * 5
+/** 🍀 luck spirits add this per ★ to passive income; the 🍀 황금손 card adds INCOME_GOLD per copy. */
+export const INCOME_LUCK = 0.03
+export const INCOME_GOLD = 0.1
+
+/** Passive-income multiplier from investments, luck spirits and cards (before coinRate). */
+export function incomeMult(side: Side, level = side.incomeLvl): number {
+  let m = 1 + INCOME_STEP * level + CARD_COMPOUND * cardN(side, 'compound') + INCOME_GOLD * cardN(side, 'gold')
+  for (const u of side.units) if (u && u.type === 'luck') m += INCOME_LUCK * u.tier
+  return m
+}
+
+/** Coins per second this side earns on its own right now. */
+export function passiveRate(side: Side, level = side.incomeLvl): number {
+  return passiveBase(side.wave) * incomeMult(side, level) * side.coinRate
+}
+
+export function canInvest(side: Side): boolean {
+  return !side.lost && side.incomeLvl < MAX_INCOME && side.coins >= investCost(side.incomeLvl)
+}
+
+/** Buys the next 💹 income level. */
+export function invest(side: Side): boolean {
+  if (!canInvest(side)) return false
+  side.coins -= investCost(side.incomeLvl)
+  side.incomeLvl++
+  pushPop(side, `💹 수입 투자 Lv${side.incomeLvl}`, '#9ff0b5', 0.32)
+  return true
+}
+
+/** Income gained per second by the next level (for the button and the AI). */
+export const investGain = (side: Side) => passiveRate(side, side.incomeLvl + 1) - passiveRate(side)
+
+function accrueIncome(side: Side, dt: number) {
+  if (side.lost) return
+  const c = passiveRate(side) * dt
+  side.coins += c
+  side.passiveEarned += c
+  side.incomeT += dt
+}
+
 export function coinMult(side: Side): number {
   let m = 1 + CARD_GOLD * cardN(side, 'gold')
   for (const u of side.units) {
@@ -592,6 +652,10 @@ export function newSide(): Side {
     skillCd: SKILLS.map(() => SKILL_START_CD),
     freezeT: 0,
     skillUses: 0,
+    incomeLvl: 0,
+    passiveEarned: 0,
+    killEarned: 0,
+    incomeT: 0,
   }
 }
 
@@ -883,6 +947,7 @@ export function aiPickCard(side: Side, diff: Difficulty = 'hard'): CardId {
     chest: 0.1,
     slayer: 0.1 + 0.05 * Math.floor(side.wave / 20),
     swap: 0.04,
+    compound: side.wave < 25 ? 0.14 : 0.08,
   }
   return offer.slice().sort((a, b) => value[b] - value[a])[0]
 }
@@ -948,6 +1013,7 @@ export type MissionId =
   | 'wind2'
   | 'calmStart'
   | 'upgrades'
+  | 'invest'
 
 export interface Mission {
   id: MissionId
@@ -976,6 +1042,7 @@ export const MISSIONS: Record<MissionId, { emoji: string; text: (goal: number) =
   wind2: { emoji: '🌪️', text: () => '바람 2개가 겹친 정령 만들기' },
   calmStart: { emoji: '🧘', text: (n) => `몬스터 ${CALM_LIMIT}마리 이하로 웨이브 시작 ${n}번 연속` },
   upgrades: { emoji: '💪', text: (n) => `강화 레벨 합계 ${n} 달성` },
+  invest: { emoji: '💹', text: (n) => `수입 투자 ${n}레벨 달성` },
 }
 export const MISSION_IDS = Object.keys(MISSIONS) as MissionId[]
 
@@ -991,6 +1058,8 @@ function missionGoal(id: MissionId, side: Side): number {
       return 2
     case 'calmStart':
       return CALM_WAVES
+    case 'invest':
+      return Math.min(MAX_INCOME, side.incomeLvl + 2)
     case 'upgrades':
       return Math.min(3 * MAX_UPGRADE, upgSum(side) + UPGRADE_STEP)
     default:
@@ -1002,7 +1071,8 @@ function missionGoal(id: MissionId, side: Side): number {
 export function refillMissions(side: Side, rng: () => number) {
   while (side.missions.length < MISSION_SLOTS) {
     const pool = MISSION_IDS.filter(
-      (id) => !side.missions.some((m) => m.id === id) && !(id === 'upgrades' && upgSum(side) >= 3 * MAX_UPGRADE),
+      (id) => !side.missions.some((m) => m.id === id) && !(id === 'upgrades' && upgSum(side) >= 3 * MAX_UPGRADE) &&
+        !(id === 'invest' && side.incomeLvl >= MAX_INCOME - 1),
     )
     if (!pool.length) return
     const id = pool[Math.floor(rng() * pool.length)]
@@ -1020,6 +1090,7 @@ export function updateMissions(side: Side) {
   for (const m of side.missions) {
     if (m.id === 'waveKills') m.progress = Math.min(m.goal, side.waveKills)
     else if (m.id === 'upgrades') m.progress = Math.min(m.goal, upgSum(side))
+    else if (m.id === 'invest') m.progress = Math.min(m.goal, side.incomeLvl)
     else if (m.id === 'sameType') {
       const n = new Map<UnitType, number>()
       for (const u of side.units) if (u) n.set(u.type, (n.get(u.type) ?? 0) + 1)
@@ -1510,7 +1581,10 @@ function reapSide(g: Game, idx: number, rng: () => number) {
     }
     const killer = g.coop && m.by != null && g.sides[m.by] ? m.by : idx
     const pay = killRewards(g, idx, killer, m.reward)
-    pay.forEach((c, i) => (g.sides[i].coins += c))
+    pay.forEach((c, i) => {
+      g.sides[i].coins += c
+      g.sides[i].killEarned += c
+    })
     if ((m.lastHit === 'luck' || m.lastHit === 'rainbow') && pay[killer] >= 1) {
       // lucky kills show their coins
       const lp = pathPos(m.s)
@@ -1616,6 +1690,7 @@ export function step(g: Game, dt: number, rng: () => number): Game {
   g.time += dt
   g.waveTimer -= dt
   if (g.waveTimer <= 0) startWave(g, rng)
+  for (const s of g.sides) accrueIncome(s, dt)
   if (g.coop) {
     stepCoop(g, dt, rng)
     missionsTick(g, rng)
@@ -1645,6 +1720,15 @@ export const wavesCleared = (g: Game) => Math.max(0, g.sides.every((s) => s.lost
 export const AI_INTERVAL: Record<Difficulty, number> = { easy: 1.5, normal: 0.75, hard: 0.3 }
 /** The AI only gambles once its board is up and running (this many summons). */
 export const AI_GAMBLE_AFTER = 12
+/** The AI invests when a level pays for itself within this many seconds (and the field is calm). */
+export const AI_PAYBACK: Record<Difficulty, number> = { easy: 40, normal: 60, hard: 90 }
+
+/** Whether the AI should buy the next income level now. */
+export function aiWantsInvest(side: Side, diff: Difficulty, limit: number): boolean {
+  if (!canInvest(side) || side.bossT != null || side.monsters.length > limit * 0.4) return false
+  const gain = investGain(side)
+  return gain > 0 && investCost(side.incomeLvl) / gain <= AI_PAYBACK[diff]
+}
 /** How eagerly the AI merges a recipe pair (in "tiers" of priority over normal merges). */
 export const RECIPE_PRIORITY_HARD = 25
 export const RECIPE_PRIORITY_NORMAL = 5
@@ -1668,6 +1752,7 @@ export type AiAction =
   | 'move'
   | 'card'
   | 'skill'
+  | 'invest'
   | null
 
 /**
@@ -1825,6 +1910,11 @@ export function aiAct(side: Side, diff: Difficulty, rng: () => number, tools = t
   if (tools && diff !== 'easy' && canUnlock(side) && emptySlots(side).length <= 1) {
     unlock(side)
     return 'unlock'
+  }
+  // invest in income when it pays back soon and nothing is burning (easy only sometimes notices)
+  if (tools && (diff !== 'easy' || rng() < 0.3) && aiWantsInvest(side, diff, edgeRow >= 0 ? COOP_LIMIT / 2 : LIMIT)) {
+    invest(side)
+    return 'invest'
   }
   // gamble only with coins to spare (it is a slightly worse deal than plain summons)
   if (

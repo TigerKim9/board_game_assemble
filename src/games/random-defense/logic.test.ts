@@ -146,6 +146,22 @@ import {
   rollGamble,
   skillIndex,
   SHOT_LIFE,
+  AI_PAYBACK,
+  CARD_COMPOUND,
+  INCOME_GOLD,
+  INCOME_LUCK,
+  INCOME_STEP,
+  MAX_INCOME,
+  PASSIVE_BASE,
+  PASSIVE_WAVE,
+  aiWantsInvest,
+  canInvest,
+  incomeMult,
+  invest,
+  investCost,
+  investGain,
+  passiveBase,
+  passiveRate,
   type MissionId,
   type CardId,
   type Monster,
@@ -303,7 +319,7 @@ describe('combat', () => {
     expect(s.monsters).toHaveLength(1)
     expect(s.monsters[0].s).toBe(10)
     expect(s.kills).toBe(1)
-    expect(s.coins).toBe(START_COINS + 2)
+    expect(s.coins - s.passiveEarned).toBeCloseTo(START_COINS + 2) // (passive income ticks too)
   })
   it('thunder splashes, ice slows, poison ticks, rock can stun', () => {
     const { g, s } = quiet()
@@ -822,15 +838,15 @@ describe('co-op', () => {
     const m = monster(2, 50)
     m.reward = 10
     bottom.monsters.push(m)
-    const c0 = top.coins
-    const c1 = bottom.coins
+    const c0 = top.coins - top.passiveEarned
+    const c1 = bottom.coins - bottom.passiveEarned
     step(g, 0.05, mulberry32(1))
     expect(bottom.monsters).toHaveLength(0)
     expect(top.kills).toBe(1)
     expect(top.helped).toBe(1)
     expect(bottom.kills).toBe(0)
-    expect(top.coins - c0).toBeCloseTo(5)
-    expect(bottom.coins - c1).toBeCloseTo(5)
+    expect(top.coins - top.passiveEarned - c0).toBeCloseTo(5)
+    expect(bottom.coins - bottom.passiveEarned - c1).toBeCloseTo(5)
   })
 
   it('a partner can finish your boss and clear its timer', () => {
@@ -1429,9 +1445,9 @@ describe('🎯 missions', () => {
     s.units[0] = unit('fire', 3, 1)
     s.units[1] = unit('thunder', 3, 2)
     merge(s, 0, 1, mulberry32(1))
-    const before = s.coins
+    const before = s.coins - s.passiveEarned
     step(g, 0.01, mulberry32(2))
-    expect(s.coins).toBe(before + missionReward(12))
+    expect(s.coins - s.passiveEarned).toBeCloseTo(before + missionReward(12))
     expect(s.missionsDone).toBe(1)
     expect(s.missions).toHaveLength(MISSION_SLOTS)
     expect(s.missions.filter((m) => m.id === 'hidden')).toHaveLength(0)
@@ -1673,5 +1689,110 @@ describe('attack visuals data', () => {
     q.s.monsters.push(weak)
     step(q.g, 0.01, mulberry32(1))
     expect(q.s.fx.some((f) => f.k === 'txt' && f.text === `+${Math.floor(10 * coinMult(q.s))}🪙`)).toBe(true)
+  })
+})
+
+describe('💰 passive income and 💹 investment', () => {
+  it('coins tick up every step, scaled by dt, the wave and coinRate', () => {
+    const { g, s } = quiet()
+    const c0 = s.coins
+    step(g, 1, mulberry32(1))
+    expect(s.coins - c0).toBeCloseTo(passiveBase(0))
+    const a = quiet()
+    step(a.g, 0.5, mulberry32(1))
+    step(a.g, 0.5, mulberry32(1))
+    expect(a.s.coins - c0).toBeCloseTo(passiveBase(0))
+    s.wave = 20
+    expect(passiveRate(s)).toBeCloseTo(PASSIVE_BASE + PASSIVE_WAVE * 20)
+    s.coinRate = 1.25
+    expect(passiveRate(s)).toBeCloseTo(1.25 * passiveBase(20))
+    expect(s.passiveEarned).toBeCloseTo(passiveBase(0))
+    // no step (paused, or the solo card picker holding the game) → no income
+    const before = s.coins
+    s.offer = ['fire', 'gold', 'dice']
+    expect(s.coins).toBe(before)
+    // a fallen side earns nothing
+    s.lost = true
+    const lostCoins = s.coins
+    step(g, 1, mulberry32(1))
+    expect(s.coins).toBe(lostCoins)
+  })
+  it('kill coins are counted apart from passive coins', () => {
+    const { g, s } = quiet()
+    s.units[0] = unit('fire', 6)
+    s.monsters.push(monster(1, 10))
+    step(g, 0.05, mulberry32(1))
+    expect(s.killEarned).toBe(2)
+  })
+  it('each investment level adds INCOME_STEP of the base rate, costs more each time and stops at the max', () => {
+    const { s } = quiet()
+    s.wave = 10
+    expect(investCost(1)).toBeGreaterThan(investCost(0))
+    expect(canInvest(s)).toBe(investCost(0) <= s.coins)
+    s.coins = investCost(0) - 1
+    expect(invest(s)).toBe(false)
+    s.coins = 1e7
+    const r0 = passiveRate(s)
+    const gain = investGain(s)
+    expect(invest(s)).toBe(true)
+    expect(s.incomeLvl).toBe(1)
+    expect(passiveRate(s) - r0).toBeCloseTo(gain)
+    expect(gain).toBeCloseTo(INCOME_STEP * passiveBase(10))
+    let paid = 0
+    while (canInvest(s)) {
+      paid += investCost(s.incomeLvl)
+      invest(s)
+    }
+    expect(s.incomeLvl).toBe(MAX_INCOME)
+    expect(invest(s)).toBe(false)
+    expect(paid).toBeGreaterThan(0)
+  })
+  it('🍀 luck spirits, 🍀 황금손 and 💹 복리 boost passive income', () => {
+    const { s } = quiet()
+    const base = incomeMult(s)
+    s.units[0] = unit('luck', 3)
+    expect(incomeMult(s)).toBeCloseTo(base + INCOME_LUCK * 3)
+    s.cards.gold = 1
+    s.cards.compound = 2
+    expect(incomeMult(s)).toBeCloseTo(base + INCOME_LUCK * 3 + INCOME_GOLD + 2 * CARD_COMPOUND)
+    expect(CARDS.compound.max).toBe(2)
+  })
+  it('the AI invests when a level pays back soon and the field is calm', () => {
+    const { s } = quiet()
+    s.wave = 20
+    s.coins = investCost(0)
+    s.units[0] = unit('fire', 1) // no summon slot issue: keep coins below a summon after investing
+    expect(aiWantsInvest(s, 'hard', LIMIT)).toBe(investCost(0) / investGain(s) <= AI_PAYBACK.hard)
+    expect(aiWantsInvest(s, 'hard', LIMIT)).toBe(true)
+    expect(aiAct(s, 'hard', mulberry32(1))).toBe('invest')
+    expect(s.incomeLvl).toBe(1)
+    // not while crowded or during a boss
+    const q = quiet()
+    q.s.wave = 20
+    q.s.coins = 1e6
+    for (let i = 0; i < 0.5 * LIMIT; i++) q.s.monsters.push(monster(i % 20, 1e9))
+    expect(aiWantsInvest(q.s, 'hard', LIMIT)).toBe(false)
+    q.s.monsters = []
+    q.s.bossT = 30
+    expect(aiWantsInvest(q.s, 'hard', LIMIT)).toBe(false)
+    // early on (low base rate) a level does not pay back yet
+    const e = quiet()
+    e.s.coins = investCost(0)
+    expect(aiWantsInvest(e.s, 'hard', LIMIT)).toBe(false)
+  })
+  it('the 💹 invest mission asks for two more levels', () => {
+    const { g, s } = quiet()
+    s.incomeLvl = 3
+    s.missions = []
+    while (s.missions.every((m) => m.id !== 'invest')) {
+      s.missions = []
+      refillMissions(s, Math.random)
+    }
+    const m = s.missions.find((x) => x.id === 'invest')!
+    expect(m.goal).toBe(5)
+    s.missions = [m]
+    s.incomeLvl = 5
+    step(g, 0.01, mulberry32(1))
+    expect(s.missionsDone).toBe(1)
   })
 })

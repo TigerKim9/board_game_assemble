@@ -16,6 +16,7 @@ import {
   aiAct,
   aiPickOffers,
   castSkill,
+  invest,
   dailyStreams,
   dateKey,
   gamble,
@@ -367,6 +368,7 @@ function Match({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => void; onRes
         e.preventDefault()
         summon(side, rngs.summon)
       } else if (k === 'g') gamble(side, rngs.summon)
+      else if (k === 'i') invest(side)
       else if (k === 'q') castSkill(side, 'meteor')
       else if (k === 'w') castSkill(side, 'freeze')
       else if (e.key >= '1' && e.key <= '3') upgrade(side, Number(e.key) - 1)

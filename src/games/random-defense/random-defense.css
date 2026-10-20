@@ -754,7 +754,7 @@
 /* ---- 🎰 gamble + ⚡ skills ---- */
 .rd-skillbar {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
 .rd-skillbar .btn {
@@ -771,7 +771,7 @@
   border-width: 2px;
 }
 .rd-skillbar .btn b {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   white-space: nowrap;
 }
 .rd-skillbar .btn small {
@@ -904,4 +904,37 @@
 }
 .rd-pause .rd-fxrow {
   margin: 0;
+}
+
+/* ---- 💰 passive income ---- */
+.rd-coins {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.05;
+}
+.rd-rate {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: #2f9e62;
+  animation: rd-rate 0.6s ease-out;
+}
+@media (prefers-color-scheme: dark) {
+  .rd-rate {
+    color: #7ee2a8;
+  }
+}
+@keyframes rd-rate {
+  0% {
+    transform: translateY(-3px) scale(1.25);
+    opacity: 0.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-rate {
+    animation: none;
+  }
+}
+.rd-invest {
+  border-color: #3ecf8e;
 }

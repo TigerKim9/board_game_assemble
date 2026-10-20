@@ -15,6 +15,7 @@ import {
   aiAct,
   aiPickOffers,
   castSkill,
+  invest,
   coopCount,
   gamble,
   isBossWave,
@@ -201,6 +202,7 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
         e.preventDefault()
         summon(side, Math.random)
       } else if (k === 'g') gamble(side, Math.random)
+      else if (k === 'i') invest(side)
       else if (k === 'q') castSkill(side, 'meteor')
       else if (k === 'w') castSkill(side, 'freeze')
       else if (e.key >= '1' && e.key <= '3') upgrade(side, Number(e.key) - 1)

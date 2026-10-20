@@ -10,7 +10,13 @@ import {
   SKILLS,
   SKILL_INFO,
   canGamble,
+  canInvest,
   canSkill,
+  invest,
+  investCost,
+  investGain,
+  MAX_INCOME,
+  passiveRate,
   gamble,
   gamblePrice,
   missionReward,
@@ -215,7 +221,13 @@ export function Hud({
       {side.bossT != null && <span className="rd-bosst">👹 {Math.max(0, Math.ceil(side.bossT))}초</span>}
       <MissionChip side={side} />
       <CardChips side={side} />
-      <span className="rd-coins">🪙 {Math.floor(side.coins)}</span>
+      <span className="rd-coins">
+        🪙 {Math.floor(side.coins)}
+        {/* passive income; the key re-runs a small pulse every couple of seconds */}
+        <small className="rd-rate" key={Math.floor(side.incomeT / 2)}>
+          +{fmtRate(passiveRate(side))}/s
+        </small>
+      </span>
     </div>
   )
 }
@@ -250,13 +262,31 @@ export function Controls({ side, press, rngs }: { side: Side; press: Press; rngs
   )
 }
 
-/** 🎰 gamble summon and the two ⚡ skills, with a cooldown sweep. */
+const fmtRate = (r: number) => (r < 10 ? r.toFixed(1).replace(/\.0$/, '') : String(Math.round(r)))
+
+/** 🎰 gamble summon, 💹 income investment and the two ⚡ skills (with a cooldown sweep). */
 export function SkillBar({ side, press, rngs }: { side: Side; press: Press; rngs: Rngs }) {
   return (
     <div className="rd-skillbar">
       <button className="btn rd-gamble" disabled={!canGamble(side)} {...press(() => gamble(side, rngs.summon))} aria-label="도박 소환">
         <b>🎰 도박</b>
         <small>🪙 {gamblePrice(side)}</small>
+      </button>
+      <button
+        className="btn rd-invest"
+        disabled={!canInvest(side)}
+        {...press(() => invest(side))}
+        aria-label="수입 투자"
+        title={
+          side.incomeLvl >= MAX_INCOME
+            ? '수입 투자 최대 레벨'
+            : `자동 수입 +${fmtRate(passiveRate(side))}/s → +${fmtRate(passiveRate(side) + investGain(side))}/s`
+        }
+      >
+        <b>💹 투자</b>
+        <small>
+          Lv{side.incomeLvl}·{side.incomeLvl >= MAX_INCOME ? '최대' : `🪙${investCost(side.incomeLvl)}`}
+        </small>
       </button>
       {SKILLS.map((k) => {
         const cd = side.skillCd[skillIndex(k)]
@@ -274,7 +304,7 @@ export function SkillBar({ side, press, rngs }: { side: Side; press: Press; rngs
             title={info.desc}
           >
             <b>
-              {info.emoji} {info.name}
+              {info.emoji} {k === 'freeze' ? '정지' : info.name}
             </b>
             <small>{ready ? '준비!' : `${Math.ceil(cd)}초`}</small>
           </button>
