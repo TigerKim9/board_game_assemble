@@ -1627,7 +1627,11 @@ function reapSide(g: Game, idx: number, rng: () => number) {
       if (m.kind !== 'normal' || g.sides[killer].helped % 5 === 0)
         pushFx(side, { k: 'txt', x: p.x, y: p.y - 0.3, text: '🤝', color: '#ffe066', t: 0, life: 0.8, size: 0.3 })
     }
-    if (m.kind === 'boss' || m.kind === 'elite') grantOffer(g.sides[killer], g.streams?.card ?? rng)
+    if (m.kind === 'boss' || m.kind === 'elite') {
+      // co-op: a boss or elite is a team kill, so both partners get a card pick, whoever landed the last hit
+      const earners = g.coop ? g.sides.filter((s) => !s.lost) : [g.sides[killer]]
+      for (const s of earners) grantOffer(s, g.streams?.card ?? rng)
+    }
     if (m.kind === 'boss') {
       side.bossT = null
       pushFx(side, {

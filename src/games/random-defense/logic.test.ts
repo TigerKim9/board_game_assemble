@@ -987,7 +987,7 @@ describe('co-op', () => {
     const avg = waves.reduce((a, b) => a + b, 0) / waves.length
     console.log(`co-op AI+AI waves: ${waves.join(', ')} (avg ${avg.toFixed(1)})`)
     expect(avg).toBeGreaterThanOrEqual(40)
-    expect(avg).toBeLessThanOrEqual(90)
+    expect(avg).toBeLessThanOrEqual(95)
   }, 60000)
 })
 
@@ -1048,11 +1048,21 @@ describe('augment cards', () => {
     step(g, 0.05, mulberry32(1))
     expect(s.offer).toBeNull()
   })
-  it('the side that lands the kill gets the offer in co-op', () => {
+  it('in co-op both partners get an offer, whoever lands the kill', () => {
     const g = quietCoop()
     g.sides[1].bossT = 30
     g.sides[1].monsters.push(monster(3, 100, 'boss'))
     g.sides[0].units[2 * COLS + 2] = unit('fire', 6)
+    step(g, 0.05, mulberry32(1))
+    expect(g.sides[0].offer).not.toBeNull()
+    expect(g.sides[1].offer).not.toBeNull()
+  })
+  it('in versus only the killer gets the offer', () => {
+    const g = newGame(2)
+    g.waveTimer = 1e9
+    g.sides[0].bossT = 30
+    g.sides[0].monsters.push(monster(3, 100, 'boss'))
+    g.sides[0].units[2] = unit('fire', 6)
     step(g, 0.05, mulberry32(1))
     expect(g.sides[0].offer).not.toBeNull()
     expect(g.sides[1].offer).toBeNull()
