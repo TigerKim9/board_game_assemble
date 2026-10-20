@@ -464,6 +464,9 @@ export const HP_LATE_GROWTH = 1.13
 export const waveHp = (w: number) =>
   Math.round(28 * Math.pow(1.15, Math.min(w, HP_SOFT_WAVE) - 1) * Math.pow(HP_LATE_GROWTH, Math.max(0, w - HP_SOFT_WAVE)) * (1 + w * 0.03))
 export const waveCount = (w: number) => 12 + Math.floor(w * 0.4)
+/** A wave always finishes spawning within this many seconds, so late waves never pile up behind each other. */
+export const SPAWN_WINDOW = 12
+export const spawnGap = (w: number) => Math.min(SPAWN_GAP, SPAWN_WINDOW / waveCount(Math.max(1, w)))
 export const waveSpeed = (w: number) => Math.min(3.2, 1.9 + w * 0.03)
 export const waveReward = (w: number) => 3 + Math.floor(w / 4)
 export const isBossWave = (w: number) => w > 0 && w % BOSS_EVERY === 0
@@ -1273,11 +1276,15 @@ export function startWave(g: Game, rng: () => number) {
         // warm monsters on the top loop, cool ones on the bottom loop: easy to tell apart on the shared lane
         if (sp.kind === 'normal') sp.hue = COOP_HUES[g.sides.indexOf(side)]
       }
-    side.queue.push(...list)
     if (isBossWave(g.wave)) {
-      side.bossT = BOSS_TIME + CARD_TIME * cardN(side, 'time')
+      // the boss cuts the line, and its clock starts when it actually appears (see tickSide)
+      side.queue.unshift(...list)
+      side.spawnT = Math.min(side.spawnT, 0.6)
       side.warn = 2.5
-    } else if (isEliteWave(g.wave)) side.warn = 1.6
+    } else {
+      side.queue.push(...list)
+      if (isEliteWave(g.wave)) side.warn = 1.6
+    }
     if (UNLOCK_WAVES.includes(g.wave)) {
       const slot = nextLocked(side)
       if (slot >= 0) openSlot(side, slot, '무료 칸 열림!')
@@ -1334,8 +1341,12 @@ function tickSide(side: Side, dt: number) {
   if (side.queue.length && side.spawnT <= 0) {
     const sp = side.queue.shift()!
     spawnMonster(side, sp)
-    if (sp.kind === 'boss') side.shake = 0.5
-    side.spawnT = sp.kind === 'sent' ? SPAWN_GAP * 0.5 : SPAWN_GAP
+    if (sp.kind === 'boss') {
+      side.shake = 0.5
+      side.bossT = BOSS_TIME + CARD_TIME * cardN(side, 'time')
+    }
+    const gap = spawnGap(side.wave)
+    side.spawnT = sp.kind === 'sent' ? gap * 0.5 : gap
   }
 
   // monster movement and damage over time

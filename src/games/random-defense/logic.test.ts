@@ -66,6 +66,9 @@ import {
   slotAt,
   slotPos,
   step,
+  spawnGap,
+  SPAWN_WINDOW,
+  SPAWN_GAP,
   pushFx,
   summon,
   summonCost,
@@ -756,6 +759,24 @@ function quietCoop() {
   return g
 }
 
+describe('boss arrival', () => {
+  it('jumps a long queue and starts its clock only when it appears', () => {
+    const { g, s } = quiet()
+    s.queue = Array.from({ length: 80 }, () => ({ kind: 'normal' as const, hp: 1e9, speed: 0, reward: 1, hue: 0 }))
+    g.wave = 9
+    startWave(g, mulberry32(1))
+    expect(s.queue[0].kind).toBe('boss')
+    expect(s.bossT).toBeNull()
+    for (let i = 0; i < 20; i++) step(g, 0.05, mulberry32(1))
+    expect(s.monsters.some((m) => m.kind === 'boss')).toBe(true)
+    expect(s.bossT!).toBeGreaterThan(BOSS_TIME - 1)
+  })
+  it('spawns every late wave within the spawn window', () => {
+    for (const w of [1, 30, 60, 100]) expect(spawnGap(w) * waveCount(w)).toBeLessThanOrEqual(Math.max(SPAWN_WINDOW, SPAWN_GAP * waveCount(w)) + 1e-9)
+    expect(spawnGap(100) * waveCount(100)).toBeLessThanOrEqual(SPAWN_WINDOW + 1e-9)
+  })
+})
+
 describe('effects', () => {
   it('drops a finished effect even while an older one is still showing', () => {
     const { g, s } = quiet()
@@ -1123,8 +1144,11 @@ describe('augment cards', () => {
     const s = g.sides[0]
     s.cards.time = 1
     g.wave = 9
+    g.waveTimer = 1e9
     startWave(g, mulberry32(1))
-    expect(s.bossT).toBe(BOSS_TIME + CARD_TIME)
+    while (s.bossT == null) step(g, 0.05, mulberry32(1))
+    expect(s.bossT).toBeCloseTo(BOSS_TIME + CARD_TIME, 0)
+    s.bossT = BOSS_TIME + CARD_TIME
     s.offer = ['time', 'chest', 'fire']
     pickCard(s, 'time', mulberry32(1))
     expect(s.bossT).toBe(BOSS_TIME + 2 * CARD_TIME)
