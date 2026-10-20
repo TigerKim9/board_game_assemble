@@ -565,6 +565,14 @@ function drawFx(ctx: CanvasRenderingContext2D, side: Side, now: number, fancy: b
       }
       ctx.lineTo(f.x2!, f.y2!)
       ctx.stroke()
+    } else if (f.k === 'nova' && f.faint) {
+      // blizzard attacks: a thin expanding frost ring, no fill, so stacked blizzards keep the field visible
+      ctx.globalAlpha = Math.max(0, 0.45 * (1 - p))
+      ctx.strokeStyle = f.color
+      ctx.lineWidth = 0.035
+      ctx.beginPath()
+      arc(ctx, f.x, f.y, f.r! * (0.35 + 0.65 * p), 0, Math.PI * 2)
+      ctx.stroke()
     } else if (f.k === 'nova') {
       // icy / magic shockwave filling the spirit's range
       ctx.globalAlpha = Math.max(0, 0.45 * (1 - p))

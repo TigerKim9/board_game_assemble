@@ -257,6 +257,8 @@ export interface Fx {
   /** Negative while waiting to appear (queued pop-ups). */
   t: number
   life: number
+  /** Nova drawn as a thin ring only (frequent attacks, so overlapping waves don't cover the field). */
+  faint?: boolean
   size?: number
   /** 'pop': a big centre message; pops queue up one after another instead of overlapping. */
   tag?: 'pop'
@@ -1507,7 +1509,7 @@ function strike({ g, idx, u, lp, p, r2, rng }: Shot, targets: Target[], k: numbe
     }
     case 'blizzard': {
       // a freezing wave: every monster in range is hit and slowed
-      pushFx(side, { k: 'nova', x: lp.x, y: lp.y, r: Math.sqrt(r2), color: info.color, t: 0, life: 0.4 })
+      pushFx(side, { k: 'nova', x: lp.x, y: lp.y, r: Math.sqrt(r2), color: info.color, t: 0, life: 0.4, faint: true })
       for (const o of targets) {
         if (o.m.hp <= 0) continue
         const dx = o.x - p.x
