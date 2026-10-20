@@ -9,5 +9,7 @@ export default defineConfig({
   server: { proxy: { '/ws': { target: 'ws://localhost:8787', ws: true } } },
   test: {
     include: ['src/**/*.test.ts', 'server/**/*.test.ts'],
+    // AI simulation tests play whole games; CI runners are several times slower than a laptop
+    testTimeout: 60_000,
   },
 })
