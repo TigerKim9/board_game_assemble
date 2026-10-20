@@ -1319,7 +1319,8 @@ export function targetsOf(g: Game, idxs: number[]): Target[] {
 /** Effects, spawning, movement, poison and the boss clock. */
 function tickSide(side: Side, dt: number) {
   for (const f of side.fx) f.t += dt
-  if (side.fx.length && side.fx[0].t >= side.fx[0].life) side.fx = side.fx.filter((f) => f.t < f.life)
+  // drop every finished effect, not only when the oldest one ends (long pops would keep dead ones alive)
+  if (side.fx.some((f) => f.t >= f.life)) side.fx = side.fx.filter((f) => f.t < f.life)
   side.warn = Math.max(0, side.warn - dt)
   side.shake = Math.max(0, side.shake - dt)
   side.incoming = Math.max(0, side.incoming - dt)

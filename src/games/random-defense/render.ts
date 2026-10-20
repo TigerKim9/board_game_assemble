@@ -85,6 +85,28 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath()
 }
 
+/** ctx.arc that never throws: a negative radius (an effect past its lifetime) draws nothing instead. */
+function arc(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, a0: number, a1: number) {
+  ctx.arc(x, y, r > 0 ? r : 0, a0, a1)
+}
+
+/**
+ * Starts a frame from a clean context. A throw mid-frame (or a forgotten restore) would otherwise
+ * leak alpha / transforms into the next frame and draw the board background invisible.
+ */
+function freshFrame(ctx: CanvasRenderingContext2D, k: number) {
+  const c = ctx as CanvasRenderingContext2D & { reset?: () => void }
+  if (typeof c.reset === 'function') c.reset()
+  else {
+    ctx.globalAlpha = 1
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.setLineDash([])
+    ctx.shadowBlur = 0
+    ctx.filter = 'none'
+  }
+  ctx.setTransform(k, 0, 0, k, 0, 0)
+}
+
 /** Attack range circle (and, for wind spirits, the 8 boosted neighbour tiles). */
 function drawRange(ctx: CanvasRenderingContext2D, side: Side, u: Unit, x: number, y: number, slot: number, now: number) {
   const color = INFO[u.type].color
@@ -104,7 +126,7 @@ function drawRange(ctx: CanvasRenderingContext2D, side: Side, u: Unit, x: number
   const r = unitRange(u, side)
   ctx.save()
   ctx.beginPath()
-  ctx.arc(x, y, r, 0, Math.PI * 2)
+  arc(ctx, x, y, r, 0, Math.PI * 2)
   ctx.fillStyle = hexA(color, 0.12)
   ctx.fill()
   ctx.strokeStyle = hexA(color, 0.85)
@@ -132,7 +154,7 @@ function drawHaste(ctx: CanvasRenderingContext2D, x: number, y: number, count: n
   for (let k = 0; k < arcs; k++) {
     const a = spin + (k * Math.PI * 2) / arcs
     ctx.beginPath()
-    ctx.arc(x, y, r, a, a + 0.9)
+    arc(ctx, x, y, r, a, a + 0.9)
     ctx.stroke()
   }
   ctx.restore()
@@ -146,13 +168,13 @@ function drawHiddenGlow(ctx: CanvasRenderingContext2D, color: string, x: number,
   g.addColorStop(1, hexA(color, 0))
   ctx.fillStyle = g
   ctx.beginPath()
-  ctx.arc(x, y, r * 1.55, 0, Math.PI * 2)
+  arc(ctx, x, y, r * 1.55, 0, Math.PI * 2)
   ctx.fill()
   ctx.fillStyle = '#ffffff'
   for (let k = 0; k < 3; k++) {
     const a = now * 1.8 + (k * Math.PI * 2) / 3
     ctx.beginPath()
-    ctx.arc(x + Math.cos(a) * r * 1.22, y + Math.sin(a) * r * 1.22, 0.035, 0, Math.PI * 2)
+    arc(ctx, x + Math.cos(a) * r * 1.22, y + Math.sin(a) * r * 1.22, 0.035, 0, Math.PI * 2)
     ctx.fill()
   }
 }
@@ -166,7 +188,7 @@ function drawAwakenRing(ctx: CanvasRenderingContext2D, x: number, y: number, r: 
     const a0 = (k / n) * Math.PI * 2 + now * 1.6
     ctx.strokeStyle = `hsl(${(k / n) * 360 + now * 120} 95% 62%)`
     ctx.beginPath()
-    ctx.arc(x, y, r + 0.07, a0, a0 + (Math.PI * 2) / n + 0.02)
+    arc(ctx, x, y, r + 0.07, a0, a0 + (Math.PI * 2) / n + 0.02)
     ctx.stroke()
   }
 }
@@ -183,7 +205,7 @@ export function drawUnit(ctx: CanvasRenderingContext2D, u: Unit, x: number, y: n
   grad.addColorStop(1, '#1d1530')
   ctx.fillStyle = grad
   ctx.beginPath()
-  ctx.arc(x, y, r, 0, Math.PI * 2)
+  arc(ctx, x, y, r, 0, Math.PI * 2)
   ctx.fill()
   ctx.lineWidth = 0.035 + 0.012 * u.tier
   ctx.strokeStyle = TIER_COLORS[u.tier]
@@ -193,7 +215,7 @@ export function drawUnit(ctx: CanvasRenderingContext2D, u: Unit, x: number, y: n
     ctx.lineWidth = 0.025
     ctx.strokeStyle = 'rgba(255,240,180,0.8)'
     ctx.beginPath()
-    ctx.arc(x, y, r + 0.06, 0, Math.PI * 2)
+    arc(ctx, x, y, r + 0.06, 0, Math.PI * 2)
     ctx.stroke()
   }
   text(ctx, info.emoji, x, y - 0.03 * scale, 0.36 * scale, '#fff', { emoji: true })
@@ -210,12 +232,12 @@ export function drawUnit(ctx: CanvasRenderingContext2D, u: Unit, x: number, y: n
     ctx.globalAlpha = alpha * Math.min(1, p * 1.6)
     ctx.fillStyle = 'rgba(255,255,255,0.55)'
     ctx.beginPath()
-    ctx.arc(x, y, r, 0, Math.PI * 2)
+    arc(ctx, x, y, r, 0, Math.PI * 2)
     ctx.fill()
     ctx.strokeStyle = TIER_COLORS[u.tier]
     ctx.lineWidth = 0.06
     ctx.beginPath()
-    ctx.arc(x, y, r + (0.7 - Math.min(0.7, p)) * 0.6, 0, Math.PI * 2)
+    arc(ctx, x, y, r + (0.7 - Math.min(0.7, p)) * 0.6, 0, Math.PI * 2)
     ctx.stroke()
   }
   ctx.restore()
@@ -237,40 +259,40 @@ function drawMonster(ctx: CanvasRenderingContext2D, m: Monster, ring: string | u
       ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr)
     }
     ctx.closePath()
-  } else ctx.arc(x, y, r, 0, Math.PI * 2)
+  } else arc(ctx, x, y, r, 0, Math.PI * 2)
   ctx.fill()
   if (m.kind === 'boss' || m.kind === 'elite') {
     text(ctx, m.kind === 'boss' ? '👹' : '👺', x, y, r * 1.5, '#fff', { emoji: true })
   } else {
     ctx.fillStyle = '#fff'
     ctx.beginPath()
-    ctx.arc(x - r * 0.35, y - r * 0.15, r * 0.28, 0, Math.PI * 2)
-    ctx.arc(x + r * 0.35, y - r * 0.15, r * 0.28, 0, Math.PI * 2)
+    arc(ctx, x - r * 0.35, y - r * 0.15, r * 0.28, 0, Math.PI * 2)
+    arc(ctx, x + r * 0.35, y - r * 0.15, r * 0.28, 0, Math.PI * 2)
     ctx.fill()
     ctx.fillStyle = '#111'
     ctx.beginPath()
-    ctx.arc(x - r * 0.3, y - r * 0.1, r * 0.13, 0, Math.PI * 2)
-    ctx.arc(x + r * 0.4, y - r * 0.1, r * 0.13, 0, Math.PI * 2)
+    arc(ctx, x - r * 0.3, y - r * 0.1, r * 0.13, 0, Math.PI * 2)
+    arc(ctx, x + r * 0.4, y - r * 0.1, r * 0.13, 0, Math.PI * 2)
     ctx.fill()
   }
   if (ring) {
     ctx.strokeStyle = ring
     ctx.lineWidth = 0.05
     ctx.beginPath()
-    ctx.arc(x, y, r + 0.03, 0, Math.PI * 2)
+    arc(ctx, x, y, r + 0.03, 0, Math.PI * 2)
     ctx.stroke()
   }
   if (m.slowT > 0) {
     ctx.strokeStyle = 'rgba(127,214,255,0.9)'
     ctx.lineWidth = 0.04
     ctx.beginPath()
-    ctx.arc(x, y, r + 0.05, 0, Math.PI * 2)
+    arc(ctx, x, y, r + 0.05, 0, Math.PI * 2)
     ctx.stroke()
   }
   if (m.poisonT > 0 && !fancy) {
     ctx.fillStyle = 'rgba(125,220,90,0.9)'
     ctx.beginPath()
-    ctx.arc(x + r * 0.8, y + r * 0.6, 0.05, 0, Math.PI * 2)
+    arc(ctx, x + r * 0.8, y + r * 0.6, 0.05, 0, Math.PI * 2)
     ctx.fill()
   }
   if (m.curseT && m.curseT > 0) {
@@ -278,7 +300,7 @@ function drawMonster(ctx: CanvasRenderingContext2D, m: Monster, ring: string | u
     ctx.lineWidth = 0.045
     ctx.setLineDash([0.06, 0.05])
     ctx.beginPath()
-    ctx.arc(x, y, r + 0.09, 0, Math.PI * 2)
+    arc(ctx, x, y, r + 0.09, 0, Math.PI * 2)
     ctx.stroke()
     ctx.setLineDash([])
     text(ctx, '💀', x - r * 0.9, y - r * 0.8, 0.15, '#fff', { emoji: true })
@@ -322,7 +344,7 @@ function drawPath(ctx: CanvasRenderingContext2D, oy: number, now: number) {
 function drawPortal(ctx: CanvasRenderingContext2D, x: number, y: number, now: number) {
   ctx.fillStyle = 'rgba(190,120,255,0.35)'
   ctx.beginPath()
-  ctx.arc(x, y, 0.3 + Math.sin(now * 4) * 0.04, 0, Math.PI * 2)
+  arc(ctx, x, y, 0.3 + Math.sin(now * 4) * 0.04, 0, Math.PI * 2)
   ctx.fill()
 }
 
@@ -400,7 +422,7 @@ function drawUnits(ctx: CanvasRenderingContext2D, side: Side, ui: UiState, now: 
       // stacked wind: small badge with the number of winds feeding this spirit
       ctx.fillStyle = 'rgba(40,24,80,0.9)'
       ctx.beginPath()
-      ctx.arc(-0.29, -0.29, 0.13, 0, Math.PI * 2)
+      arc(ctx, -0.29, -0.29, 0.13, 0, Math.PI * 2)
       ctx.fill()
       ctx.strokeStyle = '#c9b8ff'
       ctx.lineWidth = 0.025
@@ -451,6 +473,7 @@ function drawFx(ctx: CanvasRenderingContext2D, side: Side, now: number, fancy: b
   for (const f of side.fx) {
     if (f.t < 0) continue // queued, not shown yet
     const p = f.t / f.life
+    if (p >= 1) continue // finished; removed on the next step
     ctx.globalAlpha = Math.max(0, 1 - p)
     if (f.k === 'shot' && fancy && f.src) {
       drawAttack(ctx, side, f, p, now)
@@ -468,7 +491,7 @@ function drawFx(ctx: CanvasRenderingContext2D, side: Side, now: number, fancy: b
       ctx.strokeStyle = f.color
       ctx.lineWidth = 0.07
       ctx.beginPath()
-      ctx.arc(f.x, f.y, f.r! * (0.3 + 0.7 * p), 0, Math.PI * 2)
+      arc(ctx, f.x, f.y, f.r! * (0.3 + 0.7 * p), 0, Math.PI * 2)
       ctx.stroke()
     } else if (f.k === 'swap') {
       // old spirit puffs away while a ring of sparkles spins outward
@@ -480,13 +503,13 @@ function drawFx(ctx: CanvasRenderingContext2D, side: Side, now: number, fancy: b
       for (let k = 0; k < 8; k++) {
         const a = (k / 8) * Math.PI * 2 + p * 4
         ctx.beginPath()
-        ctx.arc(f.x + Math.cos(a) * R, f.y + Math.sin(a) * R, 0.06 * (1 - p * 0.5), 0, Math.PI * 2)
+        arc(ctx, f.x + Math.cos(a) * R, f.y + Math.sin(a) * R, 0.06 * (1 - p * 0.5), 0, Math.PI * 2)
         ctx.fill()
       }
       ctx.strokeStyle = '#ffffff'
       ctx.lineWidth = 0.05
       ctx.beginPath()
-      ctx.arc(f.x, f.y, R * 0.8, p * 6, p * 6 + Math.PI * 1.2)
+      arc(ctx, f.x, f.y, R * 0.8, p * 6, p * 6 + Math.PI * 1.2)
       ctx.stroke()
     } else if (f.k === 'meteor') {
       // a fireball drops in, then a big filled blast
@@ -503,7 +526,7 @@ function drawFx(ctx: CanvasRenderingContext2D, side: Side, now: number, fancy: b
         ctx.stroke()
         ctx.fillStyle = '#ffd27a'
         ctx.beginPath()
-        ctx.arc(fx, fy, 0.12, 0, Math.PI * 2)
+        arc(ctx, fx, fy, 0.12, 0, Math.PI * 2)
         ctx.fill()
       } else {
         const q = (p - 0.35) / 0.65
@@ -514,7 +537,7 @@ function drawFx(ctx: CanvasRenderingContext2D, side: Side, now: number, fancy: b
         g.addColorStop(1, 'rgba(255,80,0,0)')
         ctx.fillStyle = g
         ctx.beginPath()
-        ctx.arc(f.x, f.y, f.r! * (0.4 + 0.6 * q), 0, Math.PI * 2)
+        arc(ctx, f.x, f.y, f.r! * (0.4 + 0.6 * q), 0, Math.PI * 2)
         ctx.fill()
       }
     } else if (f.k === 'chain') {
@@ -547,7 +570,7 @@ function drawFx(ctx: CanvasRenderingContext2D, side: Side, now: number, fancy: b
       ctx.globalAlpha = Math.max(0, 0.45 * (1 - p))
       ctx.fillStyle = f.color
       ctx.beginPath()
-      ctx.arc(f.x, f.y, f.r! * (0.25 + 0.75 * p), 0, Math.PI * 2)
+      arc(ctx, f.x, f.y, f.r! * (0.25 + 0.75 * p), 0, Math.PI * 2)
       ctx.fill()
       ctx.globalAlpha = Math.max(0, 1 - p)
       ctx.strokeStyle = '#ffffff'
@@ -610,7 +633,7 @@ export function drawSide(
   fancy = true,
 ) {
   const k = (w / FIELD_W) * dpr
-  ctx.setTransform(k, 0, 0, k, 0, 0)
+  freshFrame(ctx, k)
   ctx.clearRect(0, 0, FIELD_W, FIELD_H)
   shake(ctx, side.shake)
   drawBackground(ctx, FIELD_H)
@@ -686,7 +709,7 @@ export function drawCoop(
   fancy = true,
 ) {
   const k = (w / FIELD_W) * dpr
-  ctx.setTransform(k, 0, 0, k, 0, 0)
+  freshFrame(ctx, k)
   ctx.clearRect(0, 0, FIELD_W, COOP_H)
   shake(ctx, Math.max(...sides.map((s) => s.shake)))
   drawBackground(ctx, COOP_H)
@@ -789,7 +812,7 @@ function drawParticles(ctx: CanvasRenderingContext2D, side: Side, now: number) {
     if (q.kind === 'puff') {
       ctx.globalAlpha = a * 0.45
       ctx.beginPath()
-      ctx.arc(q.x, q.y, q.r * (1 + 1.5 * (q.t / q.life)), 0, Math.PI * 2)
+      arc(ctx, q.x, q.y, q.r * (1 + 1.5 * (q.t / q.life)), 0, Math.PI * 2)
       ctx.fill()
     } else if (q.kind === 'crystal') diamond(ctx, q.x, q.y, q.r, q.r * 0.5, Math.atan2(q.vy, q.vx))
     else if (q.kind === 'star') star(ctx, q.x, q.y, q.r)
@@ -802,7 +825,7 @@ function drawParticles(ctx: CanvasRenderingContext2D, side: Side, now: number) {
       ctx.stroke()
     } else {
       ctx.beginPath()
-      ctx.arc(q.x, q.y, q.r, 0, Math.PI * 2)
+      arc(ctx, q.x, q.y, q.r, 0, Math.PI * 2)
       ctx.fill()
     }
   }
@@ -849,7 +872,7 @@ function drawStatuses(ctx: CanvasRenderingContext2D, monsters: Monster[], now: n
     if (m.slowT <= 0) continue
     const { x, y } = pathPos(m.s)
     ctx.moveTo(x + monR(m), y)
-    ctx.arc(x, y, monR(m), 0, Math.PI * 2)
+    arc(ctx, x, y, monR(m), 0, Math.PI * 2)
   }
   ctx.fillStyle = 'rgba(150,220,255,0.38)'
   ctx.fill()
@@ -910,7 +933,7 @@ function drawStatuses(ctx: CanvasRenderingContext2D, monsters: Monster[], now: n
       const by = y - r * 0.2 - q * 0.45
       const br = 0.03 + 0.02 * q
       ctx.moveTo(bx + br, by)
-      ctx.arc(bx, by, br, 0, Math.PI * 2)
+      arc(ctx, bx, by, br, 0, Math.PI * 2)
     }
   }
   ctx.fillStyle = 'rgba(125,220,90,0.8)'
@@ -1007,19 +1030,19 @@ function drawAttack(ctx: CanvasRenderingContext2D, side: Side, f: Fx, p: number,
         ctx.globalAlpha = 0.6 * fade
         ctx.fillStyle = FLAME_COLORS[k - 1]
         ctx.beginPath()
-        ctx.arc(f.x + dx * q + nx * j, f.y + dy * q + ny * j, (0.035 + 0.08 * q) * sc, 0, Math.PI * 2)
+        arc(ctx, f.x + dx * q + nx * j, f.y + dy * q + ny * j, (0.035 + 0.08 * q) * sc, 0, Math.PI * 2)
         ctx.fill()
       }
       // scorch glow: two soft discs (cheaper than a gradient every frame)
       ctx.fillStyle = '#ff7a1a'
       ctx.globalAlpha = 0.3 * fade
       ctx.beginPath()
-      ctx.arc(tx, ty, 0.28 * sc, 0, Math.PI * 2)
+      arc(ctx, tx, ty, 0.28 * sc, 0, Math.PI * 2)
       ctx.fill()
       ctx.fillStyle = '#ffe08a'
       ctx.globalAlpha = 0.5 * fade
       ctx.beginPath()
-      ctx.arc(tx, ty, 0.13 * sc, 0, Math.PI * 2)
+      arc(ctx, tx, ty, 0.13 * sc, 0, Math.PI * 2)
       ctx.fill()
       if (once(f, 1))
         emit(side, 3 + (awake ? 2 : 0), () => ({
@@ -1090,11 +1113,11 @@ function drawAttack(ctx: CanvasRenderingContext2D, side: Side, f: Fx, p: number,
         ctx.globalAlpha = 1
         ctx.fillStyle = '#8b6b4f'
         ctx.beginPath()
-        ctx.arc(s.x, s.y, 0.11 * sc, 0, Math.PI * 2)
+        arc(ctx, s.x, s.y, 0.11 * sc, 0, Math.PI * 2)
         ctx.fill()
         ctx.fillStyle = '#5e4632'
         ctx.beginPath()
-        ctx.arc(s.x + Math.cos(now * 12) * 0.03, s.y + Math.sin(now * 12) * 0.03, 0.025 * sc, 0, Math.PI * 2)
+        arc(ctx, s.x + Math.cos(now * 12) * 0.03, s.y + Math.sin(now * 12) * 0.03, 0.025 * sc, 0, Math.PI * 2)
         ctx.fill()
       } else if (once(f, 2)) spray(side, tx, ty + 0.05, 5, 'puff', '#c8b8a2', 0.6, 0.06 * sc, 0.45, -0.4)
       break
@@ -1106,11 +1129,11 @@ function drawAttack(ctx: CanvasRenderingContext2D, side: Side, f: Fx, p: number,
         ctx.globalAlpha = 1
         ctx.fillStyle = '#7ddc5a'
         ctx.beginPath()
-        ctx.arc(s.x, s.y, 0.09 * sc, 0, Math.PI * 2)
+        arc(ctx, s.x, s.y, 0.09 * sc, 0, Math.PI * 2)
         ctx.fill()
         ctx.fillStyle = 'rgba(255,255,255,0.7)'
         ctx.beginPath()
-        ctx.arc(s.x - 0.02, s.y - 0.025, 0.02, 0, Math.PI * 2)
+        arc(ctx, s.x - 0.02, s.y - 0.025, 0.02, 0, Math.PI * 2)
         ctx.fill()
       } else if (once(f, 2)) spray(side, tx, ty, 3, 'puff', '#8fe36a', 0.3, 0.09 * sc, 0.6, -0.3)
       break
@@ -1129,7 +1152,7 @@ function drawAttack(ctx: CanvasRenderingContext2D, side: Side, f: Fx, p: number,
         for (let k = 0; k < 4; k++) {
           const a = now * 10 + (k * Math.PI) / 2
           ctx.beginPath()
-          ctx.arc(s.x + Math.cos(a) * 0.04 * sc, s.y + Math.sin(a) * 0.04 * sc, 0.035 * sc, 0, Math.PI * 2)
+          arc(ctx, s.x + Math.cos(a) * 0.04 * sc, s.y + Math.sin(a) * 0.04 * sc, 0.035 * sc, 0, Math.PI * 2)
           ctx.fill()
         }
       } else if (once(f, 2)) spray(side, tx, ty, 4, 'star', '#ffd23f', 0.9, 0.05, 0.4)
@@ -1147,7 +1170,7 @@ function drawAttack(ctx: CanvasRenderingContext2D, side: Side, f: Fx, p: number,
           const cx = lerp(f.x, tx, q)
           const cy = lerp(f.y, ty, q)
           ctx.beginPath()
-          ctx.arc(cx - Math.cos(s.a) * 0.08, cy - Math.sin(s.a) * 0.08, 0.15 * sc, s.a - 1.1 + now * (k ? 6 : 0), s.a + 1.1 + now * (k ? 6 : 0))
+          arc(ctx, cx - Math.cos(s.a) * 0.08, cy - Math.sin(s.a) * 0.08, 0.15 * sc, s.a - 1.1 + now * (k ? 6 : 0), s.a + 1.1 + now * (k ? 6 : 0))
           ctx.stroke()
         }
       } else if (once(f, 2)) spray(side, tx, ty, 3, 'puff', '#d9ceff', 0.5, 0.05, 0.35)

@@ -66,6 +66,7 @@ import {
   slotAt,
   slotPos,
   step,
+  pushFx,
   summon,
   summonCost,
   tieBreak,
@@ -754,6 +755,17 @@ function quietCoop() {
   g.waveTimer = 1e9
   return g
 }
+
+describe('effects', () => {
+  it('drops a finished effect even while an older one is still showing', () => {
+    const { g, s } = quiet()
+    s.fx = []
+    pushFx(s, { k: 'txt', x: 1, y: 1, text: 'long', color: '#fff', t: 0, life: 5 })
+    pushFx(s, { k: 'boom', x: 1, y: 1, r: 1, color: '#fff', t: 0, life: 0.2 })
+    step(g, 0.5, mulberry32(1))
+    expect(s.fx.map((f) => f.k)).toEqual(['txt'])
+  })
+})
 
 describe('blizzard aura', () => {
   it('a blizzard passes on part of the aura of the wind it was made from (one star lower)', () => {
