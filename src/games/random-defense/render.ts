@@ -19,7 +19,7 @@ import {
   neighbors,
   unitRange,
   isStuck,
-  pathPos,
+  monsterLocal,
   unlockCost,
   slotPos,
   type Fx,
@@ -247,7 +247,7 @@ export function drawUnit(ctx: CanvasRenderingContext2D, u: Unit, x: number, y: n
 export const COOP_COLORS = ['#ffa94d', '#4dabf7']
 
 function drawMonster(ctx: CanvasRenderingContext2D, m: Monster, ring: string | undefined, fancy: boolean) {
-  const { x, y } = pathPos(m.s)
+  const { x, y } = monsterLocal(m)
   const r = m.kind === 'boss' ? 0.42 : m.kind === 'elite' ? 0.29 : 0.19
   ctx.fillStyle = m.hitT > 0 ? '#ffffff' : m.kind === 'boss' ? '#c0392b' : `hsl(${m.hue} 65% 52%)`
   ctx.beginPath()
@@ -326,7 +326,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, h: number) {
 }
 
 /** One board's loop path, shifted down by `oy`. */
-function drawPath(ctx: CanvasRenderingContext2D, oy: number, now: number) {
+function drawPath(ctx: CanvasRenderingContext2D, oy: number, now: number, rev = false) {
   ctx.strokeStyle = '#4a3b5e'
   ctx.lineWidth = 0.64
   ctx.lineJoin = 'round'
@@ -335,7 +335,7 @@ function drawPath(ctx: CanvasRenderingContext2D, oy: number, now: number) {
   ctx.strokeStyle = 'rgba(255,255,255,0.10)'
   ctx.lineWidth = 0.03
   ctx.setLineDash([0.18, 0.18])
-  ctx.lineDashOffset = -now * 0.6
+  ctx.lineDashOffset = (rev ? 1 : -1) * now * 0.6
   roundRect(ctx, 0.5, 0.5 + oy, PATH_W, PATH_H, 0.12)
   ctx.stroke()
   ctx.setLineDash([])
@@ -446,7 +446,7 @@ function drawMonsters(ctx: CanvasRenderingContext2D, side: Side, now: number, fa
     ctx.fillStyle = 'rgba(160,220,255,0.35)'
     ctx.lineWidth = 0.035
     for (const m of side.monsters) {
-      const { x, y } = pathPos(m.s)
+      const { x, y } = monsterLocal(m)
       const r = m.kind === 'boss' ? 0.5 : m.kind === 'elite' ? 0.36 : 0.25
       ctx.beginPath()
       ctx.rect(x - r, y - r, 2 * r, 2 * r)
@@ -673,15 +673,12 @@ function drawSharedLane(ctx: CanvasRenderingContext2D, now: number) {
     ctx.lineTo(x1, y + dy)
     ctx.stroke()
   }
-  // the two loops run through it in opposite directions
+  // both loops run through it left to right, side by side
   ctx.strokeStyle = 'rgba(255,240,200,0.35)'
   ctx.lineWidth = 0.03
   ctx.setLineDash([0.18, 0.18])
-  for (const [dy, dir] of [
-    [-0.12, -1],
-    [0.12, 1],
-  ]) {
-    ctx.lineDashOffset = dir * now * 0.6
+  for (const dy of [-0.12, 0.12]) {
+    ctx.lineDashOffset = -now * 0.6
     ctx.beginPath()
     ctx.moveTo(x0, y + dy)
     ctx.lineTo(x1, y + dy)
@@ -719,8 +716,8 @@ export function drawCoop(
     roundRect(ctx, 0.92, 0.92 + i * COOP_OFFSET, FIELD_W - 1.84, FIELD_H - 1.84, 0.2)
     ctx.fill()
   })
-  drawPath(ctx, 0, now)
-  drawPath(ctx, COOP_OFFSET, now)
+  drawPath(ctx, 0, now, sides[0].rev)
+  drawPath(ctx, COOP_OFFSET, now, sides[1].rev)
   drawSharedLane(ctx, now)
   drawPortal(ctx, 0.5, 0.5, now)
   drawPortal(ctx, 0.5, COOP_H - 0.5, now)
@@ -870,7 +867,7 @@ function drawStatuses(ctx: CanvasRenderingContext2D, monsters: Monster[], now: n
   ctx.beginPath()
   for (const m of monsters) {
     if (m.slowT <= 0) continue
-    const { x, y } = pathPos(m.s)
+    const { x, y } = monsterLocal(m)
     ctx.moveTo(x + monR(m), y)
     arc(ctx, x, y, monR(m), 0, Math.PI * 2)
   }
@@ -880,7 +877,7 @@ function drawStatuses(ctx: CanvasRenderingContext2D, monsters: Monster[], now: n
   ctx.beginPath()
   for (const m of monsters) {
     if (m.slowT <= 0 || busy) continue
-    const { x, y } = pathPos(m.s)
+    const { x, y } = monsterLocal(m)
     const r = monR(m)
     for (let k = 0; k < 3; k++) {
       const a = (k * Math.PI * 2) / 3 + m.id
@@ -901,7 +898,7 @@ function drawStatuses(ctx: CanvasRenderingContext2D, monsters: Monster[], now: n
   ctx.beginPath()
   for (const m of monsters) {
     if (m.stunT <= 0) continue
-    const { x, y } = pathPos(m.s)
+    const { x, y } = monsterLocal(m)
     const r = monR(m)
     for (let k = 0; k < 3; k++) {
       const a = now * 5 + (k * Math.PI * 2) / 3
@@ -925,7 +922,7 @@ function drawStatuses(ctx: CanvasRenderingContext2D, monsters: Monster[], now: n
   ctx.beginPath()
   for (const m of monsters) {
     if (m.poisonT <= 0) continue
-    const { x, y } = pathPos(m.s)
+    const { x, y } = monsterLocal(m)
     const r = monR(m)
     for (let k = 0; k < (busy ? 1 : 2); k++) {
       const q = (now * 0.9 + k * 0.5 + (m.id % 1) * 3) % 1
@@ -942,7 +939,7 @@ function drawStatuses(ctx: CanvasRenderingContext2D, monsters: Monster[], now: n
   ctx.beginPath()
   for (const m of monsters) {
     if (!m.zapT || m.zapT <= 0) continue
-    const { x, y } = pathPos(m.s)
+    const { x, y } = monsterLocal(m)
     const r = monR(m)
     for (let k = 0; k < 2; k++) {
       const a = Math.random() * Math.PI * 2

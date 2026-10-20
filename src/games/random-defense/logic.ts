@@ -208,6 +208,8 @@ export interface Monster {
   id: number
   kind: MonsterKind
   s: number
+  /** Walks the loop counter-clockwise (the top co-op board, so it reaches the shared lane after one side). */
+  rev?: boolean
   dist: number
   hp: number
   maxHp: number
@@ -305,6 +307,8 @@ export interface Side {
   sold: number
   /** Path position where this side's monsters appear (co-op bottom board spawns bottom-left). */
   spawnS: number
+  /** Monsters of this board walk counter-clockwise (top co-op board). */
+  rev: boolean
   /** Co-op: partner monsters this side finished off. */
   helped: number
   /** Wave this side has reached (for wave-scaled card rewards). */
@@ -396,6 +400,9 @@ export function pathPos(s: number): { x: number; y: number } {
   return { x: 0.5, y: 0.5 + PATH_H - d }
 }
 
+/** A monster's position on its own board's loop. */
+export const monsterLocal = (m: Pick<Monster, 's' | 'rev'>) => pathPos(m.rev ? -m.s : m.s)
+
 export function slotPos(i: number): { x: number; y: number } {
   return { x: 1.5 + (i % COLS), y: 1.5 + Math.floor(i / COLS) }
 }
@@ -428,7 +435,7 @@ export function boardOffset(g: Pick<Game, 'coop'>, idx: number): { x: number; y:
 
 /** Monster position in the shared field coordinates. */
 export function monsterPos(g: Pick<Game, 'coop'>, idx: number, m: Monster): { x: number; y: number } {
-  const p = pathPos(m.s)
+  const p = monsterLocal(m)
   return { x: p.x, y: p.y + boardOffset(g, idx).y }
 }
 
@@ -642,6 +649,7 @@ export function newSide(): Side {
     transforms: 0,
     sold: 0,
     spawnS: 0,
+    rev: false,
     helped: 0,
     wave: 0,
     cards: emptyCards(),
@@ -665,8 +673,13 @@ export function newSide(): Side {
 export function newGame(players: number, mode: Mode = players > 1 ? 'versus' : 'solo'): Game {
   const coop = mode === 'coop' && players > 1
   const sides = Array.from({ length: players }, newSide)
-  // the bottom co-op board's portal sits at its bottom-left corner (mirrors the top board's)
-  if (coop) sides[1].spawnS = 2 * PATH_W + PATH_H
+  // Mirror images: the top board's monsters leave its top-left portal downwards (counter-clockwise),
+  // the bottom board's leave its bottom-left portal upwards (clockwise). Both walk one side, then
+  // the shared lane left to right, so neither partner gets the lane's monsters first.
+  if (coop) {
+    sides[0].rev = true
+    sides[1].spawnS = 2 * PATH_W + PATH_H
+  }
   return {
     sides,
     versus: players > 1 && !coop,
@@ -1172,7 +1185,7 @@ export function castSkill(side: Side, k: SkillId): boolean {
     m.hp -= (m.kind === 'boss' ? m.maxHp * METEOR_BOSS : dmg) * (m.curseT && m.curseT > 0 ? 1 + (m.curseF ?? 0) : 1)
     m.hitT = 0.3
     if (n < 24) {
-      const p = pathPos(m.s)
+      const p = monsterLocal(m)
       pushFx(side, { k: 'meteor', x: p.x, y: p.y, r: 0.6, color: '#ff8a3d', t: -0.04 * n, life: 0.5 })
     }
   })
@@ -1227,6 +1240,7 @@ function spawnMonster(side: Side, sp: Spawn) {
     id: side.nextId++,
     kind: sp.kind,
     s: side.spawnS,
+    rev: side.rev || undefined,
     dist: 0,
     hp: sp.hp,
     maxHp: sp.hp,
@@ -1599,14 +1613,14 @@ function reapSide(g: Game, idx: number, rng: () => number) {
     })
     if ((m.lastHit === 'luck' || m.lastHit === 'rainbow') && pay[killer] >= 1) {
       // lucky kills show their coins
-      const lp = pathPos(m.s)
+      const lp = monsterLocal(m)
       pushFx(side, { k: 'txt', x: lp.x, y: lp.y - 0.35, text: `+${Math.floor(pay[killer])}🪙`, color: '#ffd23f', t: 0, life: 0.8, size: 0.24 })
     }
     g.sides[killer].kills++
     g.sides[killer].waveKills++
     if (m.kind === 'elite' && (m.age ?? 0) <= ELITE_FAST) missionEvent(side, 'eliteFast')
     if (m.kind === 'boss' && (m.age ?? 0) <= BOSS_FAST) missionEvent(side, 'bossFast')
-    const p = pathPos(m.s)
+    const p = monsterLocal(m)
     pushFx(side, { k: 'boom', x: p.x, y: p.y, r: m.kind === 'boss' ? 1.4 : 0.45, color: `hsl(${m.hue} 80% 65%)`, t: 0, life: 0.35 })
     if (killer !== idx) {
       g.sides[killer].helped++

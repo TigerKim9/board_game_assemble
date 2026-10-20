@@ -759,6 +759,26 @@ function quietCoop() {
   return g
 }
 
+describe('co-op loop directions', () => {
+  it('both boards reach the shared lane after one side, then walk it left to right', () => {
+    const g = newGame(2, 'coop')
+    const top = (s: number) => monsterPos(g, 0, { s: g.sides[0].spawnS + s, rev: g.sides[0].rev } as Monster)
+    const bot = (s: number) => monsterPos(g, 1, { s: g.sides[1].spawnS + s, rev: g.sides[1].rev } as Monster)
+    // start at the left edge, top going down, bottom going up
+    expect(top(1).x).toBeCloseTo(0.5)
+    expect(top(1).y).toBeGreaterThan(top(0).y)
+    expect(bot(1).x).toBeCloseTo(0.5)
+    expect(bot(1).y).toBeLessThan(bot(0).y)
+    // after one side (PATH_H) both are on the shared lane, moving right in step
+    for (const d of [PATH_H, PATH_H + 2, PATH_H + PATH_W]) {
+      expect(top(d).y).toBeCloseTo(SHARED_LANE_Y)
+      expect(bot(d).y).toBeCloseTo(SHARED_LANE_Y)
+      expect(top(d).x).toBeCloseTo(bot(d).x)
+    }
+    expect(top(PATH_H + 2).x).toBeGreaterThan(top(PATH_H).x)
+  })
+})
+
 describe('boss arrival', () => {
   it('jumps a long queue and starts its clock only when it appears', () => {
     const { g, s } = quiet()
