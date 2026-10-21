@@ -35,6 +35,7 @@ import {
   Controls,
   Discoveries,
   Hud,
+  InfoLine,
   FxToggle,
   SkillBar,
   boardDown,
@@ -299,6 +300,7 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
           <>
             <Controls side={side} press={presses[i]} rngs={rngs} />
             <SkillBar side={side} press={presses[i]} rngs={rngs} />
+            {!bothHuman && <InfoLine game={g} side={side} ui={uiRef.current[i]} />}
           </>
         )}
       </section>
@@ -338,12 +340,12 @@ export function CoopMatch({ cfg, onAgain, onReset }: { cfg: Cfg; onAgain: () => 
           {!players[0].isAI &&
             (facing ? (
               <div className="rd-flip">
-                <ActionOverlay side={g.sides[0]} ui={uiRef.current[0]} press={presses[0]} />
+                <ActionOverlay side={g.sides[0]} ui={uiRef.current[0]} press={presses[0]} info={bothHuman} />
               </div>
             ) : (
-              <ActionOverlay side={g.sides[0]} ui={uiRef.current[0]} press={presses[0]} className="at-top" />
+              <ActionOverlay side={g.sides[0]} ui={uiRef.current[0]} press={presses[0]} className="at-top" info={bothHuman} />
             ))}
-          {!players[1].isAI && <ActionOverlay side={g.sides[1]} ui={uiRef.current[1]} press={presses[1]} />}
+          {!players[1].isAI && <ActionOverlay side={g.sides[1]} ui={uiRef.current[1]} press={presses[1]} info={bothHuman} />}
           <Discoveries sides={g.sides} humans={players.map((p, i) => (p.isAI ? -1 : i)).filter((i) => i >= 0)} />
           {!paused && !players[0].isAI && <CardPicker side={g.sides[0]} variant="top" flipped={facing} onPick={refresh} />}
           {!paused && !players[1].isAI && <CardPicker side={g.sides[1]} variant="bottom" keys onPick={refresh} />}

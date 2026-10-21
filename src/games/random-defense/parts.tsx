@@ -325,12 +325,15 @@ export function ActionOverlay({
   press,
   className = '',
   rngs,
+  info = false,
 }: {
   side: Side
   ui: UiState
   press: Press
   className?: string
   rngs?: Rngs
+  /** Also show a one-line summary of the selected spirit (cramped layouts without an InfoLine). */
+  info?: boolean
 }) {
   const selUnit = ui.sel >= 0 ? side.units[ui.sel] : null
   const selLocked = ui.sel >= 0 && !side.open[ui.sel]
@@ -339,8 +342,18 @@ export function ActionOverlay({
     const confirming = ui.confirm === selUnit.id
     const tCost = transformPrice(side, selUnit.tier)
     const rng = rngs?.merge ?? Math.random
+    const aura = info ? auraInfo(side)[ui.sel] : null
     return (
-      <div className={`rd-actions ${stuck ? 'stuck' : ''} ${className}`}>
+      <div className={`rd-actions ${stuck ? 'stuck' : ''} ${info ? 'with-info' : ''} ${className}`}>
+        {info && (
+          <span className="rd-sel-info">
+            <span>
+              {INFO[selUnit.type].emoji} <span style={{ color: TIER_COLORS[selUnit.tier] }}>{'★'.repeat(selUnit.tier)}</span> · 공격{' '}
+              {fmt(unitDamage(selUnit, side))} · 초당 {((aura?.mult ?? 1) / unitInterval(selUnit)).toFixed(1)}회
+              {aura && aura.count > 0 && ` · 🌪️+${Math.round((aura.mult - 1) * 100)}%`}
+            </span>
+          </span>
+        )}
         <button className={`btn small rd-act-sell ${confirming ? 'confirm' : ''}`} {...press(() => sellSelected(side, ui))}>
           {confirming ? '한 번 더 누르면 판매' : '💰 판매'} <b>+{refundOf(selUnit)}</b>
         </button>
